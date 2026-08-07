@@ -22,5 +22,12 @@ its first consumer.
   (Module / Framework / Chief Domain Agent — STANDARDS.md §2), and locked
   the Chief Domain Agent roster to 10 domains + Orchestrator
   (ARCHITECTURE.md §4). Recorded as ADR-0005 through ADR-0007.
+- **Core Engine Framework — Phase 1 locked** (ADR-0008): language-agnostic
+  contract (`core/CONTRACT.md`, `core/schemas/*.json`) plus a Python
+  reference implementation (`core/python/avishkar_core/`, zero
+  third-party dependencies) providing Config, Logger, EventBus, and
+  ModuleRegistry. 47 passing unit tests and a runnable end-to-end example
+  (`core/examples/quickstart.py`). `core/README.md` rewritten to the
+  Framework documentation template.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

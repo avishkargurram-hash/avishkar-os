@@ -268,3 +268,54 @@ more, until a new ADR explicitly grows the list. None are implemented yet
 — they are built one at a time, in whatever order the Agent Framework
 phase of ROADMAP.md schedules, each fully to the template before the next
 starts.
+
+---
+
+## ADR-0008: Core Engine Framework — polyglot contract, Python reference implementation
+
+**Status:** Accepted · **Date:** 2026-08-08
+
+**Context:** Phase 1 (ROADMAP.md) requires building Core Engine
+Framework — config, logging, event bus, module registry — the substrate
+every other framework depends on. No implementation language had been
+chosen for the platform. Avishkar Labs' products and future frameworks
+plausibly span ecosystems (LangGraph/agent tooling leans Python; MCP's
+reference SDK and n8n lean Node/TypeScript), so committing Core Engine to
+a single language risks forcing every future framework into that
+language's ecosystem regardless of fit.
+
+**Decision:** Core Engine's four capabilities (Config, Logger, EventBus,
+ModuleRegistry) are specified as a language-agnostic contract —
+[`core/CONTRACT.md`](../core/CONTRACT.md) for method signatures/semantics,
+[`core/schemas/`](../core/schemas/) (JSON Schema) for shared data shapes
+(config resolution, log record, event envelope, module manifest). Python
+ships first as the reference implementation
+([`core/python/avishkar_core/`](../core/python/avishkar_core/)),
+stdlib-only (no third-party dependencies) so it stays trivially
+installable and auditable. Other language implementations (starting with
+TypeScript, likely needed once `mcp-factory`/`n8n-factory` are built) must
+satisfy the same contract, not invent their own — conformance is judged
+against `CONTRACT.md` and the schemas, not against the Python source.
+
+**Alternatives considered:**
+1. *Python-only* — rejected: cheapest now, but forces every future
+   framework (including ones that fit TypeScript better, e.g. MCP
+   servers) into Python or into calling out to a Python process, which is
+   exactly the kind of premature constraint a decades-long platform
+   shouldn't lock in during Phase 1.
+2. *TypeScript-only* — rejected: same objection in reverse; would force
+   Python-native agent/eval tooling (LangGraph, most ML/eval libraries)
+   into a worse position.
+3. *Full polyglot from day one (Python + TS reference implementations
+   both shipped now)* — rejected as Phase 1 scope: doubles the surface
+   area to build, review, and keep in sync before a single framework is
+   locked. The contract is designed to make adding a second
+   implementation later straightforward, without that cost now.
+
+**Consequences:** Every other framework's "Interfaces" section
+(STANDARDS.md §2.2) that depends on Core Engine must be checkable against
+`CONTRACT.md`, not just against the Python package. Adding a second
+language implementation is expected, not hypothetical — it does not
+require a new ADR, only conformance review against the existing contract.
+The contract itself changing (a new capability, a breaking signature
+change) does require an ADR, since every framework depends on it.

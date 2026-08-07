@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "avishkar-core"
+version = "0.1.0"
+description = "Core Engine Framework -- Python reference implementation for Avishkar OS (config, logging, event bus, module registry)."
+readme = "../README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "Avishkar Labs" }]
+dependencies = []
+
+# Deliberately zero third-party dependencies -- see CONTRACT.md and
+# ARCHITECTURE.md SS5: Core Engine is the one module every other module
+# depends on, so its own dependency footprint is kept at stdlib-only to
+# minimize what every product inherits transitively.
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["avishkar_core*"]

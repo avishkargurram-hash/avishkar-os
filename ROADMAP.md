@@ -30,17 +30,23 @@ contracts are written down before its code is.
 - 💤 CI scaffold (lint, type-check, test, doc-coverage gate)
 - 💤 `CONTRIBUTING.md` workflow validated with a real first PR
 
-## Phase 1 — Core Engine Framework (`core/`)
+## Phase 1 — Core Engine Framework (`core/`) — ✅ LOCKED (2026-08-08)
 
 Goal: build the one framework everything else depends on, completely,
 before anything else starts — nothing after this phase can be genuinely
 "done" without it, since every other framework's README declares a
 dependency on it.
 
-- 💤 `core/`: config, logging, event bus, module lifecycle/registry
-- 💤 `core/` documented to the Framework template (STANDARDS.md §2.2) with
-  real Interfaces and a runnable Example
-- 💤 Locked (✅) before Phase 1.5 starts
+- ✅ `CONTRACT.md` + `schemas/`: the language-agnostic contract (ADR-0008)
+- ✅ `python/avishkar_core/`: Config, Logger, EventBus, ModuleRegistry —
+  stdlib-only, zero third-party dependencies
+- ✅ 47 unit tests, all passing (`core/python/tests/`, run via
+  `python -m unittest discover -s tests` with `PYTHONPATH=core/python`)
+- ✅ `core/README.md` documented to the Framework template (STANDARDS.md
+  §2.2) with real Interfaces
+- ✅ Runnable end-to-end example: `core/examples/quickstart.py`
+- 💤 Second-language (TypeScript) implementation — deferred, not blocking
+  (see `core/README.md` Future Roadmap)
 
 ## Phase 1.5 — Agent Framework + first Chief Domain Agent (`agent-factory`)
 

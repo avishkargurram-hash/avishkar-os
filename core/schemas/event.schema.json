@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://avishkar-os/core/schemas/event.schema.json",
+  "title": "Avishkar OS Event Envelope",
+  "description": "The shape of every message flowing through the EventBus contract in CONTRACT.md.",
+  "type": "object",
+  "required": ["event_id", "event_type", "payload", "timestamp", "source"],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "description": "Unique id for this event instance (UUIDv4 in the Python reference implementation)."
+    },
+    "event_type": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(\\.[a-z0-9]+)*$",
+      "description": "Dot-namespaced event type, e.g. 'module.started', 'agent.task.completed'. The namespace's first segment is conventionally the publishing framework's name."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Event-type-specific data. Each event_type should document its own payload shape where it's defined.",
+      "additionalProperties": true
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source": {
+      "type": "string",
+      "description": "Name of the module/framework that published this event."
+    }
+  },
+  "additionalProperties": false
+}

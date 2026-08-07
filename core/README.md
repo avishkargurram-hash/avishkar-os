@@ -1,54 +1,140 @@
-# core/ — Core Engine
+# Core Engine Framework
 
-## Purpose
-The minimal runtime substrate every other module in Avishkar OS depends
-on: config, logging, the event bus, and module lifecycle/loading. This is
-the one module with a hard, enforced dependency rule — see
-[ARCHITECTURE.md](../ARCHITECTURE.md) §5.
+## Vision
+Every other framework in Avishkar OS — all 13 factories, the AI Router,
+every Chief Domain Agent — depends on being able to read config, log
+consistently, react to what other modules are doing, and register itself
+for coordinated startup/shutdown, without each one reinventing those four
+things differently. Core Engine Framework is that substrate: the one
+framework with zero dependencies of its own (ARCHITECTURE.md §5), so it
+can be the dependency everything else safely shares. It's also the first
+framework built end-to-end (ROADMAP.md Phase 1) precisely because nothing
+after it can be genuinely "done" while depending on a Core Engine that
+doesn't exist yet.
 
-## Responsibilities
-- Configuration loading (env, per-module config) with a single consistent
-  convention every factory and product uses.
-- Structured logging with consistent format/levels across the whole
-  platform (so logs from an agent, a workflow, and an MCP server are
-  correlatable).
-- An event bus for cross-module communication that doesn't require direct
-  imports between unrelated modules.
-- Module lifecycle: how a factory-generated module (agent, MCP server,
-  graph) registers itself and gets discovered/loaded by a product.
-
-## What does NOT belong here
-- Anything domain-specific: no agent logic, no routing policy, no memory
-  schema. If it's specific to what a module *does* rather than how modules
-  *run*, it belongs in that module, not `core/`.
-- **`core/` depends on nothing else inside this repository.** Every other
-  module may depend on `core/`; the reverse is a bug, not a style
-  preference — see ARCHITECTURE.md §5.
+Per [DECISIONS.md](../DECISIONS.md) ADR-0008, Core Engine is specified as
+a **polyglot contract**: the four capabilities below are defined
+language-agnostically in [`CONTRACT.md`](./CONTRACT.md) and
+[`schemas/`](./schemas/), with Python shipping first as the reference
+implementation. A framework built in another language later implements
+the same contract; it does not get to invent its own.
 
 ## Architecture
-_(To be designed in Phase 1 — see [ROADMAP.md](../ROADMAP.md), the first
-implementation priority because every other factory's output depends on
-it.)_
 
-## Inputs
-Environment/config sources; module registration calls from other parts of
-the platform.
+```
+core/
+├── CONTRACT.md          the language-agnostic interface spec (source of truth)
+├── schemas/              JSON Schemas for the shared data shapes
+├── python/               Python reference implementation (this is what's installed today)
+│   └── avishkar_core/
+│       ├── config.py      Config
+│       ├── logging.py     Logger
+│       ├── event_bus.py   EventBus
+│       ├── registry.py    ModuleRegistry
+│       └── errors.py      shared error types
+└── examples/
+    └── quickstart.py     runs all four together end to end
+```
 
-## Outputs
-Config values, log streams, event bus pub/sub, and the module registry
-other code queries to discover what's loaded.
+Internally, the four components have one intentional coupling:
+`ModuleRegistry` uses `EventBus` to publish `core.module.registered` /
+`.started` / `.stopped`, and both `EventBus` and `ModuleRegistry` use
+`Logger` to log their own activity. No other cross-component coupling
+exists — `Config` and `Logger` are each usable completely standalone. See
+[`examples/quickstart.py`](./examples/quickstart.py) for all four wired
+together the way a real framework would use them.
 
-## Dependencies
-None (by design — see above).
+## Folder Structure
+See the tree above. A second-language implementation would add a sibling
+to `python/` (e.g. `typescript/`), never touch `CONTRACT.md` without an
+ADR (ADR-0008 already anticipates this), and reuse the same `schemas/`.
+
+## Naming Standards
+Follows [STANDARDS.md](../STANDARDS.md) §3 platform-wide. Python module
+names are `snake_case` (`event_bus.py`, not `eventBus.py`); the
+distribution package is `avishkar-core`, the import package is
+`avishkar_core`.
+
+## Interfaces
+
+**Config** — `load_config(defaults, config_path, env_prefix, overrides) -> Config`;
+`Config.get(key, default=None)`, `.require(key)`, `.as_dict()`.
+
+**Logger** — `get_logger(name) -> Logger`; `.debug/.info/.warning/.error/.critical(message, **fields)`,
+`.bind(**fields) -> Logger`.
+
+**EventBus** — `EventBus()`; `.subscribe(event_type, handler) -> Subscription`,
+`.unsubscribe(subscription)`, `.publish(event_type, payload, source) -> Event`.
+
+**ModuleRegistry** — `ModuleRegistry(event_bus=None)`;
+`.register(manifest, instance=None, replace=False)`, `.get(name)`,
+`.list(kind=None)`, `.unregister(name)`, `.start_all()`, `.stop_all()`.
+
+Full signatures, error conditions, and semantics: [`CONTRACT.md`](./CONTRACT.md).
+This section is the summary; CONTRACT.md is the source of truth.
+
+## Extension Model
+Core Engine itself is deliberately closed to extension — it's meant to
+stay small and stable since everything depends on it (adding a fifth
+capability requires an ADR, not a PR). What's open: (1) a new language
+implementation of the existing contract, (2) any framework using
+`ModuleRegistry.register()` to add itself to the platform's module graph,
+(3) any framework defining its own event types on the shared `EventBus`
+(namespaced by publisher, e.g. `agent-factory.blueprint.validated`) — the
+bus itself needs no changes for a new event type to flow through it.
 
 ## Examples
-_(none yet.)_
+[`examples/quickstart.py`](./examples/quickstart.py) — a toy framework
+loads config, logs, registers with lifecycle hooks, and reacts to another
+module's registration event. Runs standalone:
 
-## Limitations
-Not implemented yet. This is Phase 1's first deliverable — nothing else in
-this platform can be considered "real" until `core/` exists, since every
-other module's README declares a dependency on it.
+```bash
+python core/examples/quickstart.py
+```
 
-## Future improvements
-- Plugin/module hot-reload for local development once there's enough
-  implemented to make that valuable.
+Minimal Config + Logger only:
+
+```python
+from avishkar_core import get_logger, load_config
+
+config = load_config(defaults={"router": {"timeout": 30}})
+logger = get_logger("my-framework")
+
+logger.info("starting", timeout=config.get("router.timeout"))
+```
+
+## Best Practices
+- Get one `Logger` per module via `get_logger(__name__-equivalent)`, not
+  a shared global — it's cheap and idempotent (STANDARDS.md-style single
+  responsibility per call site).
+- Use `Config.require()` for anything the module cannot run without;
+  reserve `Config.get(key, default)` for genuinely optional settings. A
+  silent `None` for a required setting is a bug waiting to happen.
+- Register with `ModuleRegistry` if a module has real startup/shutdown
+  work (open a connection, warm a cache) — don't register just to appear
+  in a list; that's what `list()` without registration overhead is for
+  once discovery-only needs arise (see Future Roadmap).
+
+## Anti-Patterns
+- Reaching into another component's internals instead of going through
+  its public interface (e.g. constructing a `Logger`'s private
+  `_stdlib_logger` directly) — breaks the polyglot contract's promise
+  that only the public interface is portable across implementations.
+- Logging `Config.as_dict()` wholesale "to see what's configured" — a
+  secret value in config becomes a plaintext log line. Log specific keys
+  you need, never the whole document.
+- Catching `AvishkarCoreError` broadly to suppress it instead of handling
+  the specific error (`ConfigError`, `ModuleNotRegisteredError`, ...) —
+  defeats the point of a typed error hierarchy.
+
+## Future Roadmap
+- Async variants of `EventBus.publish` / handler signatures, once a
+  framework genuinely needs non-blocking event handling (YAGNI until
+  then — see STANDARDS.md §1).
+- Cross-process event delivery (today's `EventBus` is in-process only).
+- A second language implementation (TypeScript, most likely, once
+  `mcp-factory` or `n8n-factory` need it) conforming to `CONTRACT.md`.
+- `documentation-factory`-driven doc-coverage check that this README
+  itself stays honest as the implementation evolves.
+- Discovery-only module registration (no lifecycle hooks required) if a
+  real use case emerges that `list()` alone can't serve today.

@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://avishkar-os/core/schemas/log-record.schema.json",
+  "title": "Avishkar OS Structured Log Record",
+  "description": "The shape every Logger implementation (any language) must emit when json_output is enabled, so logs from a Python core module and a future TypeScript one are correlatable in the same log pipeline.",
+  "type": "object",
+  "required": ["timestamp", "level", "module", "message"],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 / RFC 3339 timestamp, UTC, e.g. 2026-08-08T14:03:22.123Z"
+    },
+    "level": {
+      "type": "string",
+      "enum": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+    },
+    "module": {
+      "type": "string",
+      "description": "The logger name -- conventionally the framework/module's directory name, e.g. 'core.config' or 'agent-factory'."
+    },
+    "message": {
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": ["string", "null"],
+      "description": "Ties log records across module boundaries to one logical request/task. Null if none is bound in the current context."
+    },
+    "fields": {
+      "type": "object",
+      "description": "Arbitrary structured context bound via Logger.bind() or passed at the call site. Never put secrets here -- see STANDARDS.md SS6.",
+      "additionalProperties": true
+    },
+    "exception": {
+      "type": ["object", "null"],
+      "description": "Present only for error-level records raised from an exception.",
+      "properties": {
+        "type": { "type": "string" },
+        "message": { "type": "string" },
+        "stacktrace": { "type": "string" }
+      }
+    }
+  },
+  "additionalProperties": false
+}
