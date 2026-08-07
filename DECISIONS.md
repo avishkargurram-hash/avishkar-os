@@ -116,3 +116,155 @@ should be a deliberate, case-by-case ADR, not the starting posture.
 **Consequences:** If any factory or module is later open-sourced, that
 requires its own ADR and a license change scoped to that piece (or the
 whole repo, if that's the call) — not a silent LICENSE edit.
+
+---
+
+## ADR-0005: Add Documentation Framework as a 14th factory; "Framework" is the richer documentation tier of a factory, not a rename
+
+**Status:** Accepted · **Date:** 2026-08-08
+
+**Context:** The Master Build Directive lists 15 "Frameworks" platform-wide,
+which maps almost 1:1 onto the 13 factories + `core/` + `router/` already
+built (ADR-0002), with two differences: the directive's list omits Starter
+Kit (already built and committed as `factories/starter-kit-factory`), and
+adds a new "Documentation Framework" with no prior equivalent — `docs/`
+existed only as a plain directory, with no generator or platform-wide
+enforcement behind it. The directive also uses "Framework" where prior
+ADRs used "Factory," and describes a richer documentation bar (Vision,
+Folder Structure, Naming Standards, Extension Model, Best Practices,
+Anti-Patterns) than STANDARDS.md §2 required at the time.
+
+**Decision:**
+1. Keep Starter Kit Framework as-is — nothing already built and committed
+   gets deleted to match a list that most plausibly omitted it by
+   oversight, not deliberate cut.
+2. Add `factories/documentation-factory` ("Documentation Framework") as a
+   genuinely new, 14th factory. Unlike `template-factory` (which produces
+   reusable *content* templates — PRD, API doc, architecture doc shapes
+   products fill in), Documentation Framework enforces the platform's
+   *own* documentation compliance: the README templates in
+   [STANDARDS.md](./STANDARDS.md) §2, ADR process tooling, and doc-coverage
+   checks (every folder has meaningful docs — see [ROADMAP.md](./ROADMAP.md)
+   Phase 0's CI scaffold item). This brings the total to 16 top-level
+   modules (13 factories + Documentation Framework = 14 factories, +
+   `core/` + `router/` = 16).
+3. "Framework" and "Factory" refer to the same thing at different
+   resolution — a Framework is a factory documented and built to the
+   fuller bar defined in ADR-0006, not a folder rename. See ADR discussion
+   in the chat log of 2026-08-08 for the explicit user approval of this
+   reading over a literal `factories/` → `frameworks/` rename.
+
+**Alternatives considered:**
+1. *Fold Starter Kit into Project Framework, hit exactly 15* — rejected by
+   the user; keeps the directive's count but discards working, committed
+   structure for a cosmetic match.
+2. *Rename `factories/` → `frameworks/` and every `<x>-factory` →
+   `<x>-framework` folder* — rejected by the user; mechanical rename
+   touching cross-links in 24 already-committed files with no functional
+   change, and loses more precise technology-specific names (`n8n-factory`
+   is more precise than a generic `automation-factory` would be if a
+   second automation engine is ever added).
+
+**Consequences:** ARCHITECTURE.md §3's factory table gains a
+`documentation-factory` row. STANDARDS.md gains the Documentation
+Framework's own doc-coverage responsibility. Future references to "the 16
+frameworks" and "the 13 factories" both refer to consistent, disjoint-free
+counts — see ARCHITECTURE.md for the canonical list.
+
+---
+
+## ADR-0006: Three-tier documentation template — Module, Framework, Chief Domain Agent
+
+**Status:** Accepted · **Date:** 2026-08-08
+
+**Context:** The original module README template (STANDARDS.md §2, written
+under ADR-0001) was one-size-fits-all: Purpose, Responsibilities,
+Architecture, Inputs, Outputs, Dependencies, Examples, Limitations, Future
+improvements. The Master Build Directive asks for three genuinely
+different depths of documentation depending on what's being documented: a
+plain module/shelf package, a Framework (a factory or platform-wide
+capability like Core Engine or AI Router), and a Chief Domain Agent (a
+complete engineering asset, not a prompt file).
+
+**Decision:** STANDARDS.md §2 now defines three templates instead of one:
+
+1. **Module template** (unchanged in spirit, `Interfaces` added): Purpose,
+   Responsibilities, Architecture, Interfaces, Dependencies, Inputs,
+   Outputs, Examples, Limitations, Future Roadmap. Used for shelf packages
+   (a single agent's package, a single MCP server, a single memory
+   backend) and simple directories like `docs/`.
+2. **Framework template** (new, richer): Vision, Architecture, Folder
+   Structure, Naming Standards, Interfaces, Extension Model, Examples,
+   Best Practices, Anti-Patterns, Future Roadmap. Used for every
+   `factories/*` entry, plus `core/` ("Core Engine Framework") and
+   `router/` ("AI Router Framework").
+3. **Chief Domain Agent template** (new, most demanding): Mission,
+   Capabilities, Knowledge Areas, Reasoning Strategy, Decision Framework,
+   Tools, MCP Integrations, Memory Usage, Prompt Templates, Checklists,
+   Reusable Workflows, Output Formats, Quality Gates, Examples, Failure
+   Modes, Limitations, Future Extensions, Sub-Agent Architecture, Internal
+   Routing Strategy. Used for every entry under `agents/`.
+
+Existing READMEs written under the old single template (all 13 factory
+READMEs, `core/`, `router/`) are upgraded to the Framework template as
+each framework is actually built, per the one-framework-at-a-time
+execution discipline (ROADMAP.md) — not rewritten in bulk immediately,
+to avoid documentation churn racing ahead of implementation.
+
+**Alternatives considered:** Keep one universal template and let each
+factory add ad hoc extra sections — rejected: produces inconsistent docs
+across factories, defeats the point of "every framework must include
+Vision, Architecture, Folder Structure..." being a checkable standard
+rather than a suggestion.
+
+**Consequences:** Any new module/framework/agent must be checked against
+the correct template before being considered documented. STANDARDS.md §2
+is the single source of truth for all three; this ADR records why there
+are three, not one.
+
+---
+
+## ADR-0007: Chief Domain Agent roster locked at 10 domains + Orchestrator
+
+**Status:** Accepted · **Date:** 2026-08-08
+
+**Context:** ARCHITECTURE.md §4 (ADR-0002-era) stated the *principle*
+("build only reusable Chief Domain Agents, not sprawl") without a concrete
+roster. The Master Build Directive supplies an explicit, concrete list.
+
+**Decision:** The initial Chief Domain Agent roster for `agents/` is
+locked to exactly these 11 entries — 10 domain agents plus one
+Orchestrator that decides which domain agents collaborate on a given
+task:
+
+1. Software & AI Engineering
+2. Medical & Healthcare
+3. Legal & Compliance
+4. Startup, Business & Product
+5. Education & Knowledge
+6. Research & Intelligence
+7. Finance & Economics
+8. Government & Public Policy
+9. Human Development & Psychology
+10. Creative & Media
+11. Orchestrator
+
+Each is built to the Chief Domain Agent template (ADR-0006) — a complete
+engineering asset (reasoning strategy, decision framework, tools, MCP
+integrations, memory usage, quality gates, failure modes, sub-agent
+architecture, internal routing), not a prompt file. New expert *roles*
+within a domain are absorbed into the matching Chief Agent (per
+ARCHITECTURE.md §4's existing absorption test); a genuinely new *domain*
+outside this list requires its own ADR before a 12th agent is added.
+
+**Alternatives considered:** Leave the roster open-ended, add domains
+organically as products need them. Rejected — the directive explicitly
+enumerates the roster as a locked design decision, not a starting
+suggestion; an open-ended list is exactly the "agent sprawl" ARCHITECTURE.md
+§4 already warns against.
+
+**Consequences:** `agents/` will contain up to 11 top-level packages, no
+more, until a new ADR explicitly grows the list. None are implemented yet
+— they are built one at a time, in whatever order the Agent Framework
+phase of ROADMAP.md schedules, each fully to the template before the next
+starts.

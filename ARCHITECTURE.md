@@ -21,6 +21,20 @@ repository, which *depends on* Avishkar OS.
 also want this, unmodified or lightly configured?"* If no, it doesn't
 belong in Avishkar OS.
 
+## 1.5 "Framework" and "Factory" are the same folder, different resolution
+
+The Master Build Directive calls these 16 modules "Frameworks"; ADR-0002
+called them "Factories." Both names point at the same folders — see
+[DECISIONS.md](./DECISIONS.md) ADR-0005. A **Framework** is a factory (or
+platform-wide capability like `core/`/`router/`) documented and built to
+the fuller bar in [STANDARDS.md](./STANDARDS.md) §2.2 (Vision, Folder
+Structure, Naming Standards, Extension Model, Best Practices,
+Anti-Patterns), not a different or renamed directory. Use "Framework" when
+talking about the capability's depth and maturity; "Factory" when talking
+about its mechanical role as a generator (§2 below). Folder names stay as
+originally built (`factories/agent-factory`, not `frameworks/agent-framework`)
+— see ADR-0005 for why a mechanical rename was rejected.
+
 ## 2. Factories vs. Library — two different kinds of directory
 
 The repository has two directory families that look similar but serve
@@ -74,10 +88,15 @@ Not every factory has a matching top-level shelf:
 | `memory-factory` | Memory backend schemas & adapters |
 | `evaluation-factory` | Eval harnesses and scoring rubrics for agents/prompts |
 | `security-factory` | Security review tooling, threat-model templates, guardrail policies |
+| `documentation-factory` | Doc-coverage enforcement, README/ADR tooling — the platform's *own* documentation compliance (see [DECISIONS.md](./DECISIONS.md) ADR-0005; distinct from `template-factory`, which produces content templates products fill in) |
 
-Each factory is documented per [STANDARDS.md](./STANDARDS.md)'s module
-documentation template: Purpose, Responsibilities, Architecture, Inputs,
-Outputs, Dependencies, Examples, Limitations, Future improvements.
+14 factories, plus `core/` ("Core Engine Framework") and `router/` ("AI
+Router Framework") — 16 Frameworks total (§1.5).
+
+Each factory/framework is documented per [STANDARDS.md](./STANDARDS.md)
+§2.2's Framework template: Vision, Architecture, Folder Structure, Naming
+Standards, Interfaces, Extension Model, Examples, Best Practices,
+Anti-Patterns, Future Roadmap.
 
 ### The library shelves
 
@@ -107,11 +126,32 @@ Outputs, Dependencies, Examples, Limitations, Future improvements.
 
 Per the constitution: build only reusable **Chief Domain Agents**, never
 dozens of narrow single-purpose agents. Each Chief Agent owns one domain
-(e.g. "Coding", "Research", "Support") and internally supports multiple
-expert *roles* within that domain via role/persona configuration, not by
-spawning a new top-level agent per role. Before adding a new agent to
-`agents/`, the bar is: *"Is this a genuinely new domain, or a new role an
-existing Chief Agent should absorb?"* Default to absorption.
+and internally supports multiple expert *roles* within that domain via
+role/persona configuration, not by spawning a new top-level agent per
+role. Before adding a new agent to `agents/`, the bar is: *"Is this a
+genuinely new domain, or a new role an existing Chief Agent should
+absorb?"* Default to absorption.
+
+The roster is locked (see [DECISIONS.md](./DECISIONS.md) ADR-0007) to
+exactly these 11 packages under `agents/`:
+
+1. `agents/software-ai-engineering/`
+2. `agents/medical-healthcare/`
+3. `agents/legal-compliance/`
+4. `agents/startup-business-product/`
+5. `agents/education-knowledge/`
+6. `agents/research-intelligence/`
+7. `agents/finance-economics/`
+8. `agents/government-public-policy/`
+9. `agents/human-development-psychology/`
+10. `agents/creative-media/`
+11. `agents/orchestrator/` — decides which domain agent(s) collaborate on
+    a given task; the only agent whose "domain" is the roster itself.
+
+A 12th agent (a genuinely new domain, not a role) requires its own ADR.
+Each is documented to [STANDARDS.md](./STANDARDS.md) §2.3's Chief Domain
+Agent template — none are implemented yet; see
+[ROADMAP.md](./ROADMAP.md).
 
 ## 5. Dependency direction
 

@@ -77,24 +77,51 @@ not duplicated here — read them, don't skip them:
   Limitations, Future improvements). Every design decision that isn't
   obvious from the code gets an ADR.
 
+## Frameworks = Factories, documented to a fuller bar
+
+The platform has **16 Frameworks**: 14 factories (13 original +
+`documentation-factory`) plus `core/` ("Core Engine Framework") and
+`router/` ("AI Router Framework"). "Framework" and "Factory" name the same
+folder at different resolution — see [ARCHITECTURE.md](./ARCHITECTURE.md)
+§1.5 and [DECISIONS.md](./DECISIONS.md) ADR-0005. Every framework is
+documented to STANDARDS.md §2.2 (Vision, Architecture, Folder Structure,
+Naming Standards, Interfaces, Extension Model, Examples, Best Practices,
+Anti-Patterns, Future Roadmap) — richer than a plain module's §2.1.
+
 ## Agents
 
-Build only reusable **Chief Domain Agents**. Do not create dozens of
-narrow single-purpose agents. Each Chief Agent internally supports
-multiple expert roles within its domain. Before adding a new agent, check
-whether an existing Chief Agent should absorb the new role instead — see
-[ARCHITECTURE.md](./ARCHITECTURE.md) §4.
+Build only reusable **Chief Domain Agents** — a complete engineering
+asset (mission, reasoning strategy, tools, memory usage, quality gates,
+sub-agent architecture), never a prompt file, and never dozens of narrow
+single-purpose agents. The roster is locked at 10 domains + Orchestrator
+(see [ARCHITECTURE.md](./ARCHITECTURE.md) §4, [DECISIONS.md](./DECISIONS.md)
+ADR-0007). Each Chief Agent internally supports multiple expert roles
+within its domain. Before adding a new agent, check whether an existing
+Chief Agent should absorb the new role instead; a genuinely new domain
+needs its own ADR. Documented to STANDARDS.md §2.3.
+
+## Execution mode: one framework at a time
+
+Do not build multiple frameworks or agents in parallel. For each: build
+it completely (real code, real Examples, the correct STANDARDS.md §2
+template filled in honestly) → review → refine → lock it (✅ in
+ROADMAP.md) → only then start the next. See ROADMAP.md for current phase
+and build order.
 
 ## Operating discipline
 
 - Never rush. Never sacrifice architecture for speed.
 - Never generate files without a stated purpose — if you can't fill in a
-  module's README "Purpose" section honestly, it isn't ready to be
-  created yet.
+  module's README "Purpose"/"Vision"/"Mission" section honestly, it isn't
+  ready to be created yet.
 - If the current design (yours, mine, or inherited) is weak, say so and
   propose the fix before proceeding — don't quietly work around it.
-- Structural changes (new factory, new library shelf, changed dependency
-  direction) need an accepted ADR in DECISIONS.md before code.
+  Explain, compare, recommend, and wait for approval before changing a
+  major architectural decision (an accepted ADR, the framework roster, the
+  agent roster) — don't silently invent architecture.
+- Structural changes (new factory/framework, new library shelf, changed
+  dependency direction, roster changes) need an accepted ADR in
+  DECISIONS.md before code.
 - Applications (Tryvanta, GENESIS, etc.) are separate repositories that
   depend on Avishkar OS. Avishkar OS never depends on an application —
   see [ARCHITECTURE.md](./ARCHITECTURE.md) §5.
@@ -107,11 +134,11 @@ Avishkar-OS/
 ├── README.md · ARCHITECTURE.md · STANDARDS.md · ROADMAP.md
 ├── DECISIONS.md · CHANGELOG.md · CONTRIBUTING.md · LICENSE
 ├── docs/                 deep-dive docs that outgrow a module README
-├── factories/             generators — see ARCHITECTURE.md §2–3
+├── factories/             generators/Frameworks — see ARCHITECTURE.md §1.5, §2–3
 │   ├── agent-factory/ prompt-factory/ template-factory/ workflow-factory/
 │   ├── project-factory/ mcp-factory/ langgraph-factory/ n8n-factory/
-│   └── starter-kit-factory/ knowledge-factory/ memory-factory/
-│       evaluation-factory/ security-factory/
+│   ├── starter-kit-factory/ knowledge-factory/ memory-factory/
+│   └── evaluation-factory/ security-factory/ documentation-factory/
 ├── agents/ templates/ workflows/ knowledge/ memory/    ← built library
 ├── router/ mcp/ langgraph/ automation/ starters/       ← (factory output)
 └── core/                  the runtime substrate everything depends on

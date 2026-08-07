@@ -16,5 +16,11 @@ its first consumer.
   `router/`, `mcp/`, `langgraph/`, `automation/`, `starters/`, `core/`),
   plus `docs/` — each with a README defining its contract.
 - ADR-0001 through ADR-0004 recorded in `DECISIONS.md`.
+- Reconciled repo against the Master Build Directive: added
+  `factories/documentation-factory` (14th factory; 16 Frameworks total
+  with `core/` and `router/`), a three-tier documentation template
+  (Module / Framework / Chief Domain Agent — STANDARDS.md §2), and locked
+  the Chief Domain Agent roster to 10 domains + Orchestrator
+  (ARCHITECTURE.md §4). Recorded as ADR-0005 through ADR-0007.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD
