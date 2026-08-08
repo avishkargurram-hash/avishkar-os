@@ -29,5 +29,23 @@ its first consumer.
   ModuleRegistry. 47 passing unit tests and a runnable end-to-end example
   (`core/examples/quickstart.py`). `core/README.md` rewritten to the
   Framework documentation template.
+- **Build order reordered** (ADR-0009): explicit user-directed sequence —
+  Router → Agent (11 Chief Domain Agents) → MCP → Memory → Knowledge →
+  Workflow → Prompt/Template/Starter Kit — supersedes the earlier Phase
+  2/3 thematic grouping in `ROADMAP.md`. `langgraph-factory`,
+  `n8n-factory`, `project-factory`, `evaluation-factory`,
+  `security-factory`, `documentation-factory` marked deferred, not
+  silently ordered.
+- **AI Router Framework — Phase 2 locked**: language-agnostic contract
+  (`router/CONTRACT.md`, `router/schemas/*.json`) plus a Python reference
+  implementation (`router/python/avishkar_router/`) — `Router`,
+  `RoutingPolicy`/`RoutingRule` (capability/task-type matching, explicit
+  model requests skip fallback), `CostTracker`, a normalized
+  `ProviderError` hierarchy, `MockProvider` (network-free) and
+  `AnthropicProvider` (real adapter over the official `anthropic` SDK;
+  Opus 5 / Sonnet 5 / Haiku 4.5 catalog). 42 passing unit tests and a
+  runnable end-to-end example (`router/examples/quickstart.py`).
+  `router/README.md` documented to the Framework template with an honest
+  Limitations section.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

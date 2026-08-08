@@ -319,3 +319,41 @@ language implementation is expected, not hypothetical — it does not
 require a new ADR, only conformance review against the existing contract.
 The contract itself changing (a new capability, a breaking signature
 change) does require an ADR, since every framework depends on it.
+
+---
+
+## ADR-0009: Build order reordered — Router, Agent, MCP, Memory, Knowledge, Workflow, then Prompt/Template/Starter Kit
+
+**Status:** Accepted · **Date:** 2026-08-08
+
+**Context:** ROADMAP.md (post-ADR-0001/0002) sequenced Phase 2 as
+"Routing & Memory" (`router/`, `memory-factory`, `knowledge-factory`
+together) and Phase 3 as "Orchestration & Automation"
+(`langgraph-factory`, `n8n-factory`, `workflow-factory`, `mcp-factory`
+together). The user issued an explicit, more granular build order instead:
+Core (done) → AI Router → Agent Framework (where the 11 Chief Domain
+Agents begin) → MCP Framework → Memory Framework → Knowledge Framework →
+Workflow Framework → Prompt + Template + Starter Kit Frameworks, one at a
+time, each production-ready before the next starts.
+
+**Decision:** Adopt the user's explicit order. Rationale for the order
+itself (as given): AI Router must exist before Agent Framework since every
+agent needs model routing; MCP Framework comes before Memory/Knowledge
+since agent-usable tool integration is more foundational than retrieval;
+Workflow Framework comes after because it composes agents, memory, and
+knowledge together; Prompt/Template/Starter Kit come last as
+product-enablement polish built on everything else. `langgraph-factory`,
+`n8n-factory` (Automation), `project-factory`, `evaluation-factory`,
+`security-factory`, and `documentation-factory` are **not yet scheduled**
+— ROADMAP.md marks them "deferred, order TBD" rather than silently
+assigning them a slot, per STANDARDS.md's rule against files/plans
+existing without a stated purpose.
+
+**Alternatives considered:** Keep the original Phase 2/3 grouping.
+Rejected — superseded by explicit user direction; the original grouping
+was itself a scaffold-time default (ADR-0001 era), not a decision anyone
+had deliberately committed to over this one.
+
+**Consequences:** ROADMAP.md rewritten to the new phase list. Every
+future "next framework" question is answered by that list, in order,
+until the deferred set is explicitly scheduled via a future ADR.

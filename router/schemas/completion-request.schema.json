@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://avishkar-os/router/schemas/completion-request.schema.json",
+  "title": "AI Router CompletionRequest",
+  "description": "A request to Router.route(). See CONTRACT.md SS1.",
+  "type": "object",
+  "required": ["messages"],
+  "properties": {
+    "messages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["role", "content"],
+        "properties": {
+          "role": { "type": "string", "enum": ["user", "assistant", "system"] },
+          "content": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "model": {
+      "type": ["string", "null"],
+      "default": null,
+      "description": "Explicit override. When set, RoutingPolicy tries ONLY this model -- no automatic fallback substitution (CONTRACT.md SS3)."
+    },
+    "capabilities": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "Required capabilities for auto-selection when 'model' is not set."
+    },
+    "task_type": {
+      "type": ["string", "null"],
+      "default": null,
+      "description": "Optional hint a RoutingRule can match on."
+    },
+    "max_tokens": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1024
+    },
+    "metadata": {
+      "type": "object",
+      "default": {},
+      "description": "metadata.caller, if present, attributes cost via CostTracker.",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

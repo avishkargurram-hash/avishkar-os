@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://avishkar-os/router/schemas/routing-policy.schema.json",
+  "title": "AI Router RoutingPolicy",
+  "description": "Loaded from Core Engine Config under the 'router' key. See CONTRACT.md SS3.",
+  "type": "object",
+  "required": ["default_model"],
+  "properties": {
+    "default_model": { "type": "string" },
+    "rules": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "required": ["models"],
+        "properties": {
+          "capabilities": { "type": "array", "items": { "type": "string" }, "default": [] },
+          "task_type": { "type": ["string", "null"], "default": null },
+          "models": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

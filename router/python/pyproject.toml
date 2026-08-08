@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "avishkar-router"
+version = "0.1.0"
+description = "AI Router Framework -- Python reference implementation for Avishkar OS (provider-agnostic model routing, fallback chains, cost tracking)."
+readme = "../README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "Avishkar Labs" }]
+dependencies = [
+    "avishkar-core",
+]
+
+# The router core (types, policy, Router, MockProvider) has zero
+# third-party dependencies beyond avishkar-core. AnthropicProvider needs
+# the official `anthropic` SDK, but that import is lazy -- it is only
+# required if you actually construct AnthropicProvider. Declare it as an
+# optional extra rather than a hard dependency, per ARCHITECTURE.md SS1's
+# reuse test: not every product that uses this router talks to Anthropic.
+
+[project.optional-dependencies]
+anthropic = ["anthropic>=0.68"]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["avishkar_router*"]

@@ -48,54 +48,103 @@ dependency on it.
 - 💤 Second-language (TypeScript) implementation — deferred, not blocking
   (see `core/README.md` Future Roadmap)
 
-## Phase 1.5 — Agent Framework + first Chief Domain Agent (`agent-factory`)
+Per **ADR-0009**, the build order below is the explicit, user-directed
+sequence — superseding the earlier Phase 2/3 grouping. It is a flat list
+of individually-locked phases, not thematic bundles: each phase is one
+framework, built completely before the next starts.
 
-Goal: prove the Factory → Library pattern (ADR-0002) end-to-end with one
-real Chief Domain Agent before replicating it 10 more times.
+## Phase 2 — AI Router Framework (`router/`) — ✅ LOCKED (2026-08-08)
+
+Goal: the single place that decides which model/provider handles a
+request — must exist before Agent Framework, since every Chief Domain
+Agent routes its model calls through it.
+
+- ✅ `CONTRACT.md` + `schemas/`: language-agnostic contract (types,
+  ModelProvider interface, RoutingPolicy, Router)
+- ✅ `python/avishkar_router/`: `Router`, `RoutingPolicy` +
+  `RoutingRule` (capability/task-type matching, explicit-model-skips-
+  fallback), `CostTracker`, normalized `ProviderError` hierarchy
+- ✅ `MockProvider` (network-free, for tests/examples) and
+  `AnthropicProvider` (real adapter over the official `anthropic` SDK,
+  3-model catalog: Opus 5 / Sonnet 5 / Haiku 4.5)
+- ✅ 42 unit tests, all passing (`router/python/tests/`); error
+  normalization tested against the real `anthropic` SDK's exception
+  classes (constructed directly, no network call)
+- ✅ `router/README.md` documented to the Framework template, honest
+  Limitations (no sampling params, text-only messages, no budget
+  enforcement, no streaming, no live network call exercised here)
+- ✅ Runnable end-to-end example: `router/examples/quickstart.py`
+  (policy routing, fallback, explicit-model behavior, cost tracking)
+- 💤 A second provider adapter (OpenAI/Google) — deferred until a real
+  caller needs multi-vendor routing (see `router/README.md` Future
+  Roadmap)
+
+## Phase 3 — Agent Framework (`agent-factory`) — the 11 Chief Domain Agents begin
+
+Goal: prove the Factory → Library pattern (ADR-0002) end-to-end, then
+build out the locked roster (ARCHITECTURE.md §4 / ADR-0007) one at a time.
 
 - 💤 `agent-factory`: blueprint schema, CLI scaffold
 - 💤 First Chief Domain Agent built completely to the §2.3 template
   (candidate: Software & AI Engineering — nearest to this platform's own
-  needs) landing in `agents/`
+  needs) landing in `agents/`, routed through `router/`
 - 💤 `evaluation-factory`: minimal harness to eval that first agent
-- 💤 First ADR-validated example of a product consuming `agents/` output
+- 💤 Remaining 9 Chief Domain Agents + Orchestrator, one at a time —
+  order driven by which product needs which domain first
 
-## Phase 2 — Routing & Memory (`router/`, `memory-factory`, `knowledge-factory`)
+## Phase 4 — MCP Framework (`mcp-factory`)
 
-- 💤 AI Router: provider/model selection, fallback chains, cost tracking
-- 💤 `memory-factory` + first shared memory backend in `memory/`
-- 💤 `knowledge-factory` + first shared knowledge base in `knowledge/`
+Goal: give agents a standard way to reach tools — needed before Memory
+and Knowledge, since a memory/knowledge backend is itself exposed to
+agents as tool access.
 
-## Phase 3 — Orchestration & Automation (`langgraph-factory`, `n8n-factory`, `workflow-factory`, `mcp-factory`)
-
-- 💤 First reusable LangGraph graph in `langgraph/`
+- 💤 MCP server generator + security-checklist-by-default scaffolding
 - 💤 First reusable MCP server in `mcp/`
-- 💤 First reusable n8n flow in `automation/`
-- 💤 `workflow-factory` composing the above into a multi-step workflow
 
-## Phase 4 — Product enablement (`project-factory`, `starter-kit-factory`, `prompt-factory`, `template-factory`)
+## Phase 5 — Memory Framework (`memory-factory`)
 
-- 💤 `project-factory` can scaffold a new product repo pre-wired to
-  Avishkar OS
-- 💤 First starter kit in `starters/`
+- 💤 Storage-agnostic memory interface (short-term, long-term, episodic)
+- 💤 First shared memory backend in `memory/`
+
+## Phase 6 — Knowledge Framework (`knowledge-factory`)
+
+- 💤 Retrieval pipeline contract (ingest → chunk → embed → index)
+- 💤 First shared knowledge base in `knowledge/`
+
+## Phase 7 — Workflow Framework (`workflow-factory`)
+
+Goal: compose agents, memory, and knowledge into repeatable multi-step
+processes — deliberately sequenced after all three exist to compose.
+
+- 💤 Workflow spec (steps, branching, error/retry policy)
+- 💤 First reusable workflow in `workflows/`
+
+## Phase 8 — Prompt + Template + Starter Kit Frameworks
+
+Product-enablement polish, built last because it packages everything
+above for a new product to consume.
+
 - 💤 `prompt-factory` + `template-factory` producing versioned, evaluable
   assets
+- 💤 `starter-kit-factory` + first starter kit in `starters/`
 - 💤 First real product (candidate: whichever of Tryvanta / Humanify OS /
   GENESIS / Muziclly / AI Atlas / Coupler is nearest to build) scaffolded
   from a starter kit and running on Avishkar OS
-- 💤 Remaining 9 Chief Domain Agents + Orchestrator built out, one at a
-  time, per the locked roster (ARCHITECTURE.md §4 / ADR-0007) — order
-  driven by which product needs which domain first, not alphabetically
 
-## Phase 5 — Security & Documentation hardening (`security-factory`, `documentation-factory`)
+## Deferred — not yet scheduled (ADR-0009)
 
-- 💤 Guardrail policy templates and threat-model checklist
-- 💤 Every existing factory's output reviewed against the security
-  checklist retroactively
-- 💤 `documentation-factory`: doc-coverage lint (every folder has a README
-  matching its correct template tier), ADR tooling
-- 💤 Every existing framework/module's README checked against the correct
-  STANDARDS.md §2 template tier retroactively
+Not silently dropped, not silently assigned an order — these get a slot
+via a future ADR when the platform is ready to schedule them:
+
+- `langgraph-factory` (LangGraph Framework)
+- `n8n-factory` (Automation Framework)
+- `project-factory` (Project Framework)
+- `evaluation-factory` beyond its Phase 3 minimal harness (full Evaluation
+  Framework)
+- `security-factory` (Security Framework) — guardrail templates,
+  threat-model checklist, retroactive review of everything built above
+- `documentation-factory` (Documentation Framework) — doc-coverage lint,
+  ADR tooling, retroactive template-conformance check
 
 ## Explicitly out of scope for Avishkar OS
 
