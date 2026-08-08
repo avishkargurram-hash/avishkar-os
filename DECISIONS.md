@@ -558,3 +558,53 @@ its own commit. If a genuine fork appears mid-execution (an ambiguity a
 default can't safely resolve, or a request to change already-locked
 architecture), execution pauses for that one decision and then resumes —
 consistent with every ADR in this log, not a new exception.
+
+---
+
+## ADR-0013: `workflow-factory` ships a plain-callable step engine; `langgraph-factory`/`n8n-factory` stay deferred; `RetryPolicy` reused a third time
+
+**Status:** Accepted · **Date:** 2026-08-09
+
+**Context:** ROADMAP.md Phase 7 asks `workflow-factory` to compose
+agents, memory, and knowledge into repeatable multi-step processes. Its
+own README (written at scaffold time) speculated the workflow spec
+would "compile to either a LangGraph graph... or an n8n flow" — but both
+`langgraph-factory` and `n8n-factory` are explicitly deferred (ADR-0009),
+and ADR-0011 already established the pattern for exactly this situation
+when `mcp-factory` needed "LangGraph Integration" without un-deferring
+`langgraph-factory`.
+
+**Decision:** Reuse ADR-0011 §2's playbook rather than re-litigate it.
+`avishkar_workflow`'s `Step.handler` is a plain
+`Callable[[State], PartialState]` — LangGraph's own node contract — and
+`WorkflowEngine` is a real, tested, in-process runner over a validated
+`WorkflowSpec` graph, with zero import of `langgraph` or `n8n`. A caller
+with `langgraph` installed can wire a spec's steps into their own
+`StateGraph` today; nothing here blocks that, and nothing here pretends
+to be LangGraph-native orchestration (a first-class execution engine),
+which is what `langgraph-factory` remains reserved for. Composition with
+the three earlier frameworks ships as `bridges.py` — `make_agent_step`,
+`make_knowledge_search_step`, `make_memory_read_step`/
+`make_memory_write_step` — each a consumer of that framework's already-
+public types, touching no locked source (the same dependency-direction
+discipline as ADR-0011 §3, now exercised a third time). `RetryPolicy` is
+imported from `avishkar_integration` rather than redefined (`Tool`/
+`MemoryPolicy` precedent, now also exercised a third time).
+
+**Alternatives considered:**
+1. *Un-defer `langgraph-factory` now, since a workflow engine is exactly
+   what it was reserved for* — rejected: the user's Phase 5–15 list
+   names `workflow-factory` specifically, not `langgraph-factory`;
+   scheduling a deferred framework is explicitly gated on "a future ADR"
+   per ADR-0009, which requires a decision to schedule it, not a
+   convenient moment to fold it in.
+2. *Redefine a workflow-local `RetryPolicy`* — rejected: identical
+   shape to the one `avishkar_integration` already ships; redefining it
+   would violate DRY for no benefit.
+
+**Consequences:** `factories/workflow-factory` depends on `core/`,
+`agent-factory`, `mcp-factory` (for `RetryPolicy` only), `memory-factory`,
+and `knowledge-factory` — the widest dependency footprint of any
+framework so far, which is expected: composition is its entire purpose.
+A future ADR is still required before `langgraph-factory` or
+`n8n-factory` themselves are scheduled.

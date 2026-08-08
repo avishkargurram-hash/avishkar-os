@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "avishkar-workflow"
+version = "0.1.0"
+description = "Workflow Framework -- an in-process step engine that composes agents, memory, and knowledge into repeatable multi-step processes for Avishkar OS."
+readme = "../README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "Avishkar Labs" }]
+dependencies = ["avishkar-core", "avishkar-agent", "avishkar-integration", "avishkar-memory", "avishkar-knowledge"]
+# Zero third-party dependencies -- the step engine itself is stdlib-only;
+# avishkar-integration is depended on only to reuse RetryPolicy (DRY,
+# ADR-0011 precedent), not for its protocol adapters.
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["avishkar_workflow*"]

@@ -112,5 +112,17 @@ its first consumer.
   documented a genuine `HashingEmbedder` ranking-quality limitation on
   common-word-heavy queries rather than hiding it (see
   `knowledge-factory/README.md` Limitations).
+- **ADR-0013**: `workflow-factory` ships a plain-callable step engine
+  instead of un-deferring `langgraph-factory`/`n8n-factory`; `RetryPolicy`
+  reused from `avishkar_integration` for the third time.
+- **Workflow Framework — Phase 7 locked**: `avishkar_workflow` —
+  `WorkflowSpec`/`Step`/`WorkflowEngine`, a validated, retryable,
+  branch-capable step engine whose steps are LangGraph-node-shaped
+  callables, plus three bridges (`make_agent_step`,
+  `make_knowledge_search_step`, `make_memory_read_step`/
+  `make_memory_write_step`) composing agent-factory, knowledge-factory,
+  and memory-factory with zero changes to any of their locked source.
+  17 tests, a runnable example wiring a real `ChiefDomainAgent`,
+  `KnowledgeBase`, and `InMemoryMemoryPolicy` into one 5-step workflow.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

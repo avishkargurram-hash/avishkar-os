@@ -185,13 +185,25 @@ commit message and README.
   rather than hiding it), README documented to the Framework template
   including an honest Limitations section
 
-## Phase 7 — Workflow Framework (`workflow-factory`)
+## Phase 7 — Workflow Framework (`workflow-factory`) — ✅ LOCKED (2026-08-09)
 
 Goal: compose agents, memory, and knowledge into repeatable multi-step
 processes — deliberately sequenced after all three exist to compose.
 
-- 💤 Workflow spec (steps, branching, error/retry policy)
-- 💤 First reusable workflow in `workflows/`
+- ✅ `CONTRACT.md` + schema; `WorkflowSpec`/`Step`/`WorkflowEngine` —
+  plain-callable step engine, LangGraph node-shaped, zero
+  `langgraph`/`n8n` dependency (`langgraph-factory`/`n8n-factory` stay
+  deferred, ADR-0013)
+- ✅ Linear + branching control flow, per-step retry (`RetryPolicy`
+  reused from `avishkar_integration`, third reuse of that type), a
+  cycle guard (`max_steps`)
+- ✅ Three real bridges closing the composition seam with zero changes
+  to agent-factory/memory-factory/knowledge-factory: `make_agent_step`,
+  `make_knowledge_search_step`, `make_memory_read_step`/
+  `make_memory_write_step`
+- ✅ 17 tests, a runnable 5-step example (search knowledge → ask agent →
+  extract → remember, verified end to end), README documented to the
+  Framework template
 
 ## Phase 8 — Prompt + Template + Starter Kit Frameworks
 

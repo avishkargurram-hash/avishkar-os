@@ -29,10 +29,19 @@ Reusable, composable workflows for any product.
 `agents/`, `langgraph/`, `automation/`, `mcp/`.
 
 ## Examples
-_(none yet.)_
+As of Phase 7, the real step engine (`WorkflowSpec`, `WorkflowEngine`,
+`Step`, and the agent/knowledge/memory bridges) lives inside
+[`factories/workflow-factory/python/avishkar_workflow/`](../factories/workflow-factory/python/avishkar_workflow/)
+rather than a separate `workflows/<name>/` copy — the same precedent
+`memory/` and `knowledge/` set: when a factory's own package *is* the
+reusable engine, this directory stays the conceptual home (referenced
+from every other README) without a redundant physical duplicate. A
+concrete, product-facing `WorkflowSpec` (e.g. a specific support-ticket
+triage flow) would land under `workflows/<name>/` once one exists.
 
 ## Limitations
-Empty as of the initial scaffold (2026-08-06).
+No standalone workflows committed directly under `workflows/` yet —
+see Examples for where the real, working engine lives.
 
 ## Future improvements
 - None planned beyond what's tracked in `workflow-factory`'s README.
