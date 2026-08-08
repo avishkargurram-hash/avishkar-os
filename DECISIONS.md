@@ -357,3 +357,63 @@ had deliberately committed to over this one.
 **Consequences:** ROADMAP.md rewritten to the new phase list. Every
 future "next framework" question is answered by that list, in order,
 until the deferred set is explicitly scheduled via a future ADR.
+
+---
+
+## ADR-0010: Chief Domain Agent template expanded from 18 to 30 sections; Agent Framework built as a runtime, not a prompt library
+
+**Status:** Accepted · **Date:** 2026-08-09
+
+**Context:** ADR-0006 locked an 18-section Chief Domain Agent template
+(Mission, Capabilities, Knowledge Areas, Reasoning Strategy, Decision
+Framework, Tools, MCP Integrations, Memory Usage, Prompt Templates,
+Checklists, Reusable Workflows, Output Formats, Quality Gates, Examples,
+Failure Modes, Limitations, Future Extensions, Sub-Agent Architecture,
+Internal Routing Strategy). For Phase 3 (Agent Framework), the user gave
+an explicit, more demanding 30-section specification and explicitly
+rejected "simple role prompts" ("You are a Doctor" style) in favor of
+"a complete software system." This is a direct instruction from the
+architecture's owner, not a change I am proposing — recorded here per
+STANDARDS.md §7 and CLAUDE.md's rule that structural changes need an ADR,
+not silent drift.
+
+**Decision:** STANDARDS.md §2.3's Chief Domain Agent template is replaced
+with the user's 30-section list, verbatim and in the given order: Identity
+& Mission, Responsibilities, Domain Knowledge Architecture, Reasoning
+Strategies, Decision Frameworks, Thinking Models, Planning & Reflection,
+Memory Policies, MCP Integration Points, Tool Registry, Knowledge
+Sources, Prompt Library, Workflow Library, Template Library, Checklists,
+Evaluation Framework, Security Policies, Guardrails, Quality Gates, Error
+Recovery Strategies, Output Standards, Communication Style, Collaboration
+Protocols, Sub-Agent Architecture, Extensibility Model, Testing Strategy,
+Versioning Strategy, Documentation, Examples, Future Roadmap. The old
+template's "Internal Routing Strategy" section is folded into "Sub-Agent
+Architecture" (#24) rather than kept separate, since the new list doesn't
+name it independently and its content belongs there.
+
+Consequently, `agent-factory` ("Agent Framework") is built as an actual
+**runtime** — a reasoning-loop engine, memory/tool/thinking-model
+primitives, and an Orchestrator — not a generator that only produces
+Markdown. A Chief Domain Agent built on it is a small Python package
+(blueprint + domain module) plus its 30-section README, not a prompt
+string. The framework itself must support single-agent, multi-agent,
+hierarchical, and swarm execution, human-in-the-loop approval gates,
+reflection loops, and self-evaluation, with typed extension seams for MCP
+(`MCPToolRef`, resolved once `mcp-factory` — Phase 4 — exists) and
+LangGraph (a step function shaped to be wrappable as a LangGraph node,
+without an actual LangGraph dependency yet — `langgraph-factory` remains
+deferred per ADR-0009). Adding a new Chief Domain Agent must require zero
+changes to `agent-factory`'s own source — only a new blueprint + domain
+module.
+
+**Alternatives considered:** Keep ADR-0006's 18-section template and treat
+the new 30-item list as supplementary guidance. Rejected — the user was
+explicit that role-prompt-style agents are unacceptable and gave a
+complete, ordered replacement list, not an addendum; treating it as
+optional would under-deliver against a direct instruction.
+
+**Consequences:** All future Chief Domain Agents (10 remaining +
+Orchestrator) are documented to the 30-section template. No prior agent
+docs exist yet to migrate (Phase 3 is the first agent built). The
+Framework template (STANDARDS.md §2.2) and Module template (§2.1) are
+unaffected — this ADR only supersedes the agent tier.

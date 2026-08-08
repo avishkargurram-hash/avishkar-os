@@ -147,11 +147,21 @@ exactly these 11 packages under `agents/`:
 10. `agents/creative-media/`
 11. `agents/orchestrator/` — decides which domain agent(s) collaborate on
     a given task; the only agent whose "domain" is the roster itself.
+    Its coordination *mechanics* (routing, hierarchical delegation,
+    swarm broadcast, conflict resolution) already ship as
+    `agent-factory`'s `Orchestrator` class — a framework capability every
+    product can use today with any registered `ChiefDomainAgent`s. The
+    `agents/orchestrator/` *package* is that engine's own 30-section
+    Chief Domain Agent write-up (mission, guardrails, communication
+    style, ...) plus any orchestrator-specific defaults — not a
+    reimplementation.
 
 A 12th agent (a genuinely new domain, not a role) requires its own ADR.
 Each is documented to [STANDARDS.md](./STANDARDS.md) §2.3's Chief Domain
-Agent template — none are implemented yet; see
-[ROADMAP.md](./ROADMAP.md).
+Agent template (expanded to 30 sections per
+[DECISIONS.md](./DECISIONS.md) ADR-0010). 1 of 11 is built —
+`agents/software-ai-engineering/` (ROADMAP.md Phase 3); the rest follow
+one at a time, see [ROADMAP.md](./ROADMAP.md).
 
 ## 5. Dependency direction
 

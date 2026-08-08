@@ -79,18 +79,42 @@ Agent routes its model calls through it.
   caller needs multi-vendor routing (see `router/README.md` Future
   Roadmap)
 
-## Phase 3 — Agent Framework (`agent-factory`) — the 11 Chief Domain Agents begin
+## Phase 3 — Agent Framework (`agent-factory`) — engine ✅ LOCKED, roster 🚧 1/11
 
-Goal: prove the Factory → Library pattern (ADR-0002) end-to-end, then
-build out the locked roster (ARCHITECTURE.md §4 / ADR-0007) one at a time.
+Goal: prove the Factory → Library pattern (ADR-0002) end-to-end as a real
+**runtime** (ADR-0010 — a Chief Domain Agent is a software system, not a
+prompt), then build out the locked roster (ARCHITECTURE.md §4 / ADR-0007)
+one at a time. The framework itself (below) is complete and locked; this
+phase as a whole stays 🚧 until all 11 roster entries exist.
 
-- 💤 `agent-factory`: blueprint schema, CLI scaffold
-- 💤 First Chief Domain Agent built completely to the §2.3 template
-  (candidate: Software & AI Engineering — nearest to this platform's own
-  needs) landing in `agents/`, routed through `router/`
-- 💤 `evaluation-factory`: minimal harness to eval that first agent
-- 💤 Remaining 9 Chief Domain Agents + Orchestrator, one at a time —
-  order driven by which product needs which domain first
+- ✅ `CONTRACT.md` + `schemas/`: language-agnostic contract (Task,
+  AgentBlueprint, AgentResult, ChiefDomainAgent, Orchestrator)
+- ✅ `python/avishkar_agent/`: `ChiefDomainAgent` (plan-act-reflect
+  reasoning loop, guardrails, quality gates, human-in-the-loop
+  `ApprovalGate`, sub-agent role routing), `Orchestrator`
+  (route/delegate_team/broadcast/resolve_conflict — single, hierarchical,
+  swarm, conflict resolution), `MemoryPolicy` (+ `InMemoryMemoryPolicy`
+  reference impl), `ToolRegistry` (+ typed `MCPToolRef` placeholders),
+  4 `ThinkingModel` strategies, `scaffold_agent()` generator (3 files,
+  never "hundreds")
+- ✅ ADR-0010: Chief Domain Agent template expanded 18 → 30 sections,
+  superseding ADR-0006 for the agent tier only
+- ✅ 71 unit tests, all passing (`factories/agent-factory/python/tests/`)
+- ✅ `agent-factory/README.md` documented to the Framework template
+- ✅ Runnable end-to-end example: `agent-factory/examples/quickstart.py`
+  (two toy agents, guardrail block, HITL approval, Orchestrator routing/
+  team/broadcast/conflict-resolution)
+- ✅ **First Chief Domain Agent built: `agents/software-ai-engineering/`**
+  — full 30-section README, 2 real tools (`static_check`,
+  `estimate_complexity`), 2 guardrails, 2 quality gates, 4 absorbed
+  sub-agent roles, 19 passing tests, runnable example. A real bug
+  (sub-agent hyphen-normalization) was caught by the example and fixed
+  with a regression test in `agent-factory` itself.
+- 💤 `evaluation-factory` integration for a real eval harness (currently
+  hand-written `QualityGate` callables — see agent's README §16)
+- 💤 Remaining 9 Chief Domain Agents + a dedicated Orchestrator agent
+  package, one at a time — order driven by which product needs which
+  domain first, not alphabetically
 
 ## Phase 4 — MCP Framework (`mcp-factory`)
 

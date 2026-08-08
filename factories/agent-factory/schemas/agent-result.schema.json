@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://avishkar-os/factories/agent-factory/schemas/agent-result.schema.json",
+  "title": "Avishkar OS AgentResult",
+  "description": "Returned by ChiefDomainAgent.handle() and Orchestrator.route(). See CONTRACT.md SS1.",
+  "type": "object",
+  "required": ["output", "agent_name", "thinking_trace", "tool_calls", "iterations", "status", "cost_usd"],
+  "properties": {
+    "output": { "type": "string" },
+    "agent_name": { "type": "string" },
+    "thinking_trace": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["strategy", "content"],
+        "properties": {
+          "strategy": { "type": "string" },
+          "content": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "tool_calls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tool_name", "input"],
+        "properties": {
+          "tool_name": { "type": "string" },
+          "input": {},
+          "output": {},
+          "error": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "iterations": { "type": "integer", "minimum": 0 },
+    "status": { "type": "string", "enum": ["completed", "blocked", "failed"] },
+    "blocked_reason": { "type": ["string", "null"], "default": null },
+    "cost_usd": { "type": "number", "minimum": 0 }
+  },
+  "additionalProperties": false
+}

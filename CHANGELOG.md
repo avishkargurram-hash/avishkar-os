@@ -47,5 +47,26 @@ its first consumer.
   runnable end-to-end example (`router/examples/quickstart.py`).
   `router/README.md` documented to the Framework template with an honest
   Limitations section.
+- **ADR-0010**: Chief Domain Agent template expanded from 18 to 30
+  sections (STANDARDS.md §2.3), superseding ADR-0006 for the agent tier
+  only, per explicit user direction that a Chief Domain Agent must be "a
+  complete software system, not a prompt."
+- **Agent Framework — Phase 3 engine locked**: language-agnostic contract
+  (`factories/agent-factory/CONTRACT.md`, `schemas/*.json`) plus a Python
+  reference implementation (`avishkar_agent`) — `ChiefDomainAgent`
+  (plan-act-reflect reasoning loop with guardrails, quality gates, a
+  human-in-the-loop `ApprovalGate`, sub-agent role routing),
+  `Orchestrator` (single/hierarchical/swarm dispatch, pluggable conflict
+  resolution), `MemoryPolicy`, `ToolRegistry` with typed `MCPToolRef`
+  placeholders, 4 `ThinkingModel` strategies, and a 3-file
+  `scaffold_agent()` generator. 71 passing unit tests and a runnable
+  end-to-end example. `agent-factory/README.md` documented to the
+  Framework template.
+- **First Chief Domain Agent built: `agents/software-ai-engineering/`**
+  — full 30-section README, 2 real tools, 2 guardrails, 2 quality gates,
+  4 absorbed sub-agent roles, 19 passing tests, a runnable example. A
+  real sub-agent-routing bug (hyphen normalization) was caught by that
+  example and fixed with a regression test in `agent-factory` itself.
+  Remaining 10 roster entries (ADR-0007) follow one at a time.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

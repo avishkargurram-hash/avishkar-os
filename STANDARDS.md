@@ -117,75 +117,120 @@ Known next steps, not a wishlist.
 
 ### 2.3 Chief Domain Agent template — every `agents/*`
 
-A Chief Domain Agent is a complete engineering asset, not a prompt file.
-The roster is locked per DECISIONS.md ADR-0007.
+A Chief Domain Agent is a **complete software system**, not a prompt
+file — never "You are a Doctor" style role-play. The roster is locked per
+DECISIONS.md ADR-0007; the template below is locked per **ADR-0010**
+(supersedes the 18-section template ADR-0006 originally recorded — see
+ADR-0010 for why). All 30 sections are required, in this order; a section
+that genuinely doesn't apply says so explicitly rather than being
+omitted.
 
 ```markdown
 # <Domain> — Chief Domain Agent
 
-## Mission
+## 1. Identity & Mission
 What this agent exists to do, stated the way an elite professional in
 this domain would state their own mandate.
 
-## Capabilities
-Concrete things this agent can do, not a vibe.
+## 2. Responsibilities
+Concrete things this agent owns end to end. If a responsibility isn't
+here, this agent doesn't own it.
 
-## Knowledge Areas
-The bodies of knowledge this agent draws on (and, where relevant, which
-`knowledge/` bases it's wired to).
+## 3. Domain Knowledge Architecture
+How this agent's knowledge is structured — bodies of knowledge, and
+which `knowledge/` bases (present or planned) it's wired to.
 
-## Reasoning Strategy
-How this agent thinks through a problem in its domain — its default
-approach, not a specific answer.
+## 4. Reasoning Strategies
+The repertoire of approaches this agent applies to a problem in its
+domain — plural, because different task shapes call for different
+strategies, not one fixed script.
 
-## Decision Framework
+## 5. Decision Frameworks
 How it decides between competing options, escalates, or defers.
 
-## Tools
-What it can act with — see MCP Integrations below for tool delivery.
+## 6. Thinking Models
+Named cognitive models this agent applies (first principles, systems
+thinking, scientific method, OODA, etc.) and when each is used.
 
-## MCP Integrations
-Which `mcp/` servers this agent mounts, and why.
+## 7. Planning & Reflection
+How this agent plans before acting and reflects after — the loop
+structure, not just that reflection "happens."
 
-## Memory Usage
-Which `memory/` backends it reads/writes, and what it stores in each
-(short-term, long-term, episodic).
+## 8. Memory Policies
+Short-term, long-term, episodic, and semantic memory: what this agent
+stores in each, and which `memory/` backend (present or planned) serves
+it.
 
-## Prompt Templates
-The `templates/prompts/` entries this agent is built from.
+## 9. MCP Integration Points
+Which MCP servers/tools this agent declares (via `MCPToolRef`), resolved
+once the matching `mcp/` server exists (Phase 4).
 
-## Checklists
+## 10. Tool Registry
+Concrete callable tools this agent can invoke today, and their contracts.
+
+## 11. Knowledge Sources
+External and internal sources of truth this agent consults.
+
+## 12. Prompt Library
+The named, versioned prompts this agent is built from.
+
+## 13. Workflow Library
+The reusable workflows this agent runs or participates in.
+
+## 14. Template Library
+Output templates this agent fills in per task type.
+
+## 15. Checklists
 Concrete, checkable steps this agent runs through for its core tasks.
 
-## Reusable Workflows
-Which `workflows/` this agent participates in.
+## 16. Evaluation Framework
+How this agent's output is scored — ties to `evaluation-factory`.
 
-## Output Formats
-The shapes of what this agent produces, per task type.
+## 17. Security Policies
+What this agent must never do with credentials, PII, or destructive
+actions.
 
-## Quality Gates
-What must be true before this agent's output is considered done — ties
-to `evaluation-factory`.
+## 18. Guardrails
+Pre-execution checks that can block a task before it starts.
 
-## Examples
+## 19. Quality Gates
+What must be true before this agent's output is considered done.
+
+## 20. Error Recovery Strategies
+What happens when a tool call, reasoning step, or sub-agent fails.
+
+## 21. Output Standards
+The shape and quality bar of what this agent produces, per task type.
+
+## 22. Communication Style
+How this agent talks — to end users and to other agents.
+
+## 23. Collaboration Protocols
+How this agent works with the Orchestrator and other Chief Agents.
+
+## 24. Sub-Agent Architecture
+How this Chief Agent's internal expert roles are structured and routed
+between — roles are absorbed here, not spun up as new top-level agents
+(ARCHITECTURE.md §4). Includes what the old template called "Internal
+Routing Strategy."
+
+## 25. Extensibility Model
+How this agent's capability set grows without forking it.
+
+## 26. Testing Strategy
+How this agent's behavior is verified, beyond eval scores.
+
+## 27. Versioning Strategy
+How this agent's blueprint and prompts are versioned and rolled back.
+
+## 28. Documentation
+Where this agent's deeper docs live beyond this README.
+
+## 29. Examples
 At least one full worked example, input to output.
 
-## Failure Modes
-Known ways this agent gets it wrong, and how that's caught.
-
-## Limitations
-What this agent deliberately does not attempt.
-
-## Future Extensions
+## 30. Future Roadmap
 Known next steps, not a wishlist.
-
-## Sub-Agent Architecture
-How this Chief Agent's internal expert roles are structured — roles are
-absorbed here, not spun up as new top-level agents (ARCHITECTURE.md §4).
-
-## Internal Routing Strategy
-How this agent decides which internal expert role handles a given
-request.
 ```
 
 ## 3. Naming conventions

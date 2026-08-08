@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://avishkar-os/factories/agent-factory/schemas/task.schema.json",
+  "title": "Avishkar OS Task",
+  "description": "A unit of work given to a ChiefDomainAgent or Orchestrator. See CONTRACT.md SS1.",
+  "type": "object",
+  "required": ["input"],
+  "properties": {
+    "input": { "type": "string", "description": "The task description / user request." },
+    "context": { "type": "object", "default": {}, "additionalProperties": true },
+    "task_type": { "type": ["string", "null"], "default": null },
+    "metadata": { "type": "object", "default": {}, "additionalProperties": true }
+  },
+  "additionalProperties": false
+}

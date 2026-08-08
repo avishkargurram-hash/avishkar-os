@@ -32,12 +32,17 @@ Importable Chief Domain Agents for any product built on Avishkar OS.
 `knowledge/` depending on the agent's declared tools/context needs.
 
 ## Examples
-_(none yet — the first agent lands in Phase 1, see
-[ROADMAP.md](../ROADMAP.md).)_
+[`software-ai-engineering/`](./software-ai-engineering/README.md) — the
+first Chief Domain Agent, built on `agent-factory` (ROADMAP.md Phase 3),
+documented to the 30-section template (STANDARDS.md §2.3 / ADR-0010).
 
 ## Limitations
-Empty as of the initial scaffold (2026-08-06). No Chief Domain Agent
-exists yet because `agent-factory` doesn't exist yet.
+1 of the 11 locked-roster agents (ADR-0007) exists as of Phase 3. The
+remaining 10 (Medical & Healthcare, Legal & Compliance, Startup Business
+& Product, Education & Knowledge, Research & Intelligence, Finance &
+Economics, Government & Public Policy, Human Development & Psychology,
+Creative & Media, Orchestrator) are built one at a time — see
+ROADMAP.md.
 
 ## Future improvements
 - An agent registry/index once there are enough agents that browsing
