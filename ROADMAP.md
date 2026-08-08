@@ -169,10 +169,21 @@ Entered under Execution Mode (ADR-0012) — from here through Phase 15,
 ROADMAP entries stay terse; full narrative detail lives in each phase's
 commit message and README.
 
-## Phase 6 — Knowledge Framework (`knowledge-factory`)
+## Phase 6 — Knowledge Framework (`knowledge-factory`) — ✅ LOCKED (2026-08-09)
 
-- 💤 Retrieval pipeline contract (ingest → chunk → embed → index)
-- 💤 First shared knowledge base in `knowledge/`
+- ✅ `CONTRACT.md` + schema; ingest → chunk → embed → index → retrieve
+  pipeline, stdlib-only and offline (`avishkar_agent.Tool` reused via
+  `as_tool()`, ADR-0011 precedent)
+- ✅ `chunk_text()` (overlapping word chunks), `HashingEmbedder`
+  (deterministic `zlib.crc32` feature hashing — not Python's randomized
+  `hash()`), `VectorIndex` (cosine similarity), `KnowledgeBase`
+  (ingest/search façade)
+- ✅ `as_tool(kb)` closes the seam so any `ChiefDomainAgent` can register
+  a knowledge base as a callable tool with zero agent-factory changes
+- ✅ 20 tests, runnable example (caught and documented a real
+  `HashingEmbedder` ranking-quality limitation on common-word queries
+  rather than hiding it), README documented to the Framework template
+  including an honest Limitations section
 
 ## Phase 7 — Workflow Framework (`workflow-factory`)
 

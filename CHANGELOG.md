@@ -103,5 +103,14 @@ its first consumer.
   closing the persistent-memory seam `agent-factory` left open since
   Phase 3 with zero changes to `agent-factory`'s own source. 24 tests, a
   runnable example wiring a real `ChiefDomainAgent` to persistent memory.
+- **Knowledge Framework — Phase 6 locked**: `avishkar_knowledge` —
+  stdlib-only ingest → chunk → embed → index → retrieve pipeline
+  (`chunk_text`, `HashingEmbedder` using deterministic `zlib.crc32`
+  feature hashing, `VectorIndex` cosine search, `KnowledgeBase`) plus
+  `as_tool()` wrapping any knowledge base as a real
+  `avishkar_agent.Tool`. 20 tests, a runnable example that surfaced and
+  documented a genuine `HashingEmbedder` ranking-quality limitation on
+  common-word-heavy queries rather than hiding it (see
+  `knowledge-factory/README.md` Limitations).
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD
