@@ -93,4 +93,15 @@ its first consumer.
   regression-tested. `mcp-factory/README.md` documented to the Framework
   template plus Contracts/Testing Strategy/Extension Guide/Troubleshooting.
 
+- **ADR-0012**: Execution Mode entered for Phases 5–15 (continuous,
+  unattended, pausing only for decisions genuinely requiring approval).
+  Confirmed the Phase 13 agent roster stays at 11 ("Science" = "Research
+  & Intelligence" renamed, not a 12th domain; ADR-0007 unchanged).
+- **Memory Framework — Phase 5 locked**: `avishkar_memory` — two real,
+  stdlib-only `avishkar_agent.MemoryPolicy` backends
+  (`FileMemoryPolicy`, `SQLiteMemoryPolicy`) and `build_memory_policy()`,
+  closing the persistent-memory seam `agent-factory` left open since
+  Phase 3 with zero changes to `agent-factory`'s own source. 24 tests, a
+  runnable example wiring a real `ChiefDomainAgent` to persistent memory.
+
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

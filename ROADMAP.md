@@ -153,10 +153,21 @@ direction — see [DECISIONS.md](./DECISIONS.md) ADR-0011.
 - 💤 Rate-limit enforcement, MCP session pooling, real sandboxing — see
   README.md Future Roadmap
 
-## Phase 5 — Memory Framework (`memory-factory`)
+## Phase 5 — Memory Framework (`memory-factory`) — ✅ LOCKED (2026-08-09)
 
-- 💤 Storage-agnostic memory interface (short-term, long-term, episodic)
-- 💤 First shared memory backend in `memory/`
+- ✅ `CONTRACT.md` + schema; reuses `avishkar_agent.MemoryPolicy`
+  verbatim rather than redefining it (ADR-0011 precedent)
+- ✅ Two real backends: `FileMemoryPolicy` (JSON per kind, durable),
+  `SQLiteMemoryPolicy` (stdlib `sqlite3`) — both stdlib-only
+- ✅ `build_memory_policy()` closes the seam `agent-factory` left open
+  since Phase 3 — any blueprint's `memory_policy.backend` now resolves
+  to a real, persistent instance with zero agent-factory changes
+- ✅ 24 tests (one shared contract mixin run against both backends),
+  runnable example, README documented to the Framework template
+
+Entered under Execution Mode (ADR-0012) — from here through Phase 15,
+ROADMAP entries stay terse; full narrative detail lives in each phase's
+commit message and README.
 
 ## Phase 6 — Knowledge Framework (`knowledge-factory`)
 

@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://avishkar-os/factories/memory-factory/schemas/memory-record.schema.json",
+  "title": "Avishkar OS Memory Record",
+  "description": "The shape one (kind, key, value) entry takes at rest in any real MemoryPolicy backend. See CONTRACT.md SS1.",
+  "type": "object",
+  "required": ["kind", "key", "value"],
+  "properties": {
+    "kind": { "type": "string", "enum": ["short_term", "long_term", "episodic", "semantic"] },
+    "key": { "type": "string" },
+    "value": {}
+  },
+  "additionalProperties": false
+}

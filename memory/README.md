@@ -29,10 +29,20 @@ Memory backend adapters agents/graphs can be configured to use.
 `core/`, optionally `knowledge/`.
 
 ## Examples
-_(none yet.)_
+As of Phase 5, the two real backends (`FileMemoryPolicy`,
+`SQLiteMemoryPolicy`) live inside
+[`factories/memory-factory/python/avishkar_memory/backends/`](../factories/memory-factory/python/avishkar_memory/backends/)
+rather than a separate `memory/<name>/` copy — the same precedent
+`router/` set for provider adapters and `mcp/` for protocol adapters:
+when a factory's own package *is* the reusable shelf, this directory
+stays the conceptual home (referenced from every other README) without
+a redundant physical duplicate.
 
 ## Limitations
-Empty as of the initial scaffold (2026-08-06).
+No standalone artifacts committed directly under `memory/` yet — see
+Examples for where the real, working backends actually live.
 
 ## Future improvements
-- None planned beyond what's tracked in `memory-factory`'s README.
+- If a memory backend ever needs product-facing files distinct from
+  `memory-factory`'s own package (e.g. a hosted config), it lands here;
+  not needed for the two backends that exist today.

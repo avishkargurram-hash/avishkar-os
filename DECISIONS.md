@@ -516,3 +516,45 @@ documented-but-unimplemented protocol adapters is real future work
 tracked in README.md Future Roadmap, not a promise this ADR pretends is
 already kept. A future ADR is required before `langgraph-factory` itself
 is un-deferred as a scheduled phase.
+
+---
+
+## ADR-0012: Execution Mode (Phases 5–15) — roster confirmed at 11, one-ADR-per-phase discipline relaxed to one-ADR-per-genuine-decision
+
+**Status:** Accepted · **Date:** 2026-08-09
+
+**Context:** The user authorized continuous, unattended execution through
+Phase 15 (Memory, Knowledge, Workflow, Prompt, Template, Starter Kit,
+Evaluation, Security Frameworks; the remaining 10 Chief Domain Agents;
+a "Knowledge Library" population pass; Final Integration), stopping only
+for decisions that genuinely require approval. Phase 13's roster named
+"Science" alongside "Research & Intelligence" plus "Executive
+Orchestrator" — apparently 12 agents against ADR-0007's locked 11. Asked
+directly (the one interruption this ADR records): **confirmed** "Science"
+is "Research & Intelligence" renamed, not a 12th domain — the roster
+stays at 11 (10 domains + Orchestrator, "Executive Orchestrator" is a
+cosmetic rename of the same locked seat, not a new one). No roster ADR
+is needed; ADR-0007 stands unchanged in substance.
+
+**Decision:** Proceed through Phases 5–15 without pausing between them.
+Each phase still gets: real design, working code, a language-agnostic
+contract where a new framework is introduced, passing tests, a runnable
+example, honest documentation, a ROADMAP/CHANGELOG update, and its own
+commit — the same bar Phases 1–4 set. What changes is pacing, not
+quality: documentation prose is tighter (real content, less repetition
+of already-established platform-wide context every framework already
+inherits from CLAUDE.md/ARCHITECTURE.md/STANDARDS.md), and an ADR is
+recorded only for a decision that's genuinely new or that reconciles an
+ambiguity — not one per phase by default the way Phase 0–4 did while the
+platform's own conventions were still being established.
+
+**Alternatives considered:** Ask before every phase, as before. Rejected
+per explicit instruction — the user named the one class of exception
+(decisions requiring approval) and this session already exercised it
+once (the roster question above).
+
+**Consequences:** Phases 5–15 are logged here as they land, each with
+its own commit. If a genuine fork appears mid-execution (an ambiguity a
+default can't safely resolve, or a request to change already-locked
+architecture), execution pauses for that one decision and then resumes —
+consistent with every ADR in this log, not a new exception.
