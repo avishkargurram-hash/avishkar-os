@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://avishkar-os/factories/mcp-factory/schemas/tool-contract.schema.json",
+  "title": "Avishkar OS ToolContract",
+  "description": "The universal, protocol-independent tool contract every ProtocolAdapter publishes. See CONTRACT.md SS1.",
+  "type": "object",
+  "required": ["identity", "description", "protocol", "input_schema"],
+  "properties": {
+    "identity": { "type": "string", "description": "Unique within its protocol." },
+    "description": { "type": "string" },
+    "protocol": { "type": "string", "description": "e.g. 'mcp', 'rest'." },
+    "input_schema": { "type": "object", "description": "JSON Schema for the tool's input." },
+    "output_schema": { "type": ["object", "null"], "default": null },
+    "permissions": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "auth_requirement": { "type": "string", "default": "none" },
+    "rate_limit": {
+      "type": ["object", "null"],
+      "default": null,
+      "properties": { "requests_per_minute": { "type": "integer", "minimum": 1 } },
+      "required": ["requests_per_minute"],
+      "additionalProperties": false
+    },
+    "timeout_seconds": { "type": "number", "exclusiveMinimum": 0, "default": 30.0 },
+    "retry_policy": {
+      "type": "object",
+      "properties": {
+        "max_attempts": { "type": "integer", "minimum": 1, "default": 1 },
+        "backoff_seconds": { "type": "number", "minimum": 0, "default": 0.0 }
+      },
+      "additionalProperties": false
+    },
+    "error_handling": { "type": "string", "enum": ["return_error_result", "raise"], "default": "return_error_result" },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.]+)?$", "default": "1.0.0" },
+    "health_status": { "type": "string", "enum": ["unknown", "healthy", "unhealthy"], "default": "unknown" },
+    "audit": {
+      "type": "object",
+      "properties": {
+        "created_by": { "type": "string", "default": "unknown" },
+        "created_at": { "type": "string", "default": "" }
+      },
+      "additionalProperties": false
+    },
+    "protocol_config": { "type": "object", "default": {}, "additionalProperties": true }
+  },
+  "additionalProperties": false
+}

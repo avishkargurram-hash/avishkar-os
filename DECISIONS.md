@@ -417,3 +417,102 @@ Orchestrator) are documented to the 30-section template. No prior agent
 docs exist yet to migrate (Phase 3 is the first agent built). The
 Framework template (STANDARDS.md §2.2) and Module template (§2.1) are
 unaffected — this ADR only supersedes the agent tier.
+
+---
+
+## ADR-0011: `mcp-factory` becomes the Universal Integration Framework (MCP-first, protocol-agnostic); LangGraph and Agent Framework integration delivered without new hard dependencies or touching locked code
+
+**Status:** Accepted · **Date:** 2026-08-09
+
+**Context:** ROADMAP.md Phase 4 and ARCHITECTURE.md's factory table
+named this framework narrowly: "MCP Framework (`mcp-factory`) — MCP
+server generator + security-checklist-by-default scaffolding." The user
+directed a materially larger scope for Phase 4: a protocol-agnostic
+"Universal Integration Framework" with MCP as its first-class
+implementation, plus a 12-field universal tool contract, a tool runtime
+(retry/timeout/logging/metrics/cost tracking), integration policies
+(security/access-control/approval/sandboxing/trust level), memory
+integration, Agent Framework integration ("agents request capabilities,
+not implementations"), AI Router integration (best model/protocol/tool/
+execution path), and LangGraph-shaped reusable nodes — explicitly "not
+only an MCP wrapper." Three architectural questions had to be resolved
+before writing code, all direct instructions from the architecture's
+owner rather than a change I'm proposing on my own initiative:
+
+1. Does this warrant a new, 15th factory, or does it live in the
+   already-locked `mcp-factory` slot (ADR-0005's factory table)?
+2. "LangGraph Integration" asks for real reusable nodes, but
+   `langgraph-factory` is explicitly deferred (ADR-0009) — does this
+   un-defer it?
+3. "Agent Integration" asks agents to consume tools without knowing the
+   protocol — but `agent-factory` (Phase 3) is locked; can this framework
+   satisfy that requirement without reopening Phase 3?
+
+**Decision:**
+
+1. **No new factory.** `factories/mcp-factory/` keeps its folder name
+   and its ADR-0005 factory-table slot; its *Framework identity* is
+   elevated to "Universal Integration Framework" — the same
+   folder-stays/scope-deepens move ADR-0005 already established for
+   Documentation Framework, and structurally identical to how AI Router
+   (Phase 2) is provider-agnostic with `AnthropicProvider` as its first,
+   not only, adapter. `ProtocolAdapter` is the abstraction; `MCPAdapter`
+   is the first-class implementation built to production quality; a
+   second real adapter (`RESTAdapter`, stdlib-only) is built alongside it
+   specifically to prove the abstraction is genuine and not an
+   MCP-shaped wrapper with one implementation. GraphQL, Python SDKs, CLI,
+   Databases, Filesystems, and Webhooks are documented extension points
+   (README.md Extension Guide) with no scaffolded files — an unimplemented
+   adapter is not built as an empty stub, per the explicit instruction
+   against placeholder files and per STANDARDS.md's existing rule against
+   files without a stated, truthful purpose.
+2. **LangGraph integration ships now, without un-deferring
+   `langgraph-factory` and without a `langgraph` dependency.** A LangGraph
+   node is, by the framework's own public contract, a plain
+   `Callable[[State], PartialState]`. This framework's `langgraph_nodes`
+   module ships real, tested functions matching that shape (tool
+   execution, MCP call, REST call, retry, approval, logging) that a
+   caller wires into their own `StateGraph` — genuinely useful today,
+   with zero import of the `langgraph` package. `langgraph-factory`
+   (ADR-0009's deferred list) remains about something larger — LangGraph-
+   *native* orchestration as a first-class execution engine — and stays
+   deferred.
+3. **Agent Framework integration ships as a converter this framework
+   owns, not a change to `agent-factory`.** `agent_bridge.py` resolves an
+   `avishkar_agent.MCPToolRef` (already public, already part of
+   `agent-factory`'s locked contract as a typed placeholder — see
+   `agent-factory/CONTRACT.md` §4) against a real `UniversalToolRegistry`,
+   and exposes capability-based lookup so a Chief Domain Agent can request
+   "a tool with capability X" without naming a protocol. This is a new
+   *consumer* of `agent-factory`'s existing public types, not an edit to
+   `agent-factory`'s source — Phase 3's lock is untouched. Wiring an
+   actual Chief Domain Agent's `ToolRegistry` to delegate through this
+   bridge by default is left to that agent's own domain module (a
+   one-line change whenever a real MCP server exists to point at) —
+   tracked as Future Roadmap, not done speculatively here.
+
+**Alternatives considered:**
+1. *Scaffold a new `integration-factory`, retire `mcp-factory`* —
+   rejected: grows the locked 16-Framework count for a rename, and
+   duplicates work already done under the `mcp-factory` name across
+   ARCHITECTURE.md, ROADMAP.md, and DECISIONS.md.
+2. *Un-defer `langgraph-factory` and add a real `langgraph` dependency
+   now* — rejected: the user's ask is specifically for reusable *nodes*,
+   which the plain-function contract satisfies without the dependency;
+   pulling in a full orchestration engine dependency for six wrapper
+   functions is exactly the kind of premature dependency STANDARDS.md §1
+   warns against.
+3. *Modify `agent-factory`'s `ToolRegistry`/`MCPToolRef` to import this
+   framework directly* — rejected: `agent-factory` is Phase 3, already
+   locked and tested; a dependency should be added by the consumer
+   reaching for it (this framework depending on `agent-factory`'s types,
+   §7 of CONTRACT.md), not by reopening and re-testing a locked framework
+   for a capability it already exposed a seam for.
+
+**Consequences:** `factories/mcp-factory` depends on `core/`, `router/`,
+and `agent-factory` (for the bridge module only — every other module
+stays dependency-free of `agent-factory`). Building the remaining 6
+documented-but-unimplemented protocol adapters is real future work
+tracked in README.md Future Roadmap, not a promise this ADR pretends is
+already kept. A future ADR is required before `langgraph-factory` itself
+is un-deferred as a scheduled phase.

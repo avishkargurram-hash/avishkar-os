@@ -116,14 +116,42 @@ phase as a whole stays 🚧 until all 11 roster entries exist.
   package, one at a time — order driven by which product needs which
   domain first, not alphabetically
 
-## Phase 4 — MCP Framework (`mcp-factory`)
+## Phase 4 — Universal Integration Framework (`mcp-factory`) — ✅ LOCKED (2026-08-09)
 
-Goal: give agents a standard way to reach tools — needed before Memory
-and Knowledge, since a memory/knowledge backend is itself exposed to
-agents as tool access.
+Goal: give agents a standard, protocol-agnostic way to reach tools —
+needed before Memory and Knowledge, since a memory/knowledge backend is
+itself exposed to agents as tool access. Rescoped from a narrow "MCP
+server generator" to a real integration platform per explicit user
+direction — see [DECISIONS.md](./DECISIONS.md) ADR-0011.
 
-- 💤 MCP server generator + security-checklist-by-default scaffolding
-- 💤 First reusable MCP server in `mcp/`
+- ✅ `CONTRACT.md` + `schemas/`: language-agnostic contract (ToolContract,
+  ProtocolAdapter, UniversalToolRegistry, ToolRuntime, IntegrationPlanner)
+- ✅ `python/avishkar_integration/`: `ProtocolAdapter` abstraction,
+  `UniversalToolRegistry` (with `ProtocolMismatchError` validation),
+  `ToolRuntime` (retries, access control, sandbox-trust denial,
+  human-in-the-loop approval via reused `avishkar_agent.ApprovalGate`,
+  `MetricsCollector`, `MemoryPolicy` integration, EventBus events),
+  `IntegrationPlanner` (AI Router integration — best tool + delegated
+  best model), Agent Framework bridge (`resolve_mcp_tool_ref`,
+  `request_capability`), `langgraph_nodes` (6 dependency-free,
+  LangGraph-shaped node functions)
+- ✅ Two real `ProtocolAdapter`s: `MCPAdapter` (official `mcp` SDK,
+  lazily imported) and `RESTAdapter` (stdlib `urllib` only) — proving
+  the abstraction is genuine, not an MCP-shaped wrapper
+- ✅ 70 unit tests, all passing, both adapters tested via dependency
+  injection (fake MCP session / fake HTTP transport), no live network
+- ✅ `mcp-factory/README.md` documented to the Framework template plus
+  the user's explicit doc list (Contracts, Testing Strategy, Extension
+  Guide, Troubleshooting), honest Limitations
+- ✅ Runnable end-to-end example: `mcp-factory/examples/quickstart.py`
+  — caught and fixed two real bugs (a protocol/adapter mismatch now a
+  hard error, and an approval-gate callback that couldn't see actual
+  call arguments), both regression-tested
+- 💤 GraphQL, Python SDK, CLI, Database, Filesystem, Webhook adapters —
+  documented extension points (README.md Extension Guide), not
+  scaffolded, built when a real product needs one
+- 💤 Rate-limit enforcement, MCP session pooling, real sandboxing — see
+  README.md Future Roadmap
 
 ## Phase 5 — Memory Framework (`memory-factory`)
 

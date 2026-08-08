@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://avishkar-os/factories/mcp-factory/schemas/tool-execution.schema.json",
+  "title": "Avishkar OS ToolExecutionRequest / ToolExecutionResult",
+  "description": "See CONTRACT.md SS1.",
+  "definitions": {
+    "ToolExecutionRequest": {
+      "type": "object",
+      "required": ["input"],
+      "properties": {
+        "input": {},
+        "caller": { "type": ["string", "null"], "default": null },
+        "metadata": { "type": "object", "default": {}, "additionalProperties": true }
+      },
+      "additionalProperties": false
+    },
+    "ToolExecutionResult": {
+      "type": "object",
+      "required": ["tool_identity", "protocol", "status", "latency_ms", "attempts"],
+      "properties": {
+        "tool_identity": { "type": "string" },
+        "protocol": { "type": "string" },
+        "status": { "type": "string", "enum": ["success", "error", "timeout", "denied"] },
+        "output": {},
+        "error": { "type": ["string", "null"], "default": null },
+        "latency_ms": { "type": "number", "minimum": 0 },
+        "attempts": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    }
+  }
+}

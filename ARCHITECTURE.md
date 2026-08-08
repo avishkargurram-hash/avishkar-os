@@ -80,7 +80,7 @@ Not every factory has a matching top-level shelf:
 | `template-factory` | Reusable doc/code/project templates |
 | `workflow-factory` | Multi-step orchestrated workflows |
 | `project-factory` | New product repositories pre-wired to Avishkar OS |
-| `mcp-factory` | MCP servers exposing tools/resources to agents |
+| `mcp-factory` | "Universal Integration Framework" (ADR-0011) — a protocol-agnostic tool platform (`ProtocolAdapter`, `UniversalToolRegistry`, `ToolRuntime`) with MCP as its first-class, production implementation and a second real adapter (REST) proving the abstraction is genuine |
 | `langgraph-factory` | LangGraph graph scaffolds (stateful agent graphs) |
 | `n8n-factory` | n8n automation flows |
 | `starter-kit-factory` | End-to-end starter kits for common product shapes |
@@ -175,6 +175,16 @@ applications (Tryvanta, GENESIS, ...)  ──depend on──►  Avishkar OS (ne
 Avishkar OS never imports from an application. If that ever seems
 necessary, the logic being pulled in is product logic that was placed in
 the platform by mistake — move it, don't import it back.
+
+**A later-built framework may depend on an earlier one** — dependency
+direction is about layering (core → everything; applications never
+depended-on), not build order. `mcp-factory` (Phase 4) depends on
+`agent-factory` (Phase 3) for its Agent Integration bridge
+(`resolve_mcp_tool_ref`, and reusing `ApprovalGate`/`MemoryPolicy`
+rather than duplicating them) — see [DECISIONS.md](./DECISIONS.md)
+ADR-0011 §7. `agent-factory`'s own source stays unmodified; the new
+dependency is added by the consumer (`mcp-factory`) reaching for it, not
+by reopening a locked framework.
 
 ## 6. Applications are external
 

@@ -68,5 +68,29 @@ its first consumer.
   real sub-agent-routing bug (hyphen normalization) was caught by that
   example and fixed with a regression test in `agent-factory` itself.
   Remaining 10 roster entries (ADR-0007) follow one at a time.
+- **ADR-0011**: `mcp-factory` rescoped from a narrow MCP-server generator
+  to the Universal Integration Framework — a protocol-agnostic tool
+  platform with MCP as its first-class implementation, per explicit user
+  direction. Folder/slot unchanged; LangGraph integration ships as
+  dependency-free node functions (no `langgraph` import, `langgraph-factory`
+  stays deferred); Agent Framework integration ships as a new bridge
+  module consuming `agent-factory`'s existing public types, with
+  `agent-factory`'s own source untouched.
+- **Universal Integration Framework — Phase 4 locked**: language-agnostic
+  contract (`mcp-factory/CONTRACT.md`, `schemas/*.json`) plus a Python
+  reference implementation (`avishkar_integration`) — the 12-field
+  universal `ToolContract`, `ProtocolAdapter` abstraction,
+  `UniversalToolRegistry`, `ToolRuntime` (retries, access control,
+  sandbox-trust denial, human-in-the-loop approval reusing
+  `avishkar_agent.ApprovalGate`, metrics, memory integration, events),
+  `IntegrationPlanner` (delegates model selection to AI Router), an
+  Agent Framework bridge, and 6 LangGraph-shaped node functions. Two
+  real `ProtocolAdapter`s: `MCPAdapter` (official `mcp` SDK) and
+  `RESTAdapter` (stdlib only). 70 passing unit tests and a runnable
+  end-to-end example that caught and fixed two real bugs (a protocol/
+  adapter mismatch now a hard `ProtocolMismatchError`, and an
+  approval-gate callback that couldn't see actual call arguments), both
+  regression-tested. `mcp-factory/README.md` documented to the Framework
+  template plus Contracts/Testing Strategy/Extension Guide/Troubleshooting.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD
