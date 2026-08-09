@@ -344,11 +344,33 @@ Integration): the Orchestrator's own example already demonstrates
 Core, Router, Agent, Memory, Knowledge, Evaluation, and Security all
 composed together and running.
 
-## Phase 14 — Knowledge Library
+## Phase 14 — Knowledge Library — ✅ LOCKED (2026-08-09)
 
 Populate every framework with reusable assets: templates, workflows,
 checklists, standards, examples — a breadth pass across what Phases
-1–13 built, not new architecture.
+1–13 built, not new architecture. Three concrete, product-facing
+shelf artifacts landed, one per shelf directory that previously held
+only a README pointing at its owning factory:
+
+- ✅ `knowledge/platform-standards/` — a real `KnowledgeBase` seeded
+  with genuine `STANDARDS.md` excerpts (engineering principles,
+  security checklist, naming conventions), importable by any product's
+  agents. 4 tests, a runnable example.
+- ✅ `workflows/cross-domain-review/` — a real, reusable two-agent
+  `WorkflowSpec` (any two `ChiefDomainAgent`s), demonstrated composing
+  `legal-compliance` + `finance-economics` into one synthesized
+  summary. 3 tests, a runnable example using two real Phase 13 agents.
+- ✅ `templates/framework-readme/` — formalizes STANDARDS.md §2.2's
+  Framework template as a real, instantiable `Template`, closing
+  `template-factory`'s own Future Roadmap item. 2 tests, a runnable
+  example.
+
+Checklists: `security-factory`'s `SECURITY_CHECKLIST` (Phase 12) is
+already the real, reusable checklist this phase would otherwise add —
+no duplicate built. `starters/` and `memory/` already had a real,
+concrete instance before this phase (Phase 10's
+`AGENT_WITH_MEMORY_AND_KNOWLEDGE`, Phase 5's two backends) and needed
+no further population.
 
 ## Phase 15 — Final Integration
 

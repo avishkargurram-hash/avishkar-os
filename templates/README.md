@@ -39,14 +39,17 @@ home without a redundant physical duplicate.
   (`Template`, `TemplateRegistry`, `instantiate`), including the real,
   working `MODULE_README_TEMPLATE` (formalizing STANDARDS.md §2.1).
 
-A concrete, product-facing prompt or template (e.g. a specific agent's
-registered `PromptVersion`s, or an instantiated project skeleton) would
-land under `templates/prompts/<name>/` or `templates/project/<name>/`
-once one exists.
+As of Phase 14, this shelf holds its first real, product-facing
+template:
+[`framework-readme/`](./framework-readme/README.md) — formalizes
+STANDARDS.md §2.2's Framework template as a real, instantiable
+`Template`, closing `template-factory`'s own README's Future Roadmap
+item.
 
 ## Limitations
-No standalone templates committed directly under `templates/` yet — see
-Examples for where the real, working engines live.
+One standalone template (`framework-readme/`) committed as of Phase 14.
 
 ## Future improvements
-- None planned beyond what's tracked in the owning factories' READMEs.
+- Additional formalized templates (e.g. the Chief Domain Agent tier)
+  as real reuse need justifies the investment — see
+  `framework-readme/README.md` Future Roadmap.

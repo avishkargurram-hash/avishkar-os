@@ -241,5 +241,18 @@ its first consumer.
   `resolve_conflict()` against real dispatched results -- the whole
   platform, composed and running. **All 11 ADR-0007 roster seats are
   now real, tested, documented Chief Domain Agents.**
+- **Phase 14 (Knowledge Library) locked**: three concrete, product-
+  facing shelf artifacts, one per shelf directory that previously held
+  only a README pointing at its owning factory:
+  - `knowledge/platform-standards/` — a real `KnowledgeBase` seeded
+    with genuine `STANDARDS.md` excerpts. 4 tests, a runnable example.
+  - `workflows/cross-domain-review/` — a real, reusable two-agent
+    `WorkflowSpec`, demonstrated with `legal-compliance` +
+    `finance-economics`. 3 tests, a runnable example.
+  - `templates/framework-readme/` — formalizes STANDARDS.md §2.2's
+    Framework template as a real `Template`. 2 tests, a runnable
+    example.
+  No duplicate checklist built -- `security-factory`'s
+  `SECURITY_CHECKLIST` (Phase 12) already fills that role.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

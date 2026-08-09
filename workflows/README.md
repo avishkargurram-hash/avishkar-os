@@ -29,19 +29,22 @@ Reusable, composable workflows for any product.
 `agents/`, `langgraph/`, `automation/`, `mcp/`.
 
 ## Examples
-As of Phase 7, the real step engine (`WorkflowSpec`, `WorkflowEngine`,
-`Step`, and the agent/knowledge/memory bridges) lives inside
+The step engine (`WorkflowSpec`, `WorkflowEngine`, `Step`, and the
+agent/knowledge/memory bridges) lives inside
 [`factories/workflow-factory/python/avishkar_workflow/`](../factories/workflow-factory/python/avishkar_workflow/)
-rather than a separate `workflows/<name>/` copy — the same precedent
-`memory/` and `knowledge/` set: when a factory's own package *is* the
-reusable engine, this directory stays the conceptual home (referenced
-from every other README) without a redundant physical duplicate. A
-concrete, product-facing `WorkflowSpec` (e.g. a specific support-ticket
-triage flow) would land under `workflows/<name>/` once one exists.
+rather than duplicated here — the same precedent `memory/` and
+`knowledge/` set. As of Phase 14, this shelf holds its first real,
+product-facing workflow:
+[`cross-domain-review/`](./cross-domain-review/README.md) — composes
+any two real `ChiefDomainAgent`s (demonstrated with `legal-compliance`
++ `finance-economics`) into one synthesized, combined-perspective
+summary.
 
 ## Limitations
-No standalone workflows committed directly under `workflows/` yet —
-see Examples for where the real, working engine lives.
+One standalone workflow (`cross-domain-review/`) committed as of
+Phase 14; sequential only (no fan-out), see that workflow's own
+Limitations.
 
 ## Future improvements
-- None planned beyond what's tracked in `workflow-factory`'s README.
+- Additional named workflows as real cross-agent needs are identified
+  — built when needed, not speculatively.

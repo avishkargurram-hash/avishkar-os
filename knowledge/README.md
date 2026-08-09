@@ -27,21 +27,23 @@ Retrieval interfaces agents can query for shared context.
 `router/` (embedding model selection), `core/`.
 
 ## Examples
-As of Phase 6, the real pipeline (`chunk_text`, `HashingEmbedder`,
-`VectorIndex`, `KnowledgeBase`, `as_tool`) lives inside
+The pipeline engine (`chunk_text`, `HashingEmbedder`, `VectorIndex`,
+`KnowledgeBase`, `as_tool`) lives inside
 [`factories/knowledge-factory/python/avishkar_knowledge/`](../factories/knowledge-factory/python/avishkar_knowledge/)
-rather than a separate `knowledge/<name>/` copy — the same precedent
-`memory/` set for backends: when a factory's own package *is* the
-reusable shelf, this directory stays the conceptual home (referenced
-from every other README) without a redundant physical duplicate. A
-product-specific knowledge base built with `KnowledgeBase` would land
-under `knowledge/<name>/` once one exists.
+rather than duplicated here — the same precedent `memory/` set for
+backends. As of Phase 14, this shelf holds its first real,
+product-facing instance:
+[`platform-standards/`](./platform-standards/README.md) — a
+`KnowledgeBase` seeded with genuine `STANDARDS.md` excerpts
+(engineering principles, security checklist, naming conventions),
+importable by any product's agents.
 
 ## Limitations
-No standalone knowledge bases committed directly under `knowledge/`
-yet — see Examples for where the real, working pipeline lives, and
-`knowledge-factory`'s README for `HashingEmbedder`'s known ranking-
-quality limitations.
+One standalone knowledge base (`platform-standards/`) committed as of
+Phase 14. See `knowledge-factory`'s README for `HashingEmbedder`'s
+known ranking-quality limitations, which apply to every knowledge base
+built on it.
 
 ## Future improvements
-- None planned beyond what's tracked in `knowledge-factory`'s README.
+- Additional shared knowledge bases as real cross-product needs are
+  identified — built when needed, not speculatively.
