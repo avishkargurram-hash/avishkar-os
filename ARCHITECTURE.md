@@ -196,7 +196,15 @@ repo.
 
 ## 7. Status
 
-This is the initial scaffold. Every directory currently exists as
-structure + a README describing its contract; implementation lands
-module-by-module per [ROADMAP.md](./ROADMAP.md). Structure was written
-first, deliberately — see [DECISIONS.md](./DECISIONS.md) ADR-0001.
+As of 2026-08-09 (Phase 15, Final Integration), the structure this
+document describes is fully implemented, not just scaffolded: every
+`factories/*` entry (12 built, 4 documented-but-deferred per
+[DECISIONS.md](./DECISIONS.md) ADR-0009), `core/`, `router/`, and all
+11 locked-roster `agents/*` (ADR-0007) are real code with contracts,
+tests, and runnable examples — not README-only structure. The library
+shelves (`memory/`, `knowledge/`, `workflows/`, `templates/`,
+`starters/`) each hold at least one concrete, product-facing instance
+as of Phase 14, in addition to the reusable engines living in their
+owning factories. See [docs/final-integration.md](./docs/final-integration.md)
+for a real, cross-cutting proof that the pieces connect, and
+[ROADMAP.md](./ROADMAP.md) for the full build history.

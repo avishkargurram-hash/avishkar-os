@@ -848,3 +848,76 @@ phase's example ran found zero real secrets in the repository — the
 only pattern matches are the example's own well-known-fake AWS
 placeholder and this framework's deliberately-fake test fixtures,
 both expected and explained in the example's own output.
+
+---
+
+## ADR-0019: Execution Mode complete — Phases 5–15 closed
+
+**Status:** Accepted · **Date:** 2026-08-09
+
+**Context:** ADR-0012 entered Execution Mode for Phases 5–15,
+authorizing continuous, unattended execution with a pause only for a
+decision genuinely requiring approval. That authorization has now been
+exercised to completion: every phase in the locked build order
+(ROADMAP.md) has shipped, been tested, been documented, and been
+committed. This ADR is the closing record, not a new decision — the
+same discipline as every phase before it (real design, working code, a
+contract where a new framework was introduced, passing tests, a
+runnable example, honest documentation, ROADMAP/CHANGELOG updates, its
+own commit) held for all eleven phases this mode covered.
+
+**What shipped under Execution Mode (Phases 5–15):**
+- **Frameworks (8):** Memory, Knowledge, Workflow, Prompt, Template,
+  Starter Kit, Evaluation, Security — joining the four built before
+  Execution Mode (Core, Router, Agent, Universal Integration/MCP) for
+  12 of 16 originally-scoped frameworks built; the remaining 4
+  (`langgraph-factory`, `n8n-factory`, `project-factory`,
+  `documentation-factory`) remain deliberately deferred per ADR-0009,
+  each requiring its own future ADR to schedule — not silently
+  dropped.
+- **Chief Domain Agents (10):** Medical & Healthcare, Legal &
+  Compliance, Startup Business & Product, Education & Knowledge,
+  Research & Intelligence, Finance & Economics, Government & Public
+  Policy, Human Development & Psychology, Creative & Media, and
+  Orchestrator — completing all 11 seats in ADR-0007's locked roster
+  (Software & AI Engineering was built in Phase 3, before Execution
+  Mode).
+- **Knowledge Library (Phase 14):** one concrete, product-facing
+  artifact in each of `knowledge/`, `workflows/`, and `templates/` —
+  the shelves that previously held only a README pointing at their
+  owning factory.
+- **Final Integration (Phase 15):** a real, runnable script and
+  cross-cutting doc (`docs/final-integration.md`) proving Core Engine,
+  AI Router, Universal Integration, Agent Framework, Memory, Knowledge,
+  Workflow, Evaluation, and Security compose together in one pass.
+
+**Decisions recorded along the way (ADR-0013 through ADR-0018):**
+`workflow-factory`'s plain-callable step engine (not un-deferring
+`langgraph-factory`); `prompt-factory`'s self-contained scoring seam
+(not blocking on `evaluation-factory`); `template-factory` wrapping
+`PromptVersion` directly; `starter-kit-factory` shipping one generic
+kit rather than guessing at a named product's requirements;
+`evaluation-factory` bridging into `agent-factory`'s existing
+`QualityGate` rather than the reverse; `security-factory` keeping
+automated scanning and human-judgment review explicitly separate. Every
+one of these followed the same dependency-direction discipline
+ADR-0011 established: a later framework consumes an earlier one's
+already-public types; a locked framework's source is never reopened.
+
+**Final metrics:** 542 tests passing platform-wide (382 across 16
+factories/frameworks, 9 across Phase 14's three Knowledge Library
+modules, 151 across all 11 Chief Domain Agents), zero known
+regressions, one real bug found and fixed by actually running an
+example in nearly every phase (per this repository's "run it, don't
+just write it" discipline, unbroken since Phase 3).
+
+**Alternatives considered:** None — this ADR records completion of an
+already-authorized mode, not a new choice point.
+
+**Consequences:** Execution Mode (ADR-0012) is closed. Future work
+(un-deferring `langgraph-factory`/`n8n-factory`/`project-factory`/
+`documentation-factory`; a twelfth Chief Domain Agent; real product
+integration via a named starter kit) each requires its own ADR before
+work begins, per the standing discipline this repository has followed
+since ADR-0001 — Execution Mode's relaxed pacing does not carry
+forward as a default; it was scoped to Phases 5–15 explicitly.

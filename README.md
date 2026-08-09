@@ -48,9 +48,18 @@ sibling directories are two different things, not a duplication.
 
 ## Status
 
-This repository was scaffolded on 2026-08-06. It defines structure,
-standards, and contracts before implementation — see [ROADMAP.md](./ROADMAP.md)
-for what's actually built versus planned.
+As of 2026-08-09, all 15 planned phases are locked: 16 frameworks
+(Core Engine, AI Router, Agent Framework, Universal Integration,
+Memory, Knowledge, Workflow, Prompt, Template, Starter Kit,
+Evaluation, Security, plus four documented-but-deferred per
+[DECISIONS.md](./DECISIONS.md) ADR-0009) and all 11 locked-roster
+Chief Domain Agents ([DECISIONS.md](./DECISIONS.md) ADR-0007) are
+real, tested, and documented — 542 tests passing platform-wide, zero
+known regressions. See [docs/final-integration.md](./docs/final-integration.md)
+for a real, runnable proof of how the core systems connect, and
+[ROADMAP.md](./ROADMAP.md) for the full phase-by-phase history and
+what's next (deferred frameworks, additional starter kits, real
+product integration).
 
 ## License
 

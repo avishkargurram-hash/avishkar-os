@@ -32,13 +32,18 @@ may be added later if the volume justifies it — see Future improvements).
 None.
 
 ## Examples
-_(none yet — this directory is empty structure. The first file added here
-should replace this line with a real example.)_
+[`final-integration.md`](./final-integration.md) (Phase 15) — a
+cross-cutting guide showing how Core Engine, AI Router, Universal
+Integration, Agent Framework, Memory, Knowledge, Workflow, Evaluation,
+and Security connect, backed by a real, runnable script
+([`final-integration-verify.py`](./final-integration-verify.py)) and
+its actual captured output — exactly the "how a request flows through
+the router, an agent, and back" shape this directory's Responsibilities
+section describes.
 
 ## Limitations
-Empty as of the initial scaffold (2026-08-06). No content yet because no
-content has earned a place here yet — see STANDARDS.md's rule against
-files without a stated purpose.
+One document as of Phase 15. Additional cross-cutting guides are added
+as a real need for one appears — not speculatively.
 
 ## Future improvements
 - If doc volume grows, consider a docs site generator (e.g. Docusaurus,

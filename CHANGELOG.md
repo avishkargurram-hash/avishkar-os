@@ -254,5 +254,17 @@ its first consumer.
     example.
   No duplicate checklist built -- `security-factory`'s
   `SECURITY_CHECKLIST` (Phase 12) already fills that role.
+- **ADR-0019**: Execution Mode (ADR-0012) closed. Final metrics: 542
+  tests passing platform-wide (382 across 16 factories/frameworks, 9
+  across Phase 14's three Knowledge Library modules, 151 across all 11
+  Chief Domain Agents), zero known regressions.
+- **Phase 15 (Final Integration) locked, completing all 15 phases**:
+  `docs/final-integration.md` + `docs/final-integration-verify.py` --
+  one real, runnable script exercising Core Engine, AI Router,
+  Universal Integration, Agent Framework, Memory, Knowledge, Workflow,
+  Evaluation, and Security together in a single workflow, with real
+  captured output committed. Root `README.md` and `ARCHITECTURE.md`
+  §7 Status sections updated from initial-scaffold text to reflect the
+  platform's real, complete state.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD
