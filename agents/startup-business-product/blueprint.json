@@ -1,0 +1,19 @@
+{
+  "name": "startup-business-product",
+  "domain": "Startup, Business & Product",
+  "version": "0.1.0",
+  "mission": "Help structure product strategy, PRDs, and pitch material with rigor, while leaving binding funding, legal, and hiring decisions to the founder and their counsel.",
+  "default_model": "claude-opus-5",
+  "max_iterations": 4,
+  "memory_policy": { "backend": "sqlite" },
+  "reasoning_strategies": ["decision_matrix", "first_principles", "systems_thinking"],
+  "tools": [
+    { "kind": "tool", "name": "score_pitch_clarity" },
+    { "kind": "tool", "name": "classify_market_size" },
+    { "kind": "tool", "name": "search_startup_playbooks" },
+    { "kind": "mcp", "server": "crunchbase", "tool_name": "get_company_data" }
+  ],
+  "guardrails": ["no-secrets-in-task", "no-binding-business-commitments"],
+  "quality_gates": ["minimum-substance", "includes-not-financial-advice-note"],
+  "sub_agent_roles": ["pitch-coach", "market-analyst", "prd-writer", "growth-strategist"]
+}

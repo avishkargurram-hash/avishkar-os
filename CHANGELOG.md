@@ -196,5 +196,9 @@ its first consumer.
   persistence verified by test and example), a real `KnowledgeBase`
   (NDA basics, contract-review checklist), the same evaluation/security
   bridges. 15 tests, a runnable example.
+- **Startup, Business & Product** landed third: real `SQLiteMemoryPolicy`,
+  a real `KnowledgeBase` (PRD structure, pitch-deck checklist),
+  pitch-clarity and market-size-classification tools. 13 tests, a
+  runnable example.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

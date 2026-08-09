@@ -314,7 +314,8 @@ just declared seams like Phase 3's agent had to use):
   a `make_quality_gate()`-built gate, `make_secret_scanning_guardrail()`
 - ✅ Legal & Compliance — `FileMemoryPolicy` (cross-instance persistence
   verified), a real `KnowledgeBase`, same evaluation/security bridges
-- 💤 Startup, Business & Product
+- ✅ Startup, Business & Product — `SQLiteMemoryPolicy`, a real
+  `KnowledgeBase`, same evaluation/security bridges
 - 💤 Education & Knowledge
 - 💤 Research & Intelligence
 - 💤 Finance & Economics
