@@ -35,19 +35,20 @@ Importable Chief Domain Agents for any product built on Avishkar OS.
 - [`software-ai-engineering/`](./software-ai-engineering/README.md) — the
   first Chief Domain Agent, built on `agent-factory` (ROADMAP.md Phase 3).
 - [`medical-healthcare/`](./medical-healthcare/README.md) — Phase 13;
-  demonstrates real `memory-factory`/`knowledge-factory`/
-  `evaluation-factory`/`security-factory` integration, not just
-  declared seams.
+  `SQLiteMemoryPolicy`, a real `KnowledgeBase`, `evaluation-factory`/
+  `security-factory` integration.
+- [`legal-compliance/`](./legal-compliance/README.md) — Phase 13;
+  `FileMemoryPolicy` (proving cross-instance persistence with a
+  different backend than medical-healthcare's), a real `KnowledgeBase`.
 
-Both documented to the 30-section template (STANDARDS.md §2.3 / ADR-0010).
+All documented to the 30-section template (STANDARDS.md §2.3 / ADR-0010).
 
 ## Limitations
-2 of the 11 locked-roster agents (ADR-0007) exist as of Phase 13 (in
-progress). The remaining 9 (Legal & Compliance, Startup Business &
-Product, Education & Knowledge, Research & Intelligence, Finance &
-Economics, Government & Public Policy, Human Development & Psychology,
-Creative & Media, Orchestrator) are built one at a time — see
-ROADMAP.md.
+3 of the 11 locked-roster agents (ADR-0007) exist as of Phase 13 (in
+progress). The remaining 8 (Startup Business & Product, Education &
+Knowledge, Research & Intelligence, Finance & Economics, Government &
+Public Policy, Human Development & Psychology, Creative & Media,
+Orchestrator) are built one at a time — see ROADMAP.md.
 
 ## Future improvements
 - An agent registry/index once there are enough agents that browsing

@@ -191,5 +191,10 @@ its first consumer.
   a `make_quality_gate()`-built quality gate, and
   `make_secret_scanning_guardrail()` reused from `security-factory`.
   16 tests, a runnable example.
+- **Legal & Compliance** landed second: real `FileMemoryPolicy` (a
+  different backend than Medical & Healthcare's SQLite -- cross-instance
+  persistence verified by test and example), a real `KnowledgeBase`
+  (NDA basics, contract-review checklist), the same evaluation/security
+  bridges. 15 tests, a runnable example.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD
