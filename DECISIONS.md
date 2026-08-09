@@ -755,3 +755,48 @@ this ADR is the record of why, and what shipped instead satisfies the
 framework's actual responsibility (composing platform building blocks
 into a working starting point) without overstepping into product
 decisions that aren't this platform's to make.
+
+---
+
+## ADR-0017: `evaluation-factory` closes ADR-0014's seam as a bridge into `agent-factory`'s `QualityGate`, not the reverse
+
+**Status:** Accepted · **Date:** 2026-08-09
+
+**Context:** ADR-0014 (Phase 8) deliberately left `prompt-factory`'s
+scoring seam (`EvalCase`/`EvalReport`/`Scorer`) to be *extended* by
+Phase 11's evaluation-factory rather than depended upon by it, to avoid
+a forward dependency on a not-yet-built framework. Separately,
+`agent-factory` (Phase 3, locked) already has its own minimal
+self-evaluation primitive, `QualityGate.check(AgentResult) -> bool`,
+used by the reasoning loop directly. The question at Phase 11: does the
+Evaluation Framework become a dependency `agent-factory` reaches into
+(reopening Phase 3), or a consumer of `agent-factory`'s existing public
+type?
+
+**Decision:** Reuse the dependency-direction discipline established by
+every later framework since `mcp-factory` (ADR-0011): `avishkar_evaluation`
+imports `avishkar_prompt`'s `EvalCase`/`EvalReport`/`RegressionResult`/
+`Scorer` verbatim (closing ADR-0014's seam exactly as promised, no
+parallel type), and `agent_bridge.make_quality_gate()` **produces** a
+real `avishkar_agent.QualityGate` from an `EvalSuite` — a pure consumer
+of `agent-factory`'s already-public type. `agent-factory`'s locked
+source is untouched; a Chief Domain Agent opts into evaluation-framework
+-backed gating by passing a gate `make_quality_gate()` built into its
+own `quality_gates=` constructor argument, which already existed for
+exactly this purpose since Phase 3.
+
+**Alternatives considered:**
+1. *Have `agent-factory` import `evaluation-factory` and gain a new
+   built-in gate type* — rejected: reopens and re-tests a locked
+   framework (Phase 3) for a capability it already exposed a seam for
+   (`quality_gates: Sequence[QualityGate]`), identical reasoning to
+   ADR-0011 §3's rejection of modifying `agent-factory`'s `ToolRegistry`.
+2. *Define a separate `EvaluationGate` type instead of producing a real
+   `QualityGate`* — rejected: would require `agent-factory` to accept a
+   second gate type it doesn't know about, defeating the entire point
+   of reusing the existing seam.
+
+**Consequences:** `factories/evaluation-factory` depends on `core/`,
+`prompt-factory`, `agent-factory`, and `workflow-factory` — evaluation
+is meant to be usable everywhere, so a broad (but one-directional, no
+locked framework touched) dependency footprint is expected and correct.

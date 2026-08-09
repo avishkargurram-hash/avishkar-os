@@ -258,15 +258,26 @@ each still gets a real contract/tests/example, not a shared placeholder.
   actually runs the generated `main.py` as a subprocess** (exit 0, real
   output), README documented to the Framework template
 
-## Phase 11 — Evaluation Framework (`evaluation-factory`)
+## Phase 11 — Evaluation Framework (`evaluation-factory`) — ✅ LOCKED (2026-08-09)
 
 Un-deferred from ADR-0009's list per the Execution Mode phase order —
 the minimal Phase 3 harness (agent self-evaluation) becomes the full
 framework: scorers, regression suites, eval-as-CI for any agent/
 workflow/prompt/template built above.
 
-- 💤 Evaluator/scorer contract, regression harness, integration with
-  agent-factory's existing self-evaluation hook
+- ✅ `CONTRACT.md`; `EvalSuite` + `run_suite()`/`passes_threshold()` —
+  reuses `EvalCase`/`EvalReport`/`RegressionResult`/`Scorer` from
+  `prompt-factory` verbatim (closes ADR-0014's seam, ADR-0017), one
+  canonical scoring vocabulary for prompts/agents/workflows
+- ✅ Two more real scorers (`length_bounds_scorer`,
+  `weighted_keyword_scorer`)
+- ✅ `make_quality_gate()` — produces a real `avishkar_agent.QualityGate`
+  from an `EvalSuite`, closing the loop into Phase 3's existing
+  `quality_gates=` seam with zero agent-factory changes (ADR-0017)
+- ✅ `evaluate_workflow_result()` — scores a `WorkflowResult`
+- ✅ 16 tests, a runnable example with a real `ChiefDomainAgent` whose
+  `QualityGate` is built by this framework (not hand-written), README
+  documented to the Framework template
 
 ## Phase 12 — Security Framework (`security-factory`)
 

@@ -162,5 +162,16 @@ its first consumer.
   memory, knowledge, and a workflow. 12 tests, a runnable example that
   materializes the kit and actually runs its generated `main.py` as a
   subprocess (exit 0).
+- **ADR-0017**: `evaluation-factory` closes ADR-0014's scoring seam as
+  a bridge into `agent-factory`'s existing `QualityGate`, not the
+  reverse -- `agent-factory`'s locked source stays untouched.
+- **Evaluation Framework — Phase 11 locked**: `avishkar_evaluation` —
+  `EvalSuite`/`run_suite()`/`passes_threshold()` (reusing
+  `EvalCase`/`EvalReport`/`RegressionResult`/`Scorer` from
+  `prompt-factory` verbatim), two more scorers
+  (`length_bounds_scorer`, `weighted_keyword_scorer`), and two bridges
+  (`make_quality_gate()` into `agent-factory`, `evaluate_workflow_result()`
+  into `workflow-factory`). 16 tests, a runnable example with a real
+  `ChiefDomainAgent` gated by a `QualityGate` this framework built.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD
