@@ -32,18 +32,23 @@ may be added later if the volume justifies it — see Future improvements).
 None.
 
 ## Examples
-[`final-integration.md`](./final-integration.md) (Phase 15) — a
-cross-cutting guide showing how Core Engine, AI Router, Universal
-Integration, Agent Framework, Memory, Knowledge, Workflow, Evaluation,
-and Security connect, backed by a real, runnable script
-([`final-integration-verify.py`](./final-integration-verify.py)) and
-its actual captured output — exactly the "how a request flows through
-the router, an agent, and back" shape this directory's Responsibilities
-section describes.
+- [`final-integration.md`](./final-integration.md) (Phase 15) — a
+  cross-cutting guide showing how Core Engine, AI Router, Universal
+  Integration, Agent Framework, Memory, Knowledge, Workflow,
+  Evaluation, and Security connect, backed by a real, runnable script
+  ([`final-integration-verify.py`](./final-integration-verify.py)) and
+  its actual captured output.
+- [`phase16-forensic-audit.md`](./phase16-forensic-audit.md) (Phase
+  16) — an evidence-based audit of all 16 phases: a repo-wide grep
+  sweep for placeholders/dead code/duplicate abstractions, a real
+  secret scan, a dependency-direction check, per-phase production-
+  readiness scores, and classified security/reliability findings —
+  including what it did *not* verify (see "On this audit's own
+  limits").
 
 ## Limitations
-One document as of Phase 15. Additional cross-cutting guides are added
-as a real need for one appears — not speculatively.
+Two documents as of Phase 16. Additional cross-cutting guides are
+added as a real need for one appears — not speculatively.
 
 ## Future improvements
 - If doc volume grows, consider a docs site generator (e.g. Docusaurus,

@@ -289,5 +289,19 @@ its first consumer.
   by running tests: a whole-word-vs-substring matching bug in
   `CapabilityResolver`, and a `MockProvider.models` private-attribute
   access surfaced while wiring the example.
+- **Forensic audit (`docs/phase16-forensic-audit.md`)**: an evidence-
+  based audit of all 16 phases -- a repo-wide grep sweep (zero
+  placeholder markers, zero stub functions, zero `NotImplementedError`/
+  bare `except:`, zero duplicate abstractions), a real repo-wide secret
+  scan (25 matches, 100% traced to well-known-fake test fixtures, zero
+  real secrets), a dependency-direction check (`core`/`router` import
+  nothing else in the platform), and per-phase production-readiness
+  scores. Headline finding (SEC-1, HIGH): no test in this repository
+  has ever made a real network call to a live external system --
+  every external boundary is tested via dependency injection against
+  fakes, which is good test hygiene but means live-provider behavior
+  has never been verified. Zero CRITICAL findings. Full list of
+  security/reliability/integration/performance/code-quality findings
+  and recommended Phase 17+ work in the audit document itself.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD
