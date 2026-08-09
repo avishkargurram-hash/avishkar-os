@@ -318,7 +318,8 @@ just declared seams like Phase 3's agent had to use):
   `KnowledgeBase`, same evaluation/security bridges
 - ✅ Education & Knowledge — `FileMemoryPolicy`, a real `KnowledgeBase`,
   same evaluation/security bridges
-- 💤 Research & Intelligence
+- ✅ Research & Intelligence — `SQLiteMemoryPolicy`, a real
+  `KnowledgeBase`, same evaluation/security bridges
 - 💤 Finance & Economics
 - 💤 Government & Public Policy
 - 💤 Human Development & Psychology

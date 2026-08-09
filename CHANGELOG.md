@@ -204,5 +204,9 @@ its first consumer.
   real `KnowledgeBase` (curriculum design, Bloom's taxonomy),
   reading-level and learning-objective-format tools. 13 tests, a
   runnable example.
+- **Research & Intelligence** landed fifth: real `SQLiteMemoryPolicy`,
+  a real `KnowledgeBase` (scientific method, source evaluation),
+  source-reliability and confidence-level tools. 14 tests, a runnable
+  example.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD
