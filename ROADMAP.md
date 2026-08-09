@@ -320,7 +320,8 @@ just declared seams like Phase 3's agent had to use):
   same evaluation/security bridges
 - ✅ Research & Intelligence — `SQLiteMemoryPolicy`, a real
   `KnowledgeBase`, same evaluation/security bridges
-- 💤 Finance & Economics
+- ✅ Finance & Economics — `FileMemoryPolicy`, a real `KnowledgeBase`,
+  `make_rate_limit_guardrail()` (proven with a real integration test)
 - 💤 Government & Public Policy
 - 💤 Human Development & Psychology
 - 💤 Creative & Media

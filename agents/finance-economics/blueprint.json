@@ -1,0 +1,19 @@
+{
+  "name": "finance-economics",
+  "domain": "Finance & Economics",
+  "version": "0.1.0",
+  "mission": "Analyze financial statements and economic data, model scenarios, and flag risk, while leaving binding investment decisions and trade execution to the account holder and their licensed advisor.",
+  "default_model": "claude-opus-5",
+  "max_iterations": 4,
+  "memory_policy": { "backend": "file" },
+  "reasoning_strategies": ["decision_matrix", "systems_thinking", "scientific_method"],
+  "tools": [
+    { "kind": "tool", "name": "calculate_debt_to_equity_ratio" },
+    { "kind": "tool", "name": "classify_risk_level" },
+    { "kind": "tool", "name": "search_finance_references" },
+    { "kind": "mcp", "server": "alpha-vantage", "tool_name": "get_market_data" }
+  ],
+  "guardrails": ["no-secrets-in-task", "no-executing-trades", "market-data-rate-limit"],
+  "quality_gates": ["minimum-substance", "includes-advisor-disclaimer"],
+  "sub_agent_roles": ["financial-analyst", "risk-modeler", "economic-forecaster", "budget-advisor"]
+}

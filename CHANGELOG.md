@@ -208,5 +208,11 @@ its first consumer.
   a real `KnowledgeBase` (scientific method, source evaluation),
   source-reliability and confidence-level tools. 14 tests, a runnable
   example.
+- **Finance & Economics** landed sixth: real `FileMemoryPolicy`, a
+  real `KnowledgeBase` (financial ratios, risk assessment), and
+  `make_rate_limit_guardrail()` -- a different `security-factory`
+  bridge than prior agents, proving it's genuinely reusable, with a
+  real integration test proving the 11th call within a window blocks.
+  14 tests, a runnable example.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD
