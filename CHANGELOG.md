@@ -142,5 +142,15 @@ its first consumer.
   `compare_versions`) forward-compatible with Phase 11. 24 tests, a
   runnable example evaluating two prompt versions and feeding the
   winner into a real `ChiefDomainAgent`.
+- **ADR-0015**: `template-factory` wraps `avishkar_prompt.PromptVersion`
+  directly (as a field of `TemplateFile`) instead of redefining a
+  parallel validated-string type.
+- **Template Framework — Phase 9 locked**: `avishkar_template` —
+  `TemplateFile`/`Template`/`TemplateRegistry`, `instantiate()` (writes
+  a template to a real target directory, all-or-nothing on collision,
+  never overwrites without `overwrite=True`), and
+  `MODULE_README_TEMPLATE` formalizing STANDARDS.md §2.1 as a real,
+  instantiable template. 15 tests, a runnable example instantiating
+  both the built-in template and a custom project skeleton.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

@@ -225,10 +225,21 @@ each still gets a real contract/tests/example, not a shared placeholder.
   the winner, feed it to a real `ChiefDomainAgent`), README documented
   to the Framework template
 
-## Phase 9 — Template Framework (`template-factory`)
+## Phase 9 — Template Framework (`template-factory`) — ✅ LOCKED (2026-08-09)
 
-- 💤 Versioned, evaluable template assets (domain module / blueprint /
-  README scaffolds a new Chief Domain Agent or workflow starts from)
+- ✅ `CONTRACT.md`; `TemplateFile` wraps `avishkar_prompt.PromptVersion`
+  directly rather than redefining a parallel type (ADR-0015),
+  `Template` (validated unique file paths), `TemplateRegistry`
+  (mirrors `PromptRegistry`)
+- ✅ `instantiate()` — writes a Template to a real target directory,
+  validates every target path before writing any file (no partial
+  writes on collision), never overwrites without `overwrite=True`
+- ✅ `MODULE_README_TEMPLATE` — STANDARDS.md §2.1's Module template
+  formalized as a real, instantiable `Template`, not left as unenforced
+  prose
+- ✅ 15 tests, a runnable example (instantiate the built-in template for
+  a real new package, then a custom two-file project skeleton), README
+  documented to the Framework template
 
 ## Phase 10 — Starter Kit Framework (`starter-kit-factory`)
 

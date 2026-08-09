@@ -655,3 +655,45 @@ is a pure producer of a type `agent-factory` already consumes.
 the narrowest dependency footprint of any framework since Phase 2,
 appropriate for a framework whose job is producing versioned strings.
 Phase 11 is now understood to *extend* this seam, not replace it.
+
+---
+
+## ADR-0015: `template-factory` wraps `avishkar_prompt.PromptVersion` directly instead of redefining a parallel validated-string type
+
+**Status:** Accepted · **Date:** 2026-08-09
+
+**Context:** `template-factory`'s own README (pre-Phase-9) described a
+template as "structured files... with metadata (variables, ...)" —
+structurally identical to what `prompt-factory` (Phase 8) already built
+and locked as `PromptVersion`/`PromptVariable`/`render()`. Building a
+second, parallel "content + declared variables" type for this framework
+would duplicate validation logic (undeclared-placeholder detection,
+required-variable enforcement) that already exists and is already
+tested.
+
+**Decision:** `TemplateFile(relative_path, spec: PromptVersion)` wraps
+`prompt-factory`'s type directly rather than defining its own. This is
+a step further than prior reuses (`RetryPolicy`, `Tool`, `MemoryPolicy`
+were reused as leaf types passed through unchanged) — here a whole
+composite type crosses a factory boundary and becomes a *field* of a
+new type in the consuming framework. The dependency direction is still
+the established one (Phase 9 depends on Phase 8's public types, not the
+reverse); what's new is how tightly the reuse is woven in, which this
+ADR records so it doesn't read as accidental coupling later.
+
+**Alternatives considered:**
+1. *Define a template-local `TemplateVariable`/content type* —
+   rejected: identical shape and validation to `PromptVariable`/
+   `PromptVersion`; would need to be kept in sync by hand forever for
+   no behavioral difference.
+2. *Have `template-factory` depend on `prompt-factory` only for the
+   `render()` function, keeping its own variable-declaration type* —
+   rejected: `render()`'s required-variable enforcement is meaningless
+   without `PromptVersion`'s own construction-time validation; splitting
+   them would silently drop the "undeclared placeholder" safety net this
+   reuse is meant to preserve.
+
+**Consequences:** `factories/template-factory` depends on `core/` and
+`prompt-factory`. A future change to `PromptVersion`'s validation rules
+automatically applies to every `TemplateFile` — intentional, and worth
+remembering when `prompt-factory` is next touched.
