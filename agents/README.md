@@ -28,8 +28,13 @@ reviewed — not hand-added ad hoc.
 Importable Chief Domain Agents for any product built on Avishkar OS.
 
 ## Dependencies
-`core/`, `router/` (model selection), optionally `mcp/`, `memory/`,
-`knowledge/` depending on the agent's declared tools/context needs.
+`core/`, `router/` (model selection). As of Phase 13, every agent but
+`software-ai-engineering` also depends on `memory-factory`,
+`knowledge-factory`, `evaluation-factory`, and `security-factory` for
+real (not just declared) integration; `mcp/` remains a declared-only
+seam until a real MCP server exists (Phase 4's `mcp-factory` is built,
+but no server-side implementation for any of these agents' declared
+tools is).
 
 ## Examples
 - [`software-ai-engineering/`](./software-ai-engineering/README.md) — the
@@ -58,13 +63,18 @@ Importable Chief Domain Agents for any product built on Avishkar OS.
   whose block reason carries real crisis-resource contact information).
 - [`creative-media/`](./creative-media/README.md) — Phase 13;
   `SQLiteMemoryPolicy`, a real `KnowledgeBase`.
+- [`orchestrator/`](./orchestrator/README.md) — Phase 13; the
+  coordination seat, no `blueprint.json` by design (§1 of its README)
+  — composes `avishkar_agent.Orchestrator` over real instances of all
+  10 domain agents above.
 
 All documented to the 30-section template (STANDARDS.md §2.3 / ADR-0010).
 
 ## Limitations
-10 of the 11 locked-roster agents (ADR-0007) exist as of Phase 13 (in
-progress). The remaining 1 (Orchestrator) is built next — see
-ROADMAP.md.
+All 11 locked-roster agents (ADR-0007) exist as of Phase 13 — the
+roster is complete. Future improvements (real `prompt-factory`/
+`template-factory` migration, richer MCP resolution once real servers
+exist) are tracked in each agent's own README §30, not here.
 
 ## Future improvements
 - An agent registry/index once there are enough agents that browsing

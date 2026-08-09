@@ -303,7 +303,7 @@ review pass across everything built in Phases 1–11.
 - ✅ 24 tests, a runnable example, README documented to the Framework
   template
 
-## Phase 13 — Remaining 10 Chief Domain Agents — 🚧 IN PROGRESS (2026-08-09)
+## Phase 13 — Remaining 10 Chief Domain Agents — ✅ LOCKED (2026-08-09)
 
 The other 10 seats in ADR-0007's locked 11-agent roster (agent-factory,
 Phase 3, built the first), each to the 30-section template (ADR-0010),
@@ -330,7 +330,19 @@ just declared seams like Phase 3's agent had to use):
   crisis-resource contact information (verified by test)
 - ✅ Creative & Media — `SQLiteMemoryPolicy`, a real `KnowledgeBase`,
   same evaluation/security bridges
-- 💤 Orchestrator (composes `avishkar_agent.Orchestrator` over all 11)
+- ✅ Orchestrator — no `blueprint.json` by design (it composes, it
+  doesn't reason); `build_executive_orchestrator()` wires the real
+  `avishkar_agent.Orchestrator` (Phase 3) over live instances of all
+  10 domain agents above. `route()`/`delegate_team()`/`broadcast()`/
+  `resolve_conflict()` all exercised against real dispatched results,
+  including a test proving every one of the 10 agents actually
+  completes a task, not just constructs
+
+All 11 ADR-0007 roster seats are now real, tested, documented Chief
+Domain Agents. This is also a working preview of Phase 15 (Final
+Integration): the Orchestrator's own example already demonstrates
+Core, Router, Agent, Memory, Knowledge, Evaluation, and Security all
+composed together and running.
 
 ## Phase 14 — Knowledge Library
 
