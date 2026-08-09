@@ -608,3 +608,50 @@ and `knowledge-factory` — the widest dependency footprint of any
 framework so far, which is expected: composition is its entire purpose.
 A future ADR is still required before `langgraph-factory` or
 `n8n-factory` themselves are scheduled.
+
+---
+
+## ADR-0014: `prompt-factory` ships its own `Scorer` seam instead of depending on the not-yet-built `evaluation-factory`; no new agent-factory bridge needed
+
+**Status:** Accepted · **Date:** 2026-08-09
+
+**Context:** `prompt-factory`'s own README (written at scaffold time)
+listed `evaluation-factory` as a dependency — "every prompt needs a
+scoring path before it's reusable." But the locked Phase 5–15 order
+(ADR-0012) builds Prompt at Phase 8 and Evaluation at Phase 11 —
+*after* Prompt. A hard dependency on a framework that doesn't exist yet
+would either block Phase 8 or force building Evaluation out of order,
+neither of which the locked order intends.
+
+**Decision:** `prompt-factory` defines its own minimal scoring seam —
+`Scorer = Callable[[str, EvalCase], float]` — with two real, useful
+built-in scorers (`exact_match_scorer`, `keyword_presence_scorer`) and
+real `evaluate_version`/`compare_versions` functions, genuinely useful
+today for deterministic and keyword-bearing prompts. This is the same
+"typed placeholder a later framework resolves" pattern `agent-factory`
+used for `MCPToolRef` (ADR-0010), resolved by `mcp-factory` a full
+phase later (ADR-0011) — Phase 11's `evaluation-factory` will supply
+richer `Scorer` implementations (semantic similarity, LLM-graded,
+regression-suite runners) that plug into the exact same
+`evaluate_version` signature, with zero changes to `prompt-factory`.
+Separately, no new Agent Framework bridge module was needed (contrast
+`workflow-factory`'s `bridges.py`, ADR-0013): a rendered prompt is a
+`str`, and `Task.input` has been `str` since Phase 3 — `prompt-factory`
+is a pure producer of a type `agent-factory` already consumes.
+
+**Alternatives considered:**
+1. *Reorder Phases 8 and 11, building Evaluation first* — rejected: the
+   user's Execution Mode phase list is explicit about the order; Prompt
+   depending on Evaluation is this framework's own earlier (pre-lock)
+   README speculation, not a requirement from the user.
+2. *Have `prompt-factory` ship no scoring at all, deferring it entirely
+   to Phase 11* — rejected: `compare_versions`/`evaluate_version` are
+   real, small, and directly needed by this phase's own "diff/compare
+   tooling between prompt versions" responsibility (README.md); shipping
+   nothing here would under-deliver against that responsibility while
+   waiting three phases for no real reason.
+
+**Consequences:** `factories/prompt-factory` depends only on `core/` —
+the narrowest dependency footprint of any framework since Phase 2,
+appropriate for a framework whose job is producing versioned strings.
+Phase 11 is now understood to *extend* this seam, not replace it.

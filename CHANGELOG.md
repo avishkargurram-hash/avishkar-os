@@ -124,5 +124,23 @@ its first consumer.
   and memory-factory with zero changes to any of their locked source.
   17 tests, a runnable example wiring a real `ChiefDomainAgent`,
   `KnowledgeBase`, and `InMemoryMemoryPolicy` into one 5-step workflow.
+- **ROADMAP.md restructured**: the original combined "Phase 8 — Prompt +
+  Template + Starter Kit" split into individual Phases 8/9/10, and
+  Phases 11–15 (Evaluation, Security, remaining 10 Chief Domain Agents,
+  Knowledge Library, Final Integration) added explicitly, matching the
+  Execution Mode phase list (ADR-0012). `evaluation-factory` and
+  `security-factory` moved out of the "Deferred" list since they're now
+  scheduled at Phases 11/12.
+- **ADR-0014**: `prompt-factory` ships its own `Scorer` seam rather than
+  depending on the not-yet-built `evaluation-factory` (Phase 11); no new
+  agent-factory bridge needed since a rendered prompt is already a `str`.
+- **Prompt Framework — Phase 8 locked**: `avishkar_prompt` —
+  `PromptVersion` (validated at construction: every template
+  placeholder must be declared), `render()`, `PromptRegistry`
+  (versioned, immutable-once-registered), plus a scoring seam
+  (`exact_match_scorer`, `keyword_presence_scorer`, `evaluate_version`,
+  `compare_versions`) forward-compatible with Phase 11. 24 tests, a
+  runnable example evaluating two prompt versions and feeding the
+  winner into a real `ChiefDomainAgent`.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

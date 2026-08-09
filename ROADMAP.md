@@ -205,17 +205,80 @@ processes — deliberately sequenced after all three exist to compose.
   extract → remember, verified end to end), README documented to the
   Framework template
 
-## Phase 8 — Prompt + Template + Starter Kit Frameworks
+## Phase 8 — Prompt Framework (`prompt-factory`) — ✅ LOCKED (2026-08-09)
 
-Product-enablement polish, built last because it packages everything
-above for a new product to consume.
+Product-enablement polish. Versioned, evaluable prompt assets — split
+from the original combined "Phase 8" per the Execution Mode phase list
+(ADR-0012); Template and Starter Kit each get their own phase below so
+each still gets a real contract/tests/example, not a shared placeholder.
 
-- 💤 `prompt-factory` + `template-factory` producing versioned, evaluable
-  assets
+- ✅ `CONTRACT.md` + schema; `PromptVersion` (validated at construction —
+  every `{var}` in `template` must be declared), `render()`,
+  `PromptRegistry` (versioned, immutable-once-registered)
+- ✅ Scoring seam (`Scorer` callable) + two real scorers
+  (`exact_match_scorer`, `keyword_presence_scorer`) + `evaluate_version`/
+  `compare_versions` — documented as forward-compatible with Phase 11's
+  Evaluation Framework rather than blocking on it
+- ✅ No new agent-factory bridge needed — a rendered prompt is a `str`,
+  which `Task.input` already accepts (Phase 3, locked)
+- ✅ 24 tests, a runnable example (evaluate two prompt versions, pick
+  the winner, feed it to a real `ChiefDomainAgent`), README documented
+  to the Framework template
+
+## Phase 9 — Template Framework (`template-factory`)
+
+- 💤 Versioned, evaluable template assets (domain module / blueprint /
+  README scaffolds a new Chief Domain Agent or workflow starts from)
+
+## Phase 10 — Starter Kit Framework (`starter-kit-factory`)
+
 - 💤 `starter-kit-factory` + first starter kit in `starters/`
 - 💤 First real product (candidate: whichever of Tryvanta / Humanify OS /
   GENESIS / Muziclly / AI Atlas / Coupler is nearest to build) scaffolded
   from a starter kit and running on Avishkar OS
+
+## Phase 11 — Evaluation Framework (`evaluation-factory`)
+
+Un-deferred from ADR-0009's list per the Execution Mode phase order —
+the minimal Phase 3 harness (agent self-evaluation) becomes the full
+framework: scorers, regression suites, eval-as-CI for any agent/
+workflow/prompt/template built above.
+
+- 💤 Evaluator/scorer contract, regression harness, integration with
+  agent-factory's existing self-evaluation hook
+
+## Phase 12 — Security Framework (`security-factory`)
+
+Also un-deferred from ADR-0009's list per the Execution Mode phase
+order — guardrail templates, threat-model checklist, and a retroactive
+review pass across everything built in Phases 1–11.
+
+- 💤 Guardrail template library, threat-model checklist, security review
+  of Phases 1–11
+
+## Phase 13 — Remaining 10 Chief Domain Agents
+
+The other 10 seats in ADR-0007's locked 11-agent roster (agent-factory,
+Phase 3, built the first), each to the 30-section template (ADR-0010):
+Medical & Healthcare, Legal & Compliance, Research & Intelligence,
+Startup Business & Product, Finance & Economics, Education & Knowledge,
+Government & Public Policy, Human Development & Psychology, Creative &
+Media, Orchestrator.
+
+- 💤 10 blueprints + domain modules + tests + examples
+
+## Phase 14 — Knowledge Library
+
+Populate every framework with reusable assets: templates, workflows,
+checklists, standards, examples — a breadth pass across what Phases
+1–13 built, not new architecture.
+
+## Phase 15 — Final Integration
+
+Connect every framework into one production-ready Avishkar OS; verify
+every framework integrates with Core Engine, AI Router, Universal
+Integration, Agent Framework, Memory, Knowledge, Workflow, Evaluation,
+and Security.
 
 ## Deferred — not yet scheduled (ADR-0009)
 
@@ -225,10 +288,6 @@ via a future ADR when the platform is ready to schedule them:
 - `langgraph-factory` (LangGraph Framework)
 - `n8n-factory` (Automation Framework)
 - `project-factory` (Project Framework)
-- `evaluation-factory` beyond its Phase 3 minimal harness (full Evaluation
-  Framework)
-- `security-factory` (Security Framework) — guardrail templates,
-  threat-model checklist, retroactive review of everything built above
 - `documentation-factory` (Documentation Framework) — doc-coverage lint,
   ADR tooling, retroactive template-conformance check
 
