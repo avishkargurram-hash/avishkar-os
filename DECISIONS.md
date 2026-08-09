@@ -800,3 +800,51 @@ exactly this purpose since Phase 3.
 `prompt-factory`, `agent-factory`, and `workflow-factory` — evaluation
 is meant to be usable everywhere, so a broad (but one-directional, no
 locked framework touched) dependency footprint is expected and correct.
+
+---
+
+## ADR-0018: `security-factory` keeps automated scanning and human-judgment review explicitly separate; guardrails are a bridge into `agent-factory`, not a new gate type
+
+**Status:** Accepted · **Date:** 2026-08-09
+
+**Context:** STANDARDS.md §6 and this framework's own pre-Phase-12
+README describe two different kinds of check under one "checklist"
+label: things a program can verify (no committed secret matching a
+known pattern) and things that genuinely require a human's judgment
+call (is rate limiting *appropriately* configured for this specific
+external system?). Presenting both as if `run_checklist()` verified
+them equally would overstate what this framework actually does —
+a real risk for a security tool specifically, since a false sense of
+automated coverage is worse than an honest gap.
+
+**Decision:** Keep the two mechanisms explicit and separately named:
+`scan_for_secrets`/`scan_repository_for_secrets` are real, automated,
+regex-based detection — run for real against this repository in this
+phase's own example (CONTRACT.md §1). `run_checklist()` is a
+structured self-assessment for everything else — it validates that
+every item has an answer (`MissingAnswerError`/
+`UnknownChecklistItemError`), but cannot verify the answer is honest,
+and its own docstrings/README say so. Separately, guardrail bridges
+(`make_secret_scanning_guardrail`, `make_rate_limit_guardrail`,
+`make_input_validation_guardrail`) produce real
+`avishkar_agent.Guardrail` instances — the same "later framework
+consumes an earlier framework's already-public type" discipline every
+framework since `mcp-factory` has followed (ADR-0011) — rather than
+inventing a parallel `SecurityCheck` type `agent-factory` would need
+to learn about.
+
+**Alternatives considered:**
+1. *Have `run_checklist()` claim full automated verification* —
+   rejected outright: a security framework overstating its own
+   coverage is a worse failure mode than an honest, narrower scope.
+2. *Store the full matched secret text on `SecretMatch` for
+   debugging* — rejected: a tool whose own output leaks the secrets it
+   finds defeats its purpose; `.preview` (redacted) is the only form
+   ever stored, per CONTRACT.md §1.
+
+**Consequences:** `factories/security-factory` depends on `core/` and
+`agent-factory` (guardrail bridge only). The retroactive review this
+phase's example ran found zero real secrets in the repository — the
+only pattern matches are the example's own well-known-fake AWS
+placeholder and this framework's deliberately-fake test fixtures,
+both expected and explained in the example's own output.

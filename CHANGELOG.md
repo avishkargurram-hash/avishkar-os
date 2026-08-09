@@ -173,5 +173,16 @@ its first consumer.
   (`make_quality_gate()` into `agent-factory`, `evaluate_workflow_result()`
   into `workflow-factory`). 16 tests, a runnable example with a real
   `ChiefDomainAgent` gated by a `QualityGate` this framework built.
+- **ADR-0018**: `security-factory` keeps automated secret scanning and
+  human-judgment checklist review explicitly separate; guardrails
+  bridge into `agent-factory`'s existing `Guardrail` type.
+- **Security Framework — Phase 12 locked**: `avishkar_security` —
+  `scan_for_secrets`/`redact_secrets`/`scan_repository_for_secrets`
+  (real, automated), `SECURITY_CHECKLIST`/`run_checklist()` (structured
+  self-assessment), and three real guardrail bridges
+  (`make_secret_scanning_guardrail`, `make_rate_limit_guardrail`,
+  `make_input_validation_guardrail`). 24 tests. The example actually
+  ran a retroactive secret scan across the whole repository: zero real
+  findings.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

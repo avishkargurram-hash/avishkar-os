@@ -279,14 +279,29 @@ workflow/prompt/template built above.
   `QualityGate` is built by this framework (not hand-written), README
   documented to the Framework template
 
-## Phase 12 — Security Framework (`security-factory`)
+## Phase 12 — Security Framework (`security-factory`) — ✅ LOCKED (2026-08-09)
 
 Also un-deferred from ADR-0009's list per the Execution Mode phase
 order — guardrail templates, threat-model checklist, and a retroactive
 review pass across everything built in Phases 1–11.
 
-- 💤 Guardrail template library, threat-model checklist, security review
-  of Phases 1–11
+- ✅ `CONTRACT.md`; `scan_for_secrets`/`redact_secrets`/
+  `scan_repository_for_secrets` — real, automated regex-based secret
+  detection, kept explicitly separate from human-judgment review
+  (ADR-0018)
+- ✅ `SECURITY_CHECKLIST` (10 fixed items from STANDARDS.md §6) +
+  `run_checklist()` — a structured self-assessment, not claimed to be
+  automated verification
+- ✅ Three real `avishkar_agent.Guardrail` bridges
+  (`make_secret_scanning_guardrail`, `make_rate_limit_guardrail` with a
+  real sliding-window limiter, `make_input_validation_guardrail`) —
+  zero agent-factory changes
+- ✅ **Retroactive review actually run**: `scan_repository_for_secrets()`
+  executed against the whole repository in this phase's own example —
+  zero real findings (only the example's own well-known-fake AWS
+  placeholder and this framework's deliberately-fake test fixtures)
+- ✅ 24 tests, a runnable example, README documented to the Framework
+  template
 
 ## Phase 13 — Remaining 10 Chief Domain Agents
 
