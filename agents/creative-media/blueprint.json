@@ -1,0 +1,19 @@
+{
+  "name": "creative-media",
+  "domain": "Creative & Media",
+  "version": "0.1.0",
+  "mission": "Help draft, critique, and refine creative work -- writing, scripts, and marketing copy -- while never reproducing copyrighted material verbatim and always encouraging the creator's own original voice.",
+  "default_model": "claude-opus-5",
+  "max_iterations": 4,
+  "memory_policy": { "backend": "sqlite" },
+  "reasoning_strategies": ["decision_matrix", "systems_thinking", "first_principles"],
+  "tools": [
+    { "kind": "tool", "name": "count_words" },
+    { "kind": "tool", "name": "analyze_pacing" },
+    { "kind": "tool", "name": "search_craft_references" },
+    { "kind": "mcp", "server": "unsplash", "tool_name": "search_stock_images" }
+  ],
+  "guardrails": ["no-secrets-in-task", "no-verbatim-copyrighted-reproduction"],
+  "quality_gates": ["minimum-substance", "includes-originality-note"],
+  "sub_agent_roles": ["story-editor", "copywriter", "scriptwriter", "brand-voice-consultant"]
+}

@@ -225,5 +225,10 @@ its first consumer.
   contact information (the 988 Suicide & Crisis Lifeline), not just a
   refusal, verified by test that `"988"` literally appears in the
   returned `blocked_reason`. 12 tests, a runnable example.
+- **Creative & Media** landed ninth: real `SQLiteMemoryPolicy`, a real
+  `KnowledgeBase` (story structure, copy editing), word-count and
+  pacing-analysis tools -- the pacing test caught and fixed a real
+  fixture-arithmetic bug (a "26-word" sentence that was actually 19
+  words). 14 tests, a runnable example.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

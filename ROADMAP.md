@@ -328,7 +328,8 @@ just declared seams like Phase 3's agent had to use):
   `KnowledgeBase`, and `crisis-escalation`: this repository's most
   safety-critical guardrail, whose block reason carries real 988
   crisis-resource contact information (verified by test)
-- 💤 Creative & Media
+- ✅ Creative & Media — `SQLiteMemoryPolicy`, a real `KnowledgeBase`,
+  same evaluation/security bridges
 - 💤 Orchestrator (composes `avishkar_agent.Orchestrator` over all 11)
 
 ## Phase 14 — Knowledge Library

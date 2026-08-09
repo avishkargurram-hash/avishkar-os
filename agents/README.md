@@ -56,13 +56,15 @@ Importable Chief Domain Agents for any product built on Avishkar OS.
   Phase 13; `FileMemoryPolicy`, a real `KnowledgeBase`, and this
   repository's most safety-critical guardrail (`crisis-escalation`,
   whose block reason carries real crisis-resource contact information).
+- [`creative-media/`](./creative-media/README.md) — Phase 13;
+  `SQLiteMemoryPolicy`, a real `KnowledgeBase`.
 
 All documented to the 30-section template (STANDARDS.md §2.3 / ADR-0010).
 
 ## Limitations
-9 of the 11 locked-roster agents (ADR-0007) exist as of Phase 13 (in
-progress). The remaining 2 (Creative & Media, Orchestrator) are built
-one at a time — see ROADMAP.md.
+10 of the 11 locked-roster agents (ADR-0007) exist as of Phase 13 (in
+progress). The remaining 1 (Orchestrator) is built next — see
+ROADMAP.md.
 
 ## Future improvements
 - An agent registry/index once there are enough agents that browsing
