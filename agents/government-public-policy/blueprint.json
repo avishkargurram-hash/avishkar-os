@@ -1,0 +1,19 @@
+{
+  "name": "government-public-policy",
+  "domain": "Government & Public Policy",
+  "version": "0.1.0",
+  "mission": "Analyze policy proposals, summarize regulations, and model public-sector impact, while leaving binding regulatory rulings and official government representation to the relevant agency or elected official.",
+  "default_model": "claude-opus-5",
+  "max_iterations": 4,
+  "memory_policy": { "backend": "sqlite" },
+  "reasoning_strategies": ["systems_thinking", "decision_matrix", "first_principles"],
+  "tools": [
+    { "kind": "tool", "name": "check_policy_structure" },
+    { "kind": "tool", "name": "classify_regulatory_scope" },
+    { "kind": "tool", "name": "search_policy_references" },
+    { "kind": "mcp", "server": "govinfo", "tool_name": "search_legislation" }
+  ],
+  "guardrails": ["no-secrets-in-task", "no-issuing-binding-rulings"],
+  "quality_gates": ["minimum-substance", "includes-official-channel-note"],
+  "sub_agent_roles": ["policy-analyst", "regulatory-reviewer", "impact-assessor", "public-comment-drafter"]
+}

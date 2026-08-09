@@ -50,14 +50,15 @@ Importable Chief Domain Agents for any product built on Avishkar OS.
   `FileMemoryPolicy`, a real `KnowledgeBase`, plus
   `make_rate_limit_guardrail()` (a different `security-factory`
   bridge than the other agents use).
+- [`government-public-policy/`](./government-public-policy/README.md) —
+  Phase 13; `SQLiteMemoryPolicy`, a real `KnowledgeBase`.
 
 All documented to the 30-section template (STANDARDS.md §2.3 / ADR-0010).
 
 ## Limitations
-7 of the 11 locked-roster agents (ADR-0007) exist as of Phase 13 (in
-progress). The remaining 4 (Government & Public Policy, Human
-Development & Psychology, Creative & Media, Orchestrator) are built
-one at a time — see ROADMAP.md.
+8 of the 11 locked-roster agents (ADR-0007) exist as of Phase 13 (in
+progress). The remaining 3 (Human Development & Psychology, Creative &
+Media, Orchestrator) are built one at a time — see ROADMAP.md.
 
 ## Future improvements
 - An agent registry/index once there are enough agents that browsing

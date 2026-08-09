@@ -214,5 +214,9 @@ its first consumer.
   bridge than prior agents, proving it's genuinely reusable, with a
   real integration test proving the 11th call within a window blocks.
   14 tests, a runnable example.
+- **Government & Public Policy** landed seventh: real
+  `SQLiteMemoryPolicy`, a real `KnowledgeBase` (policy-analysis
+  framework, public-comment process), policy-structure and
+  regulatory-scope tools. 14 tests, a runnable example.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

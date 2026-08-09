@@ -322,7 +322,8 @@ just declared seams like Phase 3's agent had to use):
   `KnowledgeBase`, same evaluation/security bridges
 - ✅ Finance & Economics — `FileMemoryPolicy`, a real `KnowledgeBase`,
   `make_rate_limit_guardrail()` (proven with a real integration test)
-- 💤 Government & Public Policy
+- ✅ Government & Public Policy — `SQLiteMemoryPolicy`, a real
+  `KnowledgeBase`, same evaluation/security bridges
 - 💤 Human Development & Psychology
 - 💤 Creative & Media
 - 💤 Orchestrator (composes `avishkar_agent.Orchestrator` over all 11)
