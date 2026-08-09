@@ -316,7 +316,8 @@ just declared seams like Phase 3's agent had to use):
   verified), a real `KnowledgeBase`, same evaluation/security bridges
 - ✅ Startup, Business & Product — `SQLiteMemoryPolicy`, a real
   `KnowledgeBase`, same evaluation/security bridges
-- 💤 Education & Knowledge
+- ✅ Education & Knowledge — `FileMemoryPolicy`, a real `KnowledgeBase`,
+  same evaluation/security bridges
 - 💤 Research & Intelligence
 - 💤 Finance & Economics
 - 💤 Government & Public Policy

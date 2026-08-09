@@ -200,5 +200,9 @@ its first consumer.
   a real `KnowledgeBase` (PRD structure, pitch-deck checklist),
   pitch-clarity and market-size-classification tools. 13 tests, a
   runnable example.
+- **Education & Knowledge** landed fourth: real `FileMemoryPolicy`, a
+  real `KnowledgeBase` (curriculum design, Bloom's taxonomy),
+  reading-level and learning-objective-format tools. 13 tests, a
+  runnable example.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD
