@@ -184,5 +184,12 @@ its first consumer.
   `make_input_validation_guardrail`). 24 tests. The example actually
   ran a retroactive secret scan across the whole repository: zero real
   findings.
+- **Phase 13 in progress**: remaining 10 Chief Domain Agents, each to
+  the 30-section template, each wiring at least one real Phase 5–12
+  framework. **Medical & Healthcare** landed first: real
+  `SQLiteMemoryPolicy`, a real `KnowledgeBase` (clinical guidelines),
+  a `make_quality_gate()`-built quality gate, and
+  `make_secret_scanning_guardrail()` reused from `security-factory`.
+  16 tests, a runnable example.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

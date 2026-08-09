@@ -303,16 +303,24 @@ review pass across everything built in Phases 1–11.
 - ✅ 24 tests, a runnable example, README documented to the Framework
   template
 
-## Phase 13 — Remaining 10 Chief Domain Agents
+## Phase 13 — Remaining 10 Chief Domain Agents — 🚧 IN PROGRESS (2026-08-09)
 
 The other 10 seats in ADR-0007's locked 11-agent roster (agent-factory,
-Phase 3, built the first), each to the 30-section template (ADR-0010):
-Medical & Healthcare, Legal & Compliance, Research & Intelligence,
-Startup Business & Product, Finance & Economics, Education & Knowledge,
-Government & Public Policy, Human Development & Psychology, Creative &
-Media, Orchestrator.
+Phase 3, built the first), each to the 30-section template (ADR-0010),
+each wiring at least one real Phase 5–12 framework integration (not
+just declared seams like Phase 3's agent had to use):
 
-- 💤 10 blueprints + domain modules + tests + examples
+- ✅ Medical & Healthcare — `SQLiteMemoryPolicy`, a real `KnowledgeBase`,
+  a `make_quality_gate()`-built gate, `make_secret_scanning_guardrail()`
+- 💤 Legal & Compliance
+- 💤 Startup, Business & Product
+- 💤 Education & Knowledge
+- 💤 Research & Intelligence
+- 💤 Finance & Economics
+- 💤 Government & Public Policy
+- 💤 Human Development & Psychology
+- 💤 Creative & Media
+- 💤 Orchestrator (composes `avishkar_agent.Orchestrator` over all 11)
 
 ## Phase 14 — Knowledge Library
 
