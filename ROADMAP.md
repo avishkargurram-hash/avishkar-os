@@ -396,6 +396,46 @@ and Security.
 `documentation-factory`) remain explicitly deferred, each requiring
 its own future ADR to schedule — see Deferred, below.
 
+## Phase 16 — Layla (Personal Executive Intelligence) — ✅ LOCKED (2026-08-09)
+
+A new top-level platform capability (ADR-0020), composed entirely from
+existing frameworks' public contracts — zero parallel systems (see
+`layla/CONTRACT.md` §0 for the full reuse map).
+
+- ✅ 21 real modules: `StateMachine` (explicit lifecycle),
+  `LaylaMemoryPolicy` (wraps `avishkar_agent.MemoryPolicy`, Phase 5),
+  `ProjectStore`, `IntentInterpreter`, `ContextBuilder`, `risk`
+  classification + `ApprovalManager` (reuses `ApprovalGate`, Phase 3),
+  `CapabilityResolver` + `Planner`, `DelegationEngine` (wraps
+  `Orchestrator`, Phase 3), `ResultValidator`/`ConflictResolver`
+  (reuses `HashingEmbedder`, Phase 6)/`ExecutiveSynthesizer`,
+  `Scheduler`, `AuditLogger`/`SessionManager` (durable, restart-safe),
+  `NotificationManager`/`HealthMonitor`, `EmailChannelAdapter` (a real
+  `ProtocolAdapter`, Phase 4; ADAPTER READY / REQUIRES EXTERNAL
+  CREDENTIALS), and `ExecutiveRuntime` composing all of them
+- ✅ 119 tests: unit, contract, integration (delegation through a real
+  `Orchestrator`), 13 adversarial tests (prompt injection, hostile
+  tool responses, unauthorized capability requests, duplicate events,
+  memory corruption attempts, restart-during-execution proven via a
+  real `FileMemoryPolicy` cross-instance recovery, approval expiration,
+  contradictory instructions), and one deterministic end-to-end
+  fixture matching the Phase 16 directive's own worked scenario
+- ✅ A real, runnable, narrated end-to-end demonstration
+  (`layla/examples/end_to_end_scenario.py`) against the actual
+  `research-intelligence` Chief Domain Agent (Phase 13) — not a fixture
+  stand-in — reaching `COMPLETED` through all nine lifecycle states
+- ✅ Two real bugs caught by running tests, not asserted away: a
+  whole-word-vs-substring matching bug in `CapabilityResolver` ("ai"
+  false-matching inside "domain") and a `MockProvider.models` private-
+  attribute access in the Final Integration script (Phase 15,
+  discovered while wiring Layla's own example)
+- ✅ ADR-0020 records the architectural home decision and every reuse
+  boundary; `CONTRACT.md` and `README.md` (Framework template +
+  Configuration/Lifecycle/Permission/Approval/Memory/Tool policy/
+  Deployment/Development/Testing/Troubleshooting/Security sections,
+  each honestly marked IMPLEMENTED / PARTIALLY IMPLEMENTED / ADAPTER
+  READY / REQUIRES EXTERNAL CREDENTIALS / FUTURE)
+
 ## Deferred — not yet scheduled (ADR-0009)
 
 Not silently dropped, not silently assigned an order — these get a slot

@@ -266,5 +266,28 @@ its first consumer.
   captured output committed. Root `README.md` and `ARCHITECTURE.md`
   §7 Status sections updated from initial-scaffold text to reflect the
   platform's real, complete state.
+- **ADR-0020**: Layla is a new top-level platform capability
+  (`layla/`), not a Chief Domain Agent or a factory, composed entirely
+  from existing frameworks' public contracts — zero parallel systems.
+- **Phase 16 (Layla) locked**: `avishkar_layla` — a Personal Executive
+  Intelligence layer: `StateMachine`, `LaylaMemoryPolicy` (wraps
+  `avishkar_agent.MemoryPolicy`), `ProjectStore`, `IntentInterpreter`,
+  `ContextBuilder`, risk classification + `ApprovalManager` (reuses
+  `ApprovalGate`), `CapabilityResolver` + `Planner`, `DelegationEngine`
+  (wraps `Orchestrator`), `ResultValidator`/`ConflictResolver`
+  (reuses `HashingEmbedder`)/`ExecutiveSynthesizer`, `Scheduler`,
+  `AuditLogger`/`SessionManager` (durable, restart-safe, proven via a
+  real cross-instance `FileMemoryPolicy` recovery test),
+  `NotificationManager`/`HealthMonitor`, `EmailChannelAdapter` (a real
+  `ProtocolAdapter`; ADAPTER READY / REQUIRES EXTERNAL CREDENTIALS),
+  and `ExecutiveRuntime` composing all of them around the directive's
+  own IDLE/EVENT/INGEST/UNDERSTAND/DECIDE/PLAN/ACT/VERIFY/SLEEP loop.
+  119 tests including 13 adversarial tests and a deterministic
+  end-to-end fixture. A real, runnable, narrated demonstration against
+  the actual `research-intelligence` Chief Domain Agent reaches
+  `COMPLETED` through all nine lifecycle states. Two real bugs caught
+  by running tests: a whole-word-vs-substring matching bug in
+  `CapabilityResolver`, and a `MockProvider.models` private-attribute
+  access surfaced while wiring the example.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

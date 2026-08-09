@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "avishkar-layla"
+version = "0.1.0"
+description = "Layla -- Avishkar OS's Personal Executive Intelligence layer. Composes existing frameworks; introduces no parallel systems."
+readme = "../README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "Avishkar Labs" }]
+dependencies = [
+    "avishkar-core", "avishkar-router", "avishkar-agent", "avishkar-integration",
+    "avishkar-memory", "avishkar-knowledge", "avishkar-workflow",
+    "avishkar-evaluation", "avishkar-security",
+]
+# Stdlib-only beyond the platform's own packages -- see CONTRACT.md SS0
+# for why every capability domain is a client of an existing contract.
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["avishkar_layla*"]
