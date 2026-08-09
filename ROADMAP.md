@@ -324,7 +324,10 @@ just declared seams like Phase 3's agent had to use):
   `make_rate_limit_guardrail()` (proven with a real integration test)
 - ✅ Government & Public Policy — `SQLiteMemoryPolicy`, a real
   `KnowledgeBase`, same evaluation/security bridges
-- 💤 Human Development & Psychology
+- ✅ Human Development & Psychology — `FileMemoryPolicy`, a real
+  `KnowledgeBase`, and `crisis-escalation`: this repository's most
+  safety-critical guardrail, whose block reason carries real 988
+  crisis-resource contact information (verified by test)
 - 💤 Creative & Media
 - 💤 Orchestrator (composes `avishkar_agent.Orchestrator` over all 11)
 

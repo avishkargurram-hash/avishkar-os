@@ -52,13 +52,17 @@ Importable Chief Domain Agents for any product built on Avishkar OS.
   bridge than the other agents use).
 - [`government-public-policy/`](./government-public-policy/README.md) —
   Phase 13; `SQLiteMemoryPolicy`, a real `KnowledgeBase`.
+- [`human-development-psychology/`](./human-development-psychology/README.md) —
+  Phase 13; `FileMemoryPolicy`, a real `KnowledgeBase`, and this
+  repository's most safety-critical guardrail (`crisis-escalation`,
+  whose block reason carries real crisis-resource contact information).
 
 All documented to the 30-section template (STANDARDS.md §2.3 / ADR-0010).
 
 ## Limitations
-8 of the 11 locked-roster agents (ADR-0007) exist as of Phase 13 (in
-progress). The remaining 3 (Human Development & Psychology, Creative &
-Media, Orchestrator) are built one at a time — see ROADMAP.md.
+9 of the 11 locked-roster agents (ADR-0007) exist as of Phase 13 (in
+progress). The remaining 2 (Creative & Media, Orchestrator) are built
+one at a time — see ROADMAP.md.
 
 ## Future improvements
 - An agent registry/index once there are enough agents that browsing

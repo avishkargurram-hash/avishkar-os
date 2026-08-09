@@ -218,5 +218,12 @@ its first consumer.
   `SQLiteMemoryPolicy`, a real `KnowledgeBase` (policy-analysis
   framework, public-comment process), policy-structure and
   regulatory-scope tools. 14 tests, a runnable example.
+- **Human Development & Psychology** landed eighth: real
+  `FileMemoryPolicy`, a real `KnowledgeBase` (active listening, growth
+  mindset), and this repository's most safety-critical guardrail --
+  `crisis-escalation`, whose block reason carries real crisis-resource
+  contact information (the 988 Suicide & Crisis Lifeline), not just a
+  refusal, verified by test that `"988"` literally appears in the
+  returned `blocked_reason`. 12 tests, a runnable example.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD
