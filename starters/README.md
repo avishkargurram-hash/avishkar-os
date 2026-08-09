@@ -32,10 +32,19 @@ engineers starting a new product.
 composes).
 
 ## Examples
-_(none yet.)_
+As of Phase 10, the real composition engine (`StarterKit`,
+`StarterKitRegistry`, `materialize`) and one real, working kit
+(`AGENT_WITH_MEMORY_AND_KNOWLEDGE`) live inside
+[`factories/starter-kit-factory/python/avishkar_starter_kit/`](../factories/starter-kit-factory/python/avishkar_starter_kit/)
+rather than a `starters/<kit-name>/` copy — the same precedent
+`memory/`, `knowledge/`, `workflows/`, and `templates/` set. A
+product-specific kit (e.g. one shaped for a named Avishkar product)
+would land under `starters/<kit-name>/` once one exists — see
+`starter-kit-factory/README.md` Limitations for why none does yet.
 
 ## Limitations
-Empty as of the initial scaffold (2026-08-06). No product has been
+No standalone kits committed directly under `starters/` yet — see
+Examples for where the real, working kit lives. No product has been
 scaffolded from a starter kit yet.
 
 ## Future improvements

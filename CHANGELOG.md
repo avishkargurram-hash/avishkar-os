@@ -152,5 +152,15 @@ its first consumer.
   `MODULE_README_TEMPLATE` formalizing STANDARDS.md §2.1 as a real,
   instantiable template. 15 tests, a runnable example instantiating
   both the built-in template and a custom project skeleton.
+- **ADR-0016**: `starter-kit-factory` ships one generic kit rather than
+  a named-product kit ("no business logic in the platform"); a
+  `StarterKit` composes portable data with generated source code, not
+  serialized runtime objects.
+- **Starter Kit Framework — Phase 10 locked**: `avishkar_starter_kit` —
+  `StarterKit`/`StarterKitRegistry`/`materialize()`, and
+  `AGENT_WITH_MEMORY_AND_KNOWLEDGE`, a real kit composing an agent,
+  memory, knowledge, and a workflow. 12 tests, a runnable example that
+  materializes the kit and actually runs its generated `main.py` as a
+  subprocess (exit 0).
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

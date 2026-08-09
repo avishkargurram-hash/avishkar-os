@@ -697,3 +697,61 @@ ADR records so it doesn't read as accidental coupling later.
 `prompt-factory`. A future change to `PromptVersion`'s validation rules
 automatically applies to every `TemplateFile` — intentional, and worth
 remembering when `prompt-factory` is next touched.
+
+---
+
+## ADR-0016: `starter-kit-factory` ships one generic kit, not a named-product kit; generated `main.py` is real source code, not a serialized object graph
+
+**Status:** Accepted · **Date:** 2026-08-09
+
+**Context:** ROADMAP.md's original Phase 10 text (written before
+Execution Mode's phase split, ADR-0012) named an aspirational bullet:
+"First real product... scaffolded from a starter kit and running on
+Avishkar OS," with candidates Tryvanta / Humanify OS / GENESIS /
+Muziclly / AI Atlas / Coupler. Building a kit shaped for one of those
+means making product decisions (what the product does, what knowledge
+it needs, what its agent's domain and mission actually are) that
+CLAUDE.md's Master Constitution explicitly reserves for product repos,
+not this platform: **"No business logic in the platform."** Separately,
+composing an agent + memory + knowledge + workflow into a "portable"
+kit ran into a real technical question: `WorkflowSpec`'s steps are
+Python closures bound to specific runtime objects — there is no honest
+way to serialize a live workflow run into something a fresh clone can
+replay.
+
+**Decision:**
+1. Ship one real, generic, working kit —
+   `agent-with-memory-and-knowledge` — that demonstrates the product
+   *shape* (agent + memory + knowledge + workflow composed together)
+   without claiming to be any specific named product. Building a
+   Tryvanta-shaped (etc.) kit is left as real, documented future work
+   gated on an actual product decision, not guessed at here.
+2. A `StarterKit` composes what's genuinely portable
+   (`AgentBlueprint`, written as JSON) with **generated source code**
+   (`main.py`, via `template-factory`'s `Template`/`instantiate()`)
+   rather than attempting to serialize live objects. The generated
+   `main.py` is real, tested, runnable Python that calls this
+   platform's actual public APIs (`ChiefDomainAgent`, `KnowledgeBase`,
+   `build_memory_policy`, `WorkflowEngine`) — a clone is a working
+   program, not a frozen snapshot.
+
+**Alternatives considered:**
+1. *Guess at one named product's shape to satisfy the literal ROADMAP
+   bullet* — rejected: would fabricate business requirements (target
+   users, specific knowledge domain, specific agent mission) nobody has
+   actually specified, directly against the Master Constitution's "no
+   business logic in the platform" principle.
+2. *Pickle/serialize a `WorkflowSpec` instance into the kit* —
+   rejected: step handlers are closures over specific objects (a
+   specific `KnowledgeBase`, a specific `ChiefDomainAgent`); pickling
+   them either fails outright or produces something that only works by
+   accident in the exact same process, which is not what "clone-and-go"
+   means.
+
+**Consequences:** `factories/starter-kit-factory` depends on `core/`,
+`agent-factory`, and `template-factory`. ROADMAP.md Phase 10's "first
+real product" bullet is explicitly not delivered as originally phrased;
+this ADR is the record of why, and what shipped instead satisfies the
+framework's actual responsibility (composing platform building blocks
+into a working starting point) without overstepping into product
+decisions that aren't this platform's to make.

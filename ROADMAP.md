@@ -241,12 +241,22 @@ each still gets a real contract/tests/example, not a shared placeholder.
   a real new package, then a custom two-file project skeleton), README
   documented to the Framework template
 
-## Phase 10 — Starter Kit Framework (`starter-kit-factory`)
+## Phase 10 — Starter Kit Framework (`starter-kit-factory`) — ✅ LOCKED (2026-08-09)
 
-- 💤 `starter-kit-factory` + first starter kit in `starters/`
-- 💤 First real product (candidate: whichever of Tryvanta / Humanify OS /
-  GENESIS / Muziclly / AI Atlas / Coupler is nearest to build) scaffolded
-  from a starter kit and running on Avishkar OS
+- ✅ `CONTRACT.md`; `StarterKit` composes a real `AgentBlueprint`
+  (portable JSON) with generated *source code* (`main.py` via
+  `template-factory`) rather than serialized runtime objects (ADR-0016)
+- ✅ `StarterKitRegistry` (mirrors Prompt/TemplateRegistry),
+  `materialize()` (writes project files + `agent/blueprint.json`,
+  all-or-nothing on collision, reuses `template-factory`'s
+  `instantiate()` and `TemplateInstantiationError` verbatim)
+- ✅ `AGENT_WITH_MEMORY_AND_KNOWLEDGE` — one real, generic, working kit
+  (agent + memory + knowledge + workflow); deliberately not a
+  named-product kit — see ADR-0016 for why "first real product" wasn't
+  delivered as originally phrased
+- ✅ 12 tests, a runnable example that materializes the kit **and
+  actually runs the generated `main.py` as a subprocess** (exit 0, real
+  output), README documented to the Framework template
 
 ## Phase 11 — Evaluation Framework (`evaluation-factory`)
 
