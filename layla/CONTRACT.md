@@ -561,11 +561,139 @@ and a repository-wide secret scan (`security-factory.
 scan_repository_for_secrets()`) are part of this priority's own
 verification; see the Phase 17 final forensic report for the result.
 
-## §19. Errors
+## §19. Personal Model (Mission Layla Part 1, ADR-0026)
+
+`PersonalModel(memory: LaylaMemoryPolicy)` — Layla's continuously-
+evolving model of the person she works for. Not a second memory
+system: every fact is a namespaced key inside the same
+`LaylaMemoryPolicy` every other Layla component uses
+(`kind="long_term"`, `personal:{category}:{key}`), following the exact
+index-key pattern `SessionManager`/`AuditLogger`/`ApprovalManager`
+already established for enumerable state within the locked backend's
+four fixed memory kinds.
+
+`CATEGORIES`: `identity`, `preferences`, `goals`, `decision_patterns`,
+`work_patterns`, `communication_style`, `project_context`,
+`relationships`, `behavioral_patterns`, `personal_knowledge`,
+`life_events`, `habits`, `long_term_objectives`.
+`SENSITIVE_CATEGORIES` (`relationships`, `behavioral_patterns`) require
+`confirmed=True` on every write (`set()` and `correct()`) — raises
+`SensitiveCategoryNotConfirmedError` otherwise, never inferred
+automatically.
+
+`PersonalFact(category, key, value, confidence, provenance, importance,
+stored_at, corrected)` — every fact carries confidence, provenance,
+and a timestamp (reusing `MemoryRecord`'s own fields verbatim, no new
+schema).
+
+`set(category, key, value, *, confidence=1.0, provenance="user",
+importance="normal", confirmed=False, resolve=None) -> PersonalFact` —
+idempotent (writing the same value twice is a no-op); writing a
+*different* value than what's already stored raises
+`PersonalFactContradictionError` unless `resolve="overwrite"` (accept
+the new value) or `resolve="ignore"` (keep the existing one) is given
+explicitly, or the caller uses `correct()` instead — contradiction
+handling is a real, enforced code path, not a documented aspiration.
+
+`correct(category, key, new_value, *, reason, confirmed=False) ->
+PersonalFact` — the explicit, reasoned-overwrite path; delegates to
+`LaylaMemoryPolicy.correct()` verbatim, always succeeds regardless of
+any prior contradiction (that's what distinguishes it from `set()`).
+
+`get(category, key) -> Optional[PersonalFact]`, `get_category(category)
+-> Dict[str, PersonalFact]`, `forget(category, key)` (deletion is never
+a policy decision — always allowed, matching `LaylaMemoryPolicy.forget()`
+itself), `summary() -> str` (a compact digest for `ContextBuilder`;
+`SENSITIVE_CATEGORIES` content is never included verbatim in a summary
+— only the category name and fact count).
+
+**Privacy, by construction**: no category ships with seed/default/
+example personal data of any kind — every fact is written only by an
+explicit runtime call, never hardcoded. This is a deliberate,
+structural difference from the one external system this module's
+design was informed by (GENESIS, audited during Mission Layla's
+planning phase): GENESIS hardcodes a specific real person's name,
+family members, and health information directly in versioned source as
+default values. `PersonalModel` contains no GENESIS code and no
+GENESIS data — only the general shape of one pattern judged worth
+reusing (a sensitive-layer confirmation gate), reimplemented from
+scratch.
+
+**Integration is entirely additive**: `ExecutiveRuntime(...,
+personal_model=None)` and `ContextBuilder.build(..., personal_model=
+None)` — omitted, behavior is identical to before this module existed.
+Supplied, `ContextBuilder` folds `personal_model.summary()` into every
+task's `context["personal_model_summary"]`.
+
+## §20. Proactive Intelligence and persistent-runtime orchestration (Mission Layla Parts 2 and 11, ADR-0026)
+
+`ProactiveEngine(session_manager, audit_logger, notifications, *,
+act_callback=None, extra_evaluators=(), clock=time.time, ...)` —
+evaluates real, already-recorded system state (never a fabricated
+signal) and decides whether Layla should act without being asked.
+Combines two roles the Mission Layla directive names separately but
+which are the same mechanism in this architecture: "should Layla act
+proactively" (Part 2) *is* the decision that drives Layla's
+SLEEP → EVENT → WAKE → ... → SLEEP persistent-runtime cycle (Part 11).
+A `Scheduler`/`run_forever()` tick is the EVENT; `evaluate()` is
+WAKE+CONTEXT+DECIDE; the dispatched trigger is ACT (or a deliberate
+non-act). No LLM is invoked merely to check "did anything change."
+
+**Action levels**: `ACTION_IGNORE` (returned to the caller, never
+audited — no noise), `ACTION_OBSERVE` (recorded via `AuditLogger`,
+never surfaced), `ACTION_SUGGEST`/`ACTION_ASK` (a `Notification`,
+`SEVERITY_ACTION_REQUIRED`, never an autonomous side effect),
+`ACTION_ACT` (drives a real `ExecutiveRuntime.handle_event()` call —
+always the *full* pipeline: UNDERSTANDING → ... → risk → approval →
+DELEGATING → ... — never a bypass), `ACTION_URGENTLY_ALERT` (a
+`Notification`, `SEVERITY_CRITICAL`).
+
+`ProactiveTrigger(id, action_level, description, evidence, source,
+task_id=None)` — `evidence` is always the real data (task ids, audit
+event counts, timestamps) a trigger was computed from. This is a
+deliberate, evidence-only reimplementation of the *pattern* GENESIS's
+`proactive_engine.py`/`environment_prediction/` got right (real
+trigger conditions from real state), contrasted directly against
+GENESIS's `core/prediction/*.py`, confirmed by the Mission Layla audit
+to return hardcoded literal dicts regardless of input — `ProactiveTrigger`
+can never be constructed with a fabricated confidence or prediction; it
+only carries what its evaluator actually observed.
+
+Two built-in evaluators, both evidence-based: a task stuck in
+`REQUIRES_HUMAN` past a configurable age threshold escalates
+`ACTION_SUGGEST` → `ACTION_URGENTLY_ALERT`; a task with repeated
+`layla.delegation.failed`/`layla.delegation.timeout` audit events past
+a configurable count escalates `ACTION_OBSERVE` → `ACTION_SUGGEST`.
+Neither built-in evaluator ever reaches `ACTION_ACT` — genuinely
+autonomous action requires a caller-supplied `extra_evaluators` entry,
+a deliberate choice: "a task looks stuck" or "delegation failed
+repeatedly" are reasons for a human to look, not evidence strong enough
+to justify Layla acting unprompted.
+
+**`ExecutiveRuntime` integration is entirely additive**:
+`enable_proactive=False` (default) — zero behavior change, `.proactive`
+is `None`. `enable_proactive=True` — `ExecutiveRuntime` constructs its
+own `ProactiveEngine` internally (not accepted pre-built from the
+caller, avoiding a construction-order chicken-and-egg problem: the
+engine's `act_callback` binds to the runtime's own `handle_event`),
+and `run_forever()`'s tick loop calls `.evaluate()` after every
+`Scheduler.tick()`.
+
+**Authorization fails closed for Layla's own actions too**: if
+`authorization` is wired and no `proactive_session_id` was supplied at
+construction, an `ACT`-level trigger's `handle_event()` call raises
+`UnauthenticatedError` — caught by `_handle_proactive_act()` and
+recorded as `layla.proactive.act_failed`, never silently bypassed.
+Mission Layla Part 22 ("fail closed, no silent bypass") applies to
+Layla's own self-triggered actions exactly as much as to a human's
+request.
+
+## §21. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,
 `DelegationTimeoutError`, `UnresolvedConflictError`,
 `ApprovalExpiredError`, `ApprovalDeniedError`, `SessionNotFoundError`,
 `UnauthenticatedError`, `PermissionDeniedError`, `EscalationDeniedError`,
-`IdempotencyConflictError`, `UnknownExecutionOutcomeError`.
+`IdempotencyConflictError`, `UnknownExecutionOutcomeError`,
+`PersonalFactContradictionError`, `SensitiveCategoryNotConfirmedError`.

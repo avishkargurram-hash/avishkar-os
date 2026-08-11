@@ -547,6 +547,52 @@ the honest production-readiness gate and
 `docs/phase17-forensic-report.md` for the full forensic accounting —
 neither claims more than what was actually run and observed.
 
+## Mission Layla 1 — Foundation tier (ADR-0026, 2026-08-12)
+
+A six-agent, read-only forensic audit of an external personal-AI
+codebase ("GENESIS") plus OpenClaw/Hermes-style architectural targets
+preceded any implementation — recorded in full at
+`docs/mission-layla-1-plan.md`, including a headline finding that
+GENESIS's own safety governor never actually gates its riskiest tool
+calls (a tool-naming mismatch) and that real, specific PII is hardcoded
+in its source with zero access control. Per that plan's own
+recommendation, zero GENESIS code or data was ported; two new Layla
+capabilities were built fresh against Avishkar's own contracts,
+informed only by the *patterns* worth reusing:
+
+- ✅ **PersonalModel** (Mission Layla Part 1) — Layla's continuously-
+  evolving model of the person she works for: identity, preferences,
+  goals, decision patterns, work patterns, communication style,
+  project context, relationships, behavioral patterns, personal
+  knowledge, life events, habits, long-term objectives. Namespaced
+  keys inside the same `LaylaMemoryPolicy` every other Layla component
+  uses — not a second memory system. Real, enforced contradiction
+  handling (`set()` refuses to silently overwrite a different value;
+  `correct()` is the explicit, reasoned-overwrite path) and a
+  sensitive-category confirmation gate (`relationships`/
+  `behavioral_patterns` require `confirmed=True`) — no seed/default
+  personal data ships with the module, a deliberate structural
+  difference from GENESIS's hardcoded-PII pattern.
+- ✅ **ProactiveEngine** (Mission Layla Parts 2 and 11) — answers
+  "should Layla act without being asked," which in this architecture
+  is also what drives Layla's persistent-runtime SLEEP → EVENT → WAKE
+  → ... → SLEEP cycle: a `Scheduler`/`run_forever()` tick is the
+  EVENT, `evaluate()` is WAKE+CONTEXT+DECIDE, an `ACT`-level trigger
+  always drives the *full* `handle_event()` pipeline (never a
+  risk/approval bypass) and fails closed if `authorization` is wired
+  with no session supplied for Layla's own use. Two built-in,
+  evidence-only evaluators (stuck `REQUIRES_HUMAN` tasks; repeated
+  delegation failures) deliberately never reach `ACT` — only a
+  caller-supplied evaluator can, by design.
+- Both are fully additive (`personal_model=None`, `enable_proactive=
+  False` by default) — all 190 prior Layla tests pass unmodified.
+  30 new tests (220 total for Layla). One new runnable example,
+  `layla/examples/personal_model_and_proactive_scenario.py`.
+- Everything outside this scope (Voice, Vision, Computer Control, IoT,
+  Knowledge Graph, Skills/Learning, external Channels, Self-improvement)
+  is explicitly deferred with a stated reason in
+  `docs/mission-layla-1-plan.md` §22, not silently dropped.
+
 ## How this roadmap changes
 
 A phase only moves to 🚧 when someone is actively working it, and only to

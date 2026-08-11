@@ -1578,3 +1578,131 @@ What remains true after this priority: the platform's live-external-
 call coverage is exactly one test, exercised zero times against a real
 key during this work — real, ready, and honestly reported as such, not
 inflated into a claim of verified live behavior.
+
+## ADR-0026: Mission Layla 1 — PersonalModel and ProactiveEngine are built fresh from Avishkar contracts, informed by (not copied from) an external codebase's design patterns, after a full forensic audit found that codebase's own security model comprehensively broken for its riskiest capabilities
+
+**Status:** Accepted · **Date:** 2026-08-12
+
+**Context:** A "Mission Layla" directive asked Avishkar OS's Layla to
+absorb capabilities from an external personal-AI codebase ("GENESIS")
+plus architectural concepts associated with two other reference
+systems ("OpenClaw"-style persistent runtime/channels, "Hermes"-style
+skills/learning), with an explicit, repeated instruction: adapt
+capabilities to Avishkar's own contracts, never import GENESIS's
+implementations, PII, credentials, or vulnerabilities wholesale, and
+never fabricate a working capability merely to claim completion. A
+mandatory planning phase preceded any implementation: six parallel,
+read-only forensic audits of the actual GENESIS source (not its own
+self-certifying documentation, which claims "100% production ready, no
+stubs" and is demonstrably false) covering Digital Twin/behavior
+modeling, Proactive Intelligence/Prediction/Scheduler, Life OS/
+Knowledge Graph/Environment, Voice/Vision/Computer Control/IoT,
+Self-improvement/Skills/Memory, and persistent runtime/Channels/Auth/
+Security — recorded in `docs/mission-layla-1-plan.md`.
+
+That audit found: (1) a large fraction of GENESIS's most interesting-
+sounding subsystems are dead code, never reachable from its own real
+boot sequence; (2) a meaningful fraction of what does run returns
+hardcoded fake output dressed as computed intelligence (`core/
+prediction/*.py` returns fixed literal dicts regardless of input); (3)
+GENESIS's own safety governor has a tool-naming mismatch that makes its
+stated "existential sovereignty lock" never actually fire for real
+shell-exec/filesystem-delete/browser-automation/ADB tool calls, and its
+`permissions.json` explicitly *allows* those actions by the real tool
+IDs; (4) real, specific PII (names, family members, health conditions,
+psychological states) is hardcoded in plaintext source and persisted
+with zero access control; (5) a small number of genuinely well-built
+subsystems exist (a real graph engine, real OAuth/token infrastructure,
+a real voice pipeline, real communication-channel clients) that were
+still judged unsuitable for direct adaptation given the density of
+findings elsewhere in the same codebase.
+
+**Decision:**
+1. **Zero GENESIS code, zero GENESIS data, in Avishkar OS.** Every
+   line in `personal_model.py`/`proactive.py` was written from scratch
+   against Avishkar's own contracts (`LaylaMemoryPolicy`, `Scheduler`,
+   `AuditLogger`, `SessionManager`, `NotificationManager`,
+   `ExecutiveRuntime.handle_event()`). No file was copied, ported, or
+   referenced by path from the GENESIS tree at any point.
+2. **Reuse patterns, not implementations, and say so explicitly in the
+   code.** Two GENESIS design patterns were judged worth reimplementing
+   from first principles, both documented inline as *patterns*, not
+   attributions of code: a sensitive-data confirmation gate
+   (`digital_founder_genome.py`'s "sensitive layers require
+   `founder_confirmed=True`" concept, reimplemented as `PersonalModel`'s
+   `SENSITIVE_CATEGORIES`/`confirmed=True` requirement) and an
+   evidence-only trigger-evaluation shape (`proactive_engine.py`'s real
+   failure-streak/idle-timer conditions, reimplemented as
+   `ProactiveEngine`'s two built-in evaluators, computed from Layla's
+   own real `SessionManager`/`AuditLogger` state, never fabricated).
+3. **No new memory system, no new persistence mechanism.**
+   `PersonalModel` is namespaced keys (`personal:{category}:{key}`)
+   inside the exact same `LaylaMemoryPolicy`/`kind="long_term"` every
+   other Layla component already uses, following the identical
+   index-key enumeration pattern `SessionManager`/`AuditLogger`
+   established for the locked backend's fixed four memory kinds.
+4. **`ProactiveEngine` never bypasses risk/approval/idempotency/audit.**
+   An `ACT`-level trigger's only effect is calling the *exact same*
+   `ExecutiveRuntime.handle_event()` a human-issued request would call
+   — full UNDERSTANDING → PLANNING → risk classification → approval →
+   DELEGATING pipeline, every time. There is no separate "autonomous
+   action" code path that skips any existing gate. If `authorization`
+   is wired and no `proactive_session_id` is supplied, an `ACT` trigger
+   fails closed (`UnauthenticatedError`, caught and audited, never
+   silently swallowed) — the same fail-closed discipline Priority 17.1
+   already established for every other caller.
+5. **Neither built-in evaluator ever reaches `ACT`.** "A task looks
+   stuck" and "delegation failed repeatedly" are real, evidence-backed
+   reasons for a *human* to look (`SUGGEST`/`URGENTLY_ALERT`), not
+   evidence strong enough to justify Layla acting unprompted. Genuine
+   autonomous behavior requires a deployment to supply its own
+   `extra_evaluators` entry for a specific, well-understood scenario —
+   deliberately not invented speculatively here, per the directive's
+   own "no fake completion" instruction.
+6. **Both new components are strictly additive**, the same pattern
+   established five times over in Phase 17: `ExecutiveRuntime(...,
+   personal_model=None, enable_proactive=False)` — omitted, behavior is
+   byte-for-byte unchanged (verified: all 190 prior Layla tests pass
+   unmodified after this priority's changes).
+7. **Everything outside this narrow scope (Voice, Vision, Computer
+   Control, IoT, Knowledge Graph, Skills/Learning, external Channels/
+   OAuth, Self-improvement) is explicitly deferred**, not silently
+   dropped — `docs/mission-layla-1-plan.md` §22 records each as SHOULD/
+   OPTIONAL/FUTURE with a stated reason, matching the directive's own
+   "if time runs out, prioritize architectural foundations... leave
+   clear continuation points" instruction.
+
+**Alternatives considered:**
+1. *Port GENESIS's `core/autonomous/proactive_engine.py` or `core/
+   prediction/*.py` directly, then patch the security/fakery issues
+   found* — rejected: the audit found the *fake-return* pattern in
+   `core/prediction/*.py` and the *broken execution wiring* in
+   `core/autonomous/scheduler.py` baked into the modules' own control
+   flow, not isolable bugs; a from-scratch reimplementation against
+   Avishkar's real, tested `AuditLogger`/`SessionManager` was less work
+   and more honest than auditing every line of a 200+-line import for
+   latent GENESIS-specific assumptions.
+2. *Build a full GENESIS-inspired Knowledge Graph in this same
+   priority* — rejected for scope: real, valuable, but a genuine
+   multi-day effort to do safely (per `mission-layla-1-plan.md` §21,
+   §23); attempting it in the time available for this priority would
+   have meant cutting corners exactly where the directive says not to.
+3. *Give `ProactiveEngine`'s built-in evaluators an `ACT`-capable
+   escalation path (e.g., "3+ failures triggers an automatic retry")*
+   — rejected: retry-worthy failure patterns are already Priority
+   17.2's `ExecutionTracker`/`DelegationEngine`'s own concern (real
+   retry policies, real idempotency), and conflating "notice a pattern"
+   with "act on it automatically" is exactly the kind of scope-creep
+   this ADR's own Decision 5 argues against.
+
+**Consequences:** Two new files (`personal_model.py`, `proactive.py`),
+five modified files (`runtime.py`, `context.py`, `errors.py`,
+`__init__.py`, plus this document), one new runnable example
+(`personal_model_and_proactive_scenario.py`). 30 new tests — 220 total
+for Layla, up from 190, zero regressions. What remains explicitly
+unbuilt, tracked in `docs/mission-layla-1-plan.md` §22: real event/
+goal/deadline/opportunity detectors beyond the two evidence-based
+built-ins; a UI/onboarding flow for populating `PersonalModel` facts;
+everything in Voice/Vision/Computer Control/IoT/Knowledge Graph/
+Skills/Channels. `docs/mission-layla-1-plan.md` and this ADR are the
+record of what was deliberately deferred and why, not a silent gap.

@@ -70,3 +70,16 @@ class UnknownExecutionOutcomeError(LaylaError):
     a timeout after the provider may have already acted) -- see
     execution.py SS2's UNKNOWN state.
     """
+
+
+class PersonalFactContradictionError(LaylaError):
+    """PersonalModel.set() found an existing, different value at this
+    (category, key) and no explicit resolution was given -- see
+    personal_model.py and CONTRACT.md SS19.
+    """
+
+
+class SensitiveCategoryNotConfirmedError(LaylaError):
+    """A write to a PersonalModel SENSITIVE_CATEGORIES category was
+    attempted without confirmed=True -- see personal_model.py.
+    """

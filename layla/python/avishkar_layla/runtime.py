@@ -42,7 +42,9 @@ from .intent import IntentInterpreter
 from .memory_policy import LaylaMemoryPolicy
 from .monitoring import HealthMonitor
 from .notifications import NotificationManager
+from .personal_model import PersonalModel
 from .planning import Planner
+from .proactive import ProactiveEngine, ProactiveTrigger, TriggerEvaluator
 from .risk import classify_risk
 from .scheduler import Scheduler
 from .session import SessionManager
@@ -82,6 +84,10 @@ class ExecutiveRuntime:
         knowledge_bases: Sequence[KnowledgeBase] = (),
         memory_lookups: Sequence[Tuple[str, str]] = (),
         scheduler: Optional[Scheduler] = None,
+        personal_model: Optional[PersonalModel] = None,
+        enable_proactive: bool = False,
+        proactive_evaluators: Sequence[TriggerEvaluator] = (),
+        proactive_session_id: Optional[str] = None,
         clock: Callable[[], float] = time.monotonic,
         sleep_fn: Callable[[float], None] = time.sleep,
         logger: Optional[Any] = None,
@@ -92,6 +98,10 @@ class ExecutiveRuntime:
         self._memory = memory
         self._memory_lookups = tuple(memory_lookups)
         self._knowledge_bases = tuple(knowledge_bases)
+        # Mission Layla, Part 1 (ADR-0026): optional, additive -- omitted,
+        # behavior is unchanged. Supplied, ContextBuilder folds a redacted
+        # summary into every task's context (see context.py).
+        self._personal_model = personal_model
 
         self._capability_resolver = CapabilityResolver(agent_domains)
         self._planner = Planner(self._capability_resolver)
@@ -134,6 +144,25 @@ class ExecutiveRuntime:
         self._notifications = NotificationManager()
         self._health = HealthMonitor(self._notifications)
 
+        # Mission Layla, Part 2/11 (ADR-0026): optional, additive --
+        # `enable_proactive=False` (default) means zero behavior change,
+        # exactly like every other Phase 17/Mission Layla capability.
+        # Constructed here, not accepted pre-built from the caller, so
+        # its act_callback can bind straight to this runtime's own
+        # handle_event() -- avoids a construction-order chicken-and-egg
+        # problem (the engine needs a callback into the runtime; the
+        # runtime is what's being constructed). See proactive.py and
+        # _handle_proactive_act() below for why an ACT trigger always
+        # goes through the full handle_event() pipeline, never a
+        # shortcut.
+        self._proactive_session_id = proactive_session_id
+        self._proactive: Optional[ProactiveEngine] = None
+        if enable_proactive:
+            self._proactive = ProactiveEngine(
+                self._session, self._audit, self._notifications,
+                act_callback=self._handle_proactive_act, extra_evaluators=proactive_evaluators,
+            )
+
         self._scheduler = scheduler
         self._sleep_fn = sleep_fn
         self._logger = logger or get_logger("layla.runtime")
@@ -171,6 +200,37 @@ class ExecutiveRuntime:
         return self._session
 
     @property
+    def proactive(self) -> Optional[ProactiveEngine]:
+        """The ProactiveEngine this runtime constructed, or None if
+        `enable_proactive=False` (the default) -- see Mission Layla
+        Part 2/11. Exposed so a caller/test can invoke `.evaluate()`
+        directly instead of only through `run_forever()`'s tick loop.
+        """
+        return self._proactive
+
+    def _handle_proactive_act(self, trigger: ProactiveTrigger) -> None:
+        """The one seam Layla's own proactive intelligence uses to turn
+        a real trigger into a real action -- always the full
+        handle_event() pipeline (UNDERSTANDING -> ... -> risk ->
+        approval -> DELEGATING), never a bypass. If `authorization` is
+        wired and no `proactive_session_id` was supplied at
+        construction, this fails closed (UnauthenticatedError) rather
+        than silently acting without a session -- Mission Layla Part 22
+        ("fail closed, no silent bypass") applies to Layla's own
+        self-triggered actions exactly as much as to a human's request.
+        The failure is caught here (not left to crash run_forever()'s
+        loop) and recorded via AuditLogger.
+        """
+        try:
+            self.handle_event(trigger.description, session_id=self._proactive_session_id)
+        except Exception as exc:  # noqa: BLE001 -- normalized into an audit record, not swallowed silently
+            self._audit.record(
+                "layla.proactive.act_failed",
+                {"trigger_id": trigger.id, "description": trigger.description, "error": str(exc)},
+                task_id=trigger.task_id,
+            )
+
+    @property
     def executions(self) -> Optional[ExecutionTracker]:
         """The ExecutionTracker this runtime was constructed with, or
         None if idempotency tracking (Priority 17.2) wasn't wired in --
@@ -179,6 +239,15 @@ class ExecutiveRuntime:
         recovery script.
         """
         return self._execution_tracker
+
+    @property
+    def personal_model(self) -> Optional[PersonalModel]:
+        """The PersonalModel this runtime was constructed with, or None
+        if not wired in (Mission Layla, Part 1) -- callers use this to
+        read/write facts directly, e.g. from a settings UI or an
+        onboarding flow.
+        """
+        return self._personal_model
 
     def handle_event(self, input_text: str, *, session_id: Optional[str] = None) -> LaylaTask:
         """Processes one NEW request end to end through the state
@@ -282,6 +351,7 @@ class ExecutiveRuntime:
             self._state_machine.transition(task, CONTEXT_LOADING)
             task.context = self._context_builder.build(
                 task, self._memory, memory_lookups=self._memory_lookups, knowledge_bases=self._knowledge_bases,
+                personal_model=self._personal_model,
             )
 
         if task.state == CONTEXT_LOADING:
@@ -449,17 +519,31 @@ class ExecutiveRuntime:
         return task
 
     def run_forever(self, *, max_iterations: Optional[int] = None, tick_interval_seconds: float = 1.0) -> int:
-        """The real 24/7 entry point: repeatedly ticks the scheduler and
-        sleeps. `max_iterations` makes this a real, finite, directly
-        testable method rather than a literal infinite loop -- a
-        deployment calls it with max_iterations=None (i.e. runs until
-        the process is stopped by its supervisor). Returns the number
-        of iterations actually run.
+        """The real 24/7 entry point: repeatedly ticks the scheduler,
+        evaluates proactive intelligence (if enabled), and sleeps.
+        `max_iterations` makes this a real, finite, directly testable
+        method rather than a literal infinite loop -- a deployment
+        calls it with max_iterations=None (i.e. runs until the process
+        is stopped by its supervisor). Returns the number of iterations
+        actually run.
+
+        This is the concrete SLEEP -> EVENT -> WAKE -> ... -> SLEEP
+        cycle from Mission Layla Part 11: `_proactive.evaluate()` is
+        cheap Python over already-recorded state (SessionManager/
+        AuditLogger), never an LLM call by itself -- only an ACT-level
+        trigger causes `_handle_proactive_act()` to call the real
+        `handle_event()` pipeline. A slow ACT-triggered call delays the
+        next scheduler tick until it returns -- this runtime has no
+        async/background-task model (Phase 17.4's concurrency guarantees
+        are thread-based, not async-based), a known, documented
+        limitation, not an oversight.
         """
         iterations = 0
         while max_iterations is None or iterations < max_iterations:
             if self._scheduler is not None:
                 self._scheduler.tick()
+            if self._proactive is not None:
+                self._proactive.evaluate()
             self._sleep_fn(tick_interval_seconds)
             iterations += 1
         return iterations

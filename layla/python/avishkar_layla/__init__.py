@@ -24,6 +24,8 @@ from .errors import (
     LaylaError,
     MemoryPolicyViolationError,
     PermissionDeniedError,
+    PersonalFactContradictionError,
+    SensitiveCategoryNotConfirmedError,
     SessionNotFoundError,
     UnauthenticatedError,
     UnknownCapabilityError,
@@ -67,7 +69,23 @@ from .intent import Intent, IntentInterpreter
 from .memory_policy import LaylaMemoryPolicy
 from .monitoring import HealthMonitor
 from .notifications import NotificationManager
+from .personal_model import (
+    CATEGORIES,
+    SENSITIVE_CATEGORIES,
+    PersonalFact,
+    PersonalModel,
+)
 from .planning import Planner
+from .proactive import (
+    ACTION_ACT,
+    ACTION_ASK,
+    ACTION_IGNORE,
+    ACTION_OBSERVE,
+    ACTION_SUGGEST,
+    ACTION_URGENTLY_ALERT,
+    ProactiveEngine,
+    ProactiveTrigger,
+)
 from .project import ProjectStore
 from .risk import classify_risk
 from .runtime import ExecutiveRuntime
@@ -184,5 +202,19 @@ __all__ = [
     "EXEC_EXPIRED",
     "EXEC_UNKNOWN",
     "TERMINAL_EXECUTION_STATES",
+    "PersonalModel",
+    "PersonalFact",
+    "CATEGORIES",
+    "SENSITIVE_CATEGORIES",
+    "PersonalFactContradictionError",
+    "SensitiveCategoryNotConfirmedError",
+    "ProactiveEngine",
+    "ProactiveTrigger",
+    "ACTION_IGNORE",
+    "ACTION_OBSERVE",
+    "ACTION_SUGGEST",
+    "ACTION_ASK",
+    "ACTION_ACT",
+    "ACTION_URGENTLY_ALERT",
     "__version__",
 ]

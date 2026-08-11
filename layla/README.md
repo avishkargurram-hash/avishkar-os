@@ -48,12 +48,13 @@ ExecutiveRuntime (event loop: IDLE -> EVENT -> INGEST -> UNDERSTAND ->
 layla/
 ├── CONTRACT.md              language-agnostic contract
 ├── README.md                  this file
-├── python/avishkar_layla/       reference implementation (25 modules)
+├── python/avishkar_layla/       reference implementation (27 modules)
 │   └── channels/                   communication channel adapters
 ├── examples/
 │   ├── end_to_end_scenario.py       Part IX's real, narrated demonstration
-│   └── crash_recovery_scenario.py   resume-in-place demonstration (Priority 17.3)
-└── python/tests/                   190 tests (as of Priority 17.5; 1 live-gated, skipped by default)
+│   ├── crash_recovery_scenario.py   resume-in-place demonstration (Priority 17.3)
+│   └── personal_model_and_proactive_scenario.py  Mission Layla Parts 1/2/11
+└── python/tests/                   220 tests (as of Mission Layla 1; 1 live-gated, skipped by default)
 ```
 
 ## Naming Standards
@@ -84,6 +85,11 @@ store); a second, brand-new runtime resumes the task and completes
 only the 2 remaining steps, proving via a real orchestrator call count
 that the 3 already-done steps are never re-run. See "Resume-in-Place /
 Durable Execution," below.
+`python layla/examples/personal_model_and_proactive_scenario.py` —
+PersonalModel facts flow into a real task's context; a custom
+ProactiveEngine trigger drives a real `handle_event()` call to
+completion through `run_forever()`'s tick loop, not a bypass. See
+"Personal Model" / "Proactive Intelligence," above.
 
 ## Best Practices
 - Always pass a real, injectable `clock`/`sleep_fn` in tests (the same
@@ -408,6 +414,123 @@ end against the real API" — those are different claims, and only the
 first one is true here. Whoever runs it first with a real key should
 record the actual result in `docs/live-integration-guide.md`.
 
+# Personal Model (Mission Layla Part 1, ADR-0026)
+
+**Status: IMPLEMENTED.** `PersonalModel` (`personal_model.py`) is
+Layla's continuously-evolving model of the person she works for —
+identity, preferences, goals, decision patterns, work patterns,
+communication style, project context, relationships, behavioral
+patterns, personal knowledge, life events, habits, long-term
+objectives. Not a second memory system: every fact is a namespaced key
+(`personal:{category}:{key}`) inside the same `LaylaMemoryPolicy` every
+other Layla component already uses, following the same index-key
+pattern `SessionManager`/`AuditLogger` already established.
+
+**Contradiction handling is a real, enforced code path**: `set()`
+refuses to silently overwrite an existing, *different* value —
+`PersonalFactContradictionError` unless the caller passes
+`resolve="overwrite"`/`resolve="ignore"` explicitly, or uses
+`correct(..., reason=...)` (a reasoned, always-succeeding overwrite,
+delegating to `LaylaMemoryPolicy.correct()` verbatim). Writing the same
+value twice is always a no-op — idempotent, matching every other
+write-path in this codebase.
+
+**Privacy, by construction, not by convention**: no category ships
+with seed/default/example data of any kind — every fact is written
+only by an explicit runtime call. `SENSITIVE_CATEGORIES`
+(`relationships`, `behavioral_patterns`) additionally require
+`confirmed=True` on every write, and `summary()` (what
+`ContextBuilder` folds into every task's prompt context) never
+includes their content verbatim — only the category name and a count.
+This is a deliberate structural difference from GENESIS (the external
+codebase audited during this mission's planning phase, see
+`docs/mission-layla-1-plan.md`), which hardcodes a specific real
+person's name, family members, and health conditions directly in
+versioned source as default values — `PersonalModel` contains zero
+GENESIS code and zero GENESIS data; only the general shape of one
+pattern (a sensitive-layer confirmation gate) was judged worth reusing,
+reimplemented here from scratch.
+
+**Integration is entirely additive**: `ExecutiveRuntime(...,
+personal_model=None)` / `ContextBuilder.build(..., personal_model=None)`
+— omitted, behavior is unchanged (every prior test still passes
+unmodified). Supplied, every task's `context["personal_model_summary"]`
+carries a redacted digest.
+
+**What's NOT built**: no UI/onboarding flow for populating facts (a
+deployment writes them via `PersonalModel.set()` directly — e.g. from a
+settings screen, a chat-based "remember that..." command, or a batch
+import); no automatic fact extraction from conversation (Life OS's
+finance/health modules and any "Layla learns preferences from
+behavior" capability are explicitly future work, not this mission —
+see `docs/mission-layla-1-plan.md` §22).
+
+# Proactive Intelligence & Persistent-Runtime Orchestration (Mission Layla Parts 2 and 11, ADR-0026)
+
+**Status: IMPLEMENTED.** `ProactiveEngine` (`proactive.py`) answers
+"should Layla act without being asked" (Part 2) — and in this
+architecture, that decision *is* what drives Layla's
+SLEEP → EVENT → WAKE → ... → SLEEP persistent-runtime cycle (Part 11):
+a `Scheduler`/`run_forever()` tick is the EVENT, `evaluate()` is
+WAKE+CONTEXT+DECIDE, and the emitted actions are ACT (or a deliberate
+non-act). No LLM is called merely to check "did anything change" —
+every built-in evaluator inspects real, already-recorded state
+(`SessionManager`/`AuditLogger`) via cheap Python; only an `ACTION_ACT`
+trigger ever causes a real `handle_event()` (and therefore a real
+LLM/agent) call.
+
+**Action levels**: `IGNORE` (not even audited — never spam, never
+accumulate noise), `OBSERVE` (recorded via `AuditLogger`, never
+surfaced), `SUGGEST`/`ASK` (a `Notification`, never an autonomous side
+effect), `ACT` (drives the *full* `handle_event()` pipeline — risk,
+approval, delegation, everything — never a shortcut), `URGENTLY_ALERT`
+(a `CRITICAL` `Notification`).
+
+**Two built-in evaluators, both evidence-only**: a task stuck in
+`REQUIRES_HUMAN` past a configurable age (`SUGGEST` → `URGENTLY_ALERT`);
+a task with repeated delegation failures in its own audit history
+(`OBSERVE` → `SUGGEST`). **Neither ever reaches `ACT`** — a deliberate
+choice: "looks stuck" or "failed repeatedly" are reasons for a human to
+look, not evidence strong enough to justify autonomous action.
+Genuine `ACT`-level behavior requires a caller-supplied
+`extra_evaluators` entry built for a specific, well-understood scenario
+(see `layla/examples/personal_model_and_proactive_scenario.py` for a
+worked one). This mirrors the one thing GENESIS's own
+`proactive_engine.py`/`environment_prediction/` got right (real
+trigger conditions from real state) while deliberately avoiding what
+its `core/prediction/*.py` got wrong — this mission's own forensic
+audit confirmed those return hardcoded literal dicts regardless of
+input; `ProactiveTrigger` can never be constructed with a fabricated
+confidence or prediction, only what its evaluator actually observed.
+
+**Fails closed for Layla's own actions, not just a human's**: if
+`authorization` is wired on the runtime and no `proactive_session_id`
+was supplied, an `ACT` trigger's `handle_event()` call raises
+`UnauthenticatedError`, caught and recorded as
+`layla.proactive.act_failed` — never silently bypassed. A deployment
+that wants real autonomous action must explicitly issue and supply a
+session scoped for Layla's own use, the same as it would for any other
+caller.
+
+**Integration is entirely additive**: `ExecutiveRuntime(...,
+enable_proactive=False)` (default) — `.proactive` is `None`, zero
+behavior change. `enable_proactive=True` — the runtime builds its own
+`ProactiveEngine` internally (avoiding a construction-order
+chicken-and-egg problem: the engine's callback binds to the runtime's
+own `handle_event`), and `run_forever()` calls `.evaluate()` every
+tick, right after `Scheduler.tick()`.
+
+**What's NOT built**: real event/schedule/goal/deadline/opportunity/
+external-signal detectors (Part 2's full list) — only the two
+evidence-based built-ins above exist; everything else requires a
+caller-supplied evaluator today, and building genuinely reliable ones
+for goals/deadlines/opportunities is real, dedicated future work, not
+fabricated here to check a box (Mission Layla Part 26, "no fake
+completion"). No async/background execution model — a slow `ACT`
+callback delays the next scheduler tick until it returns, a known
+limitation of this runtime's synchronous, thread-based (not
+async-based) design.
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
@@ -493,9 +616,10 @@ already covers it — extending that list requires an ADR.
 
 # Testing Guide
 
-190 tests as of Priority 17.5 (119 Phase 16 + 30 Priority 17.1 + 21
-Priority 17.2 + 8 Priority 17.3 + 11 Priority 17.4 + 1 Priority 17.5),
-189 running offline and passing, 1 live-gated and skipped by default
+220 tests as of Mission Layla 1 (119 Phase 16 + 30 Priority 17.1 + 21
+Priority 17.2 + 8 Priority 17.3 + 11 Priority 17.4 + 1 Priority 17.5 +
+30 Mission Layla 1 -- PersonalModel/ProactiveEngine), 219 running
+offline and passing, 1 live-gated and skipped by default
 (`test_live_anthropic_integration.py` — see
 `docs/live-integration-guide.md` to actually run it), via:
 ```bash

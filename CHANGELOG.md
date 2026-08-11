@@ -479,4 +479,70 @@ its first consumer.
   (190 total for Layla: 189 passing offline + 1 skipped by default);
   router's own 42 tests still pass unmodified.
 
+- **Mission Layla 1 (PersonalModel + ProactiveEngine) locked
+  (ADR-0026)**: preceded by a six-agent, read-only forensic audit of an
+  external personal-AI codebase ("GENESIS") plus OpenClaw/Hermes-style
+  architectural targets, recorded in full at
+  `docs/mission-layla-1-plan.md` -- headline findings included GENESIS's
+  own safety governor never actually gating its riskiest tool calls (a
+  tool-naming mismatch between its hardcoded dangerous-tool list and
+  its real tool-registry IDs), `permissions.json` explicitly allowing
+  filesystem delete/mouse-keyboard takeover/browser automation by their
+  real IDs, an identity-verification check that fails open due to a
+  type-mismatch bug, an unconditional command-injection backdoor in its
+  voice pipeline, and real, specific PII (names, family members, health
+  conditions) hardcoded in plaintext source with zero access control.
+  Per that plan's own recommendation, zero GENESIS code or data was
+  ported into Avishkar OS -- two new Layla capabilities were built
+  fresh against Avishkar's own contracts, informed only by the design
+  *patterns* judged worth reusing.
+
+  `PersonalModel` (Mission Layla Part 1,
+  `layla/python/avishkar_layla/personal_model.py`) -- Layla's
+  continuously-evolving model of the person she works for across 13
+  categories (identity, preferences, goals, decision patterns, work
+  patterns, communication style, project context, relationships,
+  behavioral patterns, personal knowledge, life events, habits,
+  long-term objectives), stored as namespaced keys inside the same
+  `LaylaMemoryPolicy` every other Layla component already uses -- not a
+  second memory system. `set()` refuses to silently overwrite an
+  existing, different value (`PersonalFactContradictionError` unless
+  `resolve=`/`correct()` is used explicitly); writing the same value
+  twice is idempotent. `SENSITIVE_CATEGORIES` (`relationships`,
+  `behavioral_patterns`) require `confirmed=True` on every write, and
+  `summary()` never includes their content verbatim -- only a category
+  name and count. No category ships with seed/default personal data of
+  any kind, a deliberate structural difference from GENESIS's
+  hardcoded-PII pattern.
+
+  `ProactiveEngine` (Mission Layla Parts 2 and 11,
+  `layla/python/avishkar_layla/proactive.py`) -- answers "should Layla
+  act without being asked," which in this architecture is also what
+  drives Layla's persistent-runtime SLEEP -> EVENT -> WAKE -> ... ->
+  SLEEP cycle: a `Scheduler`/`run_forever()` tick is the EVENT,
+  `evaluate()` is WAKE+CONTEXT+DECIDE, and an `ACT`-level trigger always
+  drives the *full* `handle_event()` pipeline (risk, approval,
+  delegation -- everything), never a bypass; fails closed
+  (`UnauthenticatedError`, caught and audited) if `authorization` is
+  wired and no session was supplied for Layla's own autonomous use. Two
+  built-in evaluators, both computed from real `SessionManager`/
+  `AuditLogger` state, never fabricated: a task stuck in
+  `REQUIRES_HUMAN` past a configurable age escalates SUGGEST ->
+  URGENTLY_ALERT; a task with repeated delegation failures escalates
+  OBSERVE -> SUGGEST. Neither built-in ever reaches ACT -- genuine
+  autonomous behavior requires a caller-supplied evaluator for a
+  specific, well-understood scenario, deliberately not invented
+  speculatively.
+
+  Both integrations are fully additive
+  (`ExecutiveRuntime(personal_model=None, enable_proactive=False)` by
+  default) -- all 190 prior Layla tests pass unmodified. One new
+  runnable example
+  (`layla/examples/personal_model_and_proactive_scenario.py`). 30 new
+  tests -- 220 total for Layla, up from 190, zero regressions.
+  Everything outside this scope (Voice, Vision, Computer Control, IoT,
+  Knowledge Graph, Skills/Learning, external Channels, Self-improvement)
+  is explicitly deferred with a stated reason in
+  `docs/mission-layla-1-plan.md` SS22, not silently dropped.
+
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD
