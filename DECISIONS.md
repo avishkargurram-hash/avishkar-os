@@ -1342,3 +1342,143 @@ same task concurrently (Priority 17.4's concern, not this one's).
 `docs/production-readiness.md` must state that resume-in-place has been
 verified via simulated crashes (fresh objects against the same on-disk
 store), not via an actual killed OS process.
+
+## ADR-0024: Concurrency hardening is narrow, additive, per-component locks — sized to the actual races found by audit, not a blanket rewrite; a bounded, justified exception to core/memory-factory/mcp-factory's locked status
+
+**Status:** Accepted · **Date:** 2026-08-11
+
+**Context:** Priority 17.4 of the Phase 17 directive requires auditing
+`EventBus`, `Scheduler`, Layla's `ExecutiveRuntime`, `DelegationEngine`,
+the Agent Framework, Memory, and `ToolRuntime` for shared mutable state
+and race conditions, defining concurrency/ordering guarantees, and
+adding locking/atomicity "ONLY where justified." The Phase 16 forensic
+audit had already flagged `EventBus._subscribers` and `Scheduler._heap`
+as mutated without synchronization but never verified whether that
+mattered in practice. Every test in this platform through Phase 17.3
+runs single-threaded; nothing had ever actually exercised these
+components under real concurrent access.
+
+**Decision:**
+1. **Audit first, by reading the actual mutation patterns, not by
+   assumption.** Concretely walked every named component's source for
+   read-modify-write sequences on shared mutable state. Found real,
+   confirmed races in: `ExecutionTracker.begin()` (check-then-act
+   idempotency-record creation -- the exact property idempotency exists
+   to guarantee, undermined under concurrency), `ApprovalManager.grant()
+   /deny()` (read-mutate-write on a shared `ApprovalRequest`),
+   `SessionManager.save()` and `AuditLogger.record()` (both a shared
+   index's read-modify-write), `Scheduler` (heap/dict mutation across
+   `schedule_once()`/`cancel()`/`tick()`), `EventBus`
+   (`_subscribers`/`_next_id`), `FileMemoryPolicy` (a *lost-update* bug:
+   whole-file load-mutate-save means two concurrent `remember()` calls
+   for different keys in the same kind can silently discard one
+   entirely), `SQLiteMemoryPolicy` (unusable cross-thread at all by
+   default -- `check_same_thread=True` -- not a subtle race but an
+   outright `ProgrammingError`), and `MetricsCollector.record()`
+   (counter increments). Found *no* race in `Orchestrator` (its
+   `_agents` dict is populated once at construction, read-only
+   afterward) or `InMemoryMemoryPolicy` (each operation is a single
+   dict op, atomic under the GIL) -- these were left untouched, because
+   nothing was actually wrong with them.
+2. **One lock per component instance, not per key/task/request id.**
+   Every fix above uses a single `threading.Lock`/`RLock` scoped to the
+   owning object, guarding only its own read-modify-write sequences.
+   Rejected per-key locking (see Alternatives) as unjustified complexity
+   for this platform's actual scale -- these are fast, local,
+   in-memory-or-disk operations, never a locked section spanning
+   network I/O.
+3. **Locks never wrap the actual work, only the bookkeeping.**
+   `ExecutionTracker.begin()`'s lock covers get-or-create, released
+   before `DelegationEngine` calls the orchestrator; `Scheduler.tick()`
+   pops/reschedules a due job under the lock, then calls its callback
+   *outside* it; `EventBus.publish()` snapshots matching handlers under
+   the lock, then invokes them outside it. Holding a lock across
+   arbitrary external work (an orchestrator call, a user callback) would
+   either serialize unrelated concurrent operations for no reason, or
+   deadlock outright if that work calls back into the locked component
+   (a callback that reschedules itself; an audit subscriber that
+   publishes another event).
+4. **`begin()`'s return gained a `claimed_this_call` marker, not a
+   changed return type.** The real race -- two threads observing the
+   same freshly-created `EXEC_REQUESTED` record and both proceeding --
+   needed a way to distinguish "I created this" from "I found one
+   already there," but both cases have identical `.status`. Rather than
+   changing `begin()`'s signature to a tuple (breaking every existing
+   call site across three already-committed priorities' worth of
+   tests), a non-persisted dynamic attribute on the returned
+   `ExecutionRecord` carries the distinction -- backward compatible
+   with every caller that only reads `.status`.
+   `_CLAIMED_NON_TERMINAL_STATES` (delegation.py) was extended to
+   include `EXEC_REQUESTED` alongside `AUTHORIZED`/`APPROVED`/
+   `EXECUTING`/`UNKNOWN`, using this marker to avoid the fix rejecting
+   the legitimate creator's own first call.
+5. **`ExecutiveRuntime` gets a per-task-id lock spanning the *entire*
+   `_advance()` call, including the reload inside `resume()`.** This is
+   the one lock in this pass that is deliberately coarser than "just
+   the bookkeeping": two `resume()` calls racing the same task id must
+   not each load their own stale snapshot before either one's work
+   runs, or the second (once unblocked) would redo the first's already-
+   completed delegation. Loading *inside* the lock, not before it, is
+   what closes this.
+6. **A bounded, justified exception to three "locked" frameworks'
+   status.** `core/` (Phase 1), `memory-factory` (Phase 5), and
+   `mcp-factory` (Phase 4) are otherwise treated as closed to
+   modification per this repository's own "later frameworks wrap,
+   never modify earlier locked frameworks" discipline (ADR-0020 and
+   throughout Layla's build). This priority is the deliberate,
+   directive-authorized exception: the Phase 17 directive explicitly
+   names EventBus, Memory, and ToolRuntime as audit/harden targets, and
+   every change is additive (a lock that changes nothing about
+   single-threaded behavior) -- verified concretely by re-running each
+   framework's own full pre-existing test suite unmodified (core: 47/47,
+   memory-factory: 24/24, mcp-factory: 70/70, all still passing).
+
+**Alternatives considered:**
+1. *Per-key/per-task-id locks everywhere (not just `ExecutiveRuntime`)*
+   -- rejected: needs its own lock-lifecycle management (when is a
+   per-key lock safe to forget without leaking memory indefinitely?)
+   for a benefit that only matters at far higher contention than this
+   platform's current scale; a single coarse lock per fast, local
+   component is simpler and no less correct at this scale.
+2. *A single global lock across all of Layla* -- rejected: would
+   serialize genuinely independent work (two different tasks, two
+   different approval requests) for no correctness reason, defeating
+   the entire purpose of "10 simultaneous tasks" working concurrently.
+3. *Change `ExecutionTracker.begin()`'s return type to `Tuple[Record,
+   bool]`* -- rejected in favor of the non-persisted attribute marker,
+   specifically to avoid a breaking API change to already-committed
+   Priority 17.2/17.3 test code for a distinction only `DelegationEngine`
+   itself needs to make.
+4. *Leave `FileMemoryPolicy`/`SQLiteMemoryPolicy`/`EventBus` alone,
+   document the races as known limitations instead of fixing them* --
+   rejected: `FileMemoryPolicy`'s bug is a silent, undetectable data
+   loss (a written key simply vanishes), not a theoretical edge case,
+   and `SQLiteMemoryPolicy` couldn't be used cross-thread *at all*
+   before this fix -- both were correctness bugs the directive's own
+   named audit targets, not stylistic nitpicks to defer.
+5. *Real OS-level file locking (fcntl/msvcrt) for
+   `FileMemoryPolicy` to also cover cross-process safety* -- rejected
+   as out of scope for this pass: the confirmed, reproduced bug was
+   single-process (multiple threads in one Python process), and cross-
+   process coordination is explicitly called out as unbuilt in
+   `docs/production-readiness.md` rather than partially/silently solved.
+
+**Consequences:** Ten files gained a lock: `execution.py`,
+`approval.py`, `session.py`, `audit.py`, `scheduler.py`, `runtime.py`
+(Layla, freely modifiable), plus `core/python/avishkar_core/
+event_bus.py`, `factories/memory-factory/python/avishkar_memory/
+backends/{file_backend,sqlite_backend}.py`, and `factories/mcp-factory/
+python/avishkar_integration/metrics.py` (the bounded, documented
+exception above). 11 new tests (`test_concurrency.py`) using real
+`threading.Thread`s and, where the natural race window is too narrow to
+hit reliably under the GIL's scheduling, a test double that sleeps
+mid-operation to widen it deterministically plus a `threading.Barrier`
+to force simultaneous entry. Zero regressions across Layla (170 → 178
+→ 189 tests through this priority) and the three touched external
+frameworks' own full suites. What remains explicitly unbuilt:
+cross-process/distributed coordination (no distributed lock, no
+multi-worker-safe file locking); a deeper audit of
+`UniversalToolRegistry`/rate-limit enforcement in mcp-factory beyond
+`MetricsCollector`. `docs/production-readiness.md` must state plainly
+that these locks provide single-process thread-safety, not
+multi-process/multi-worker safety.

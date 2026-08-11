@@ -44,6 +44,7 @@ from .execution import (
     EXEC_EXECUTING,
     EXEC_FAILED,
     EXEC_REJECTED,
+    EXEC_REQUESTED,
     EXEC_UNKNOWN,
     OP_READ,
     ExecutionTracker,
@@ -51,7 +52,19 @@ from .execution import (
 )
 from .types import RISK_LOW, DelegationRecord, PlanStep
 
-_CLAIMED_NON_TERMINAL_STATES = frozenset({EXEC_AUTHORIZED, EXEC_APPROVED, EXEC_EXECUTING, EXEC_UNKNOWN})
+# Priority 17.4 (ADR-0024): EXEC_REQUESTED is included here, not just
+# AUTHORIZED/APPROVED/EXECUTING/UNKNOWN. begin() (execution.py) is now
+# atomic w.r.t. other begin() calls on the same key -- only the FIRST
+# concurrent caller for a brand-new key ever observes "no existing
+# record" and creates one. A second, truly concurrent caller for the
+# same key observes that just-created REQUESTED record and must be
+# refused here exactly like AUTHORIZED/EXECUTING/UNKNOWN -- otherwise
+# two threads racing delegate() for the same key would both proceed to
+# invoke the orchestrator, which is precisely the duplicate-side-effect
+# idempotency exists to prevent.
+_CLAIMED_NON_TERMINAL_STATES = frozenset(
+    {EXEC_REQUESTED, EXEC_AUTHORIZED, EXEC_APPROVED, EXEC_EXECUTING, EXEC_UNKNOWN}
+)
 
 
 def _now() -> str:
@@ -90,7 +103,12 @@ class DelegationEngine:
                     step_id=plan_step.id, agent_name=cached.get("agent_name", ""), status="completed",
                     output=cached.get("output"), attempts=existing.attempts, completed_at=existing.updated_at,
                 )
-            if existing.status in _CLAIMED_NON_TERMINAL_STATES and operation_kind != OP_READ:
+            # `claimed_this_call` (Priority 17.4) distinguishes "my own
+            # begin() call just created this REQUESTED record, proceed"
+            # from "someone else already claimed this key" -- both look
+            # identical by .status alone (EXEC_REQUESTED either way).
+            just_claimed = getattr(existing, "claimed_this_call", False)
+            if not just_claimed and existing.status in _CLAIMED_NON_TERMINAL_STATES and operation_kind != OP_READ:
                 return DelegationRecord(
                     step_id=plan_step.id, agent_name="", status="failed",
                     error=(

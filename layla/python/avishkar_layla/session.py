@@ -11,6 +11,7 @@ enumeration method (see CONTRACT.md SS10 for why).
 from __future__ import annotations
 
 import dataclasses
+import threading
 from typing import Optional, Tuple
 
 from .memory_policy import LaylaMemoryPolicy
@@ -74,16 +75,23 @@ def _task_from_dict(data: dict) -> LaylaTask:
 class SessionManager:
     def __init__(self, memory: LaylaMemoryPolicy) -> None:
         self._memory = memory
+        # Priority 17.4 (ADR-0024): guards the index's read-modify-write
+        # (recall existing ids, add this one, write back) -- two
+        # concurrent save() calls for DIFFERENT tasks would otherwise
+        # race on the shared __index__ record and could lose one task's
+        # id from it (a classic lost-update).
+        self._lock = threading.Lock()
 
     def save(self, task: LaylaTask) -> None:
         self._memory.remember(
             _KIND, f"session:{task.id}", _task_to_dict(task),
             provenance="session-manager", importance="high",
         )
-        index_record = self._memory.recall(_KIND, _INDEX_KEY)
-        ids = set(index_record.value) if index_record else set()
-        ids.add(task.id)
-        self._memory.remember(_KIND, _INDEX_KEY, sorted(ids), provenance="session-manager")
+        with self._lock:
+            index_record = self._memory.recall(_KIND, _INDEX_KEY)
+            ids = set(index_record.value) if index_record else set()
+            ids.add(task.id)
+            self._memory.remember(_KIND, _INDEX_KEY, sorted(ids), provenance="session-manager")
 
     def load(self, task_id: str) -> Optional[LaylaTask]:
         record = self._memory.recall(_KIND, f"session:{task_id}")

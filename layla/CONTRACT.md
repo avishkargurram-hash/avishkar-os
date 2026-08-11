@@ -417,7 +417,101 @@ through to `DELEGATING`. Fixed by no longer passing `approval_manager=`
 into the `DelegationEngine` `ExecutiveRuntime` constructs internally —
 `DelegationEngine` still accepts it for direct, standalone use.
 
-## §17. Errors
+## §17. Concurrency model (Priority 17.4, ADR-0024)
+
+**Ordering guarantee**: two calls racing the *same* task id
+(`ExecutiveRuntime.handle_event()`/`.resume()`), the *same* idempotency
+key (`DelegationEngine.delegate()`/`ExecutionTracker`), or the *same*
+approval request id (`ApprovalManager.grant()`/`.deny()`/`.check()`)
+are serialized — one fully completes before the other's critical
+section begins. Two calls touching *different* task ids / idempotency
+keys / approval ids run fully concurrently — Layla does not serialize
+unrelated work.
+
+**What is locked, and why**:
+- `ExecutionTracker` (§15): one lock per instance, guarding
+  `begin()`/`transition()`/`resolve_unknown()`. `begin()`'s
+  get-or-create is a genuine check-then-act race — the returned
+  record's `claimed_this_call` attribute (not persisted) distinguishes
+  "I created this" from "I observed one already there," since both
+  cases return a record with `status == EXEC_REQUESTED`.
+  `_CLAIMED_NON_TERMINAL_STATES` (delegation.py) now includes
+  `EXEC_REQUESTED`, not just `AUTHORIZED`/`APPROVED`/`EXECUTING`/
+  `UNKNOWN` — a second caller observing a just-created REQUESTED record
+  it did not itself create is refused exactly like any other unresolved
+  in-flight state, for any non-`READ` operation.
+- `ApprovalManager` (§4): one lock, guarding
+  `request()`/`grant()`/`deny()`/`check()`/`_require()` — two
+  concurrent `grant()`/`deny()` calls on the same request id ("
+  simultaneous approvals") are serialized, never interleaved.
+- `SessionManager` (§10): one lock, guarding only the shared
+  `session:__index__` read-modify-write inside `save()` — the task
+  record itself is written outside the lock (each task has its own key,
+  no cross-task contention there).
+- `AuditLogger` (§9): one lock, guarding `record()`'s sequence-number
+  computation and index update — without it, two concurrent `record()`
+  calls for the same scope could compute the same sequence number and
+  one would silently overwrite the other's entry.
+- `Scheduler` (§7): one lock, guarding `_heap`/`_jobs`/`_callbacks`
+  across `schedule_once()`/`schedule_recurring()`/`cancel()`/`tick()` —
+  a job's own callback runs *outside* the lock (see scheduler.py's
+  module docstring for why: holding it during an arbitrary callback
+  would block every other scheduler operation, and a callback that
+  reschedules itself would deadlock on re-entry).
+- `ExecutiveRuntime`: one lock per task id (created lazily, never
+  freed — see runtime.py), guarding the *entire* `_advance()` call for
+  that task, including the (re)load from `SessionManager` inside
+  `resume()`. Loading inside the lock, not before it, is what prevents
+  two racing `resume()` calls on the same task from each working off a
+  stale in-memory snapshot.
+- `EventBus` (core, Phase 1), `FileMemoryPolicy`/`SQLiteMemoryPolicy`
+  (memory-factory, Phase 5), `MetricsCollector` (mcp-factory, Phase 4):
+  each gained a narrow, additive lock as part of this same hardening
+  pass — see the module docstring in each file for the specific race
+  it closes. These are documented exceptions to those frameworks'
+  otherwise-locked status, justified because the Phase 17 directive
+  explicitly names EventBus/Memory/ToolRuntime as audit/harden targets
+  and because none of these changes alter single-threaded behavior
+  (every pre-existing test in those frameworks still passes unmodified).
+
+**Deliberately coarse, not per-key**: every lock above is one lock per
+*component instance*, not one per task/key/request id. These are fast,
+local, in-memory-or-disk operations (no network I/O inside a locked
+section anywhere in this list) — a single lock is simple and correct;
+per-key locking would need its own lock-lifecycle management (when is
+it safe to forget a per-key lock?) for a benefit that only matters
+under far higher contention than this platform's current scale.
+
+**What is explicitly NOT covered**:
+- **Cross-process/distributed coordination.** Every lock here is a
+  `threading.Lock`/`RLock` — it serializes threads within one Python
+  process. Two separate OS processes (e.g. two workers behind a load
+  balancer) calling `resume()` on the same task id, or writing to the
+  same `FileMemoryPolicy` directory, are not coordinated by anything in
+  this codebase. A real multi-process/multi-worker deployment needs an
+  external coordination mechanism (a distributed lock, a single-writer
+  process, a real database with row-level locking) — not built here;
+  see `docs/production-readiness.md`.
+- **`Orchestrator`/`ChiefDomainAgent` (agent-factory, Phase 3)**:
+  audited, not modified. `Orchestrator._agents` is populated once at
+  construction and never mutated afterward, so concurrent `route()`
+  calls only ever *read* it — safe by construction, no lock needed.
+  `InMemoryMemoryPolicy`'s `remember()`/`recall()`/`forget()` are each
+  a single dict operation (atomic under the GIL), not a read-modify-
+  write sequence like `FileMemoryPolicy`'s — also safe without a lock.
+- **`UniversalToolRegistry`/rate-limit enforcement (mcp-factory)**: not
+  deeply audited this pass; `MetricsCollector` (the one confirmed race
+  found there) was fixed. See `docs/production-readiness.md` for what
+  remains unverified.
+- **Scheduler `cancel()` racing `tick()` at the exact moment a job's
+  callback is already running**: `cancel()` can still return `True` for
+  a job whose callback started (under the lock) a moment before
+  `cancel()` was called — the lock prevents corruption and duplicate
+  *firing*, not a callback that is already executing from being
+  "un-fired." This is the same lazy-deletion tradeoff the scheduler
+  already documented before this priority, not a new gap.
+
+## §18. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,

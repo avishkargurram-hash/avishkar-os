@@ -500,7 +500,26 @@ architecturally significant), tests, docs, and commit.
   `DelegationEngine`'s own per-step approval re-check, redundant with
   `ExecutiveRuntime`'s task-level gate, could wrongly deny a resumed,
   already-granted delegation. 8 new tests (178 total for Layla).
-- 💤 17.4 Concurrency & Event System Hardening
+- ✅ **17.4 Concurrency & Event System Hardening** (ADR-0024) —
+  audited `EventBus`/`Scheduler`/`ExecutiveRuntime`/`DelegationEngine`/
+  Agent Framework/Memory/`ToolRuntime` by reading actual mutation
+  patterns; found and fixed real races in `ExecutionTracker.begin()`
+  (a check-then-act race undermining Priority 17.2's own idempotency
+  guarantee), `ApprovalManager`, `SessionManager`, `AuditLogger`,
+  `Scheduler`, and — as a narrow, directive-authorized exception to
+  three otherwise-locked frameworks — `core`'s `EventBus`,
+  `memory-factory`'s `FileMemoryPolicy` (a real silent-data-loss bug)/
+  `SQLiteMemoryPolicy` (previously unusable cross-thread at all), and
+  `mcp-factory`'s `MetricsCollector`. Found `Orchestrator`/
+  `ChiefDomainAgent`/`InMemoryMemoryPolicy` already safe and left them
+  untouched. One lock per component instance (not per-key), never held
+  across external work (an orchestrator call, a scheduled callback);
+  `ExecutiveRuntime` additionally gets one lock per task id spanning
+  `resume()`'s reload-and-advance so racing resumes can't each work off
+  a stale snapshot. 11 new tests (`test_concurrency.py`, real
+  `threading.Thread`s) — 189 total for Layla; all three touched
+  external frameworks' own full suites still pass unmodified (core
+  47/47, memory-factory 24/24, mcp-factory 70/70).
 - 💤 17.5 Controlled Live Integration Validation
 
 ## How this roadmap changes

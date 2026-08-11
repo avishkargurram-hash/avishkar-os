@@ -53,7 +53,7 @@ layla/
 ├── examples/
 │   ├── end_to_end_scenario.py       Part IX's real, narrated demonstration
 │   └── crash_recovery_scenario.py   resume-in-place demonstration (Priority 17.3)
-└── python/tests/                   178 tests (as of Priority 17.3)
+└── python/tests/                   189 tests (as of Priority 17.4)
 ```
 
 ## Naming Standards
@@ -315,6 +315,60 @@ decision is made; there is no polling loop that notices a
 coordination if multiple processes might try to `resume()` the same
 task concurrently — see Priority 17.4.
 
+# Concurrency Model (Priority 17.4, ADR-0024)
+
+**Status: IMPLEMENTED** for single-process thread-safety;
+**explicitly NOT** cross-process/distributed. Full detail in
+CONTRACT.md §17 — summary here:
+
+**Ordering guarantee**: two calls racing the *same* task id, the same
+delegation idempotency key, or the same approval request id are
+serialized — one completes before the other's critical section begins.
+Different task ids / keys / request ids run fully concurrently; Layla
+never serializes unrelated work.
+
+**What's locked**: `ExecutionTracker` (the real race:
+`begin()`'s check-then-act, closed via a non-persisted
+`claimed_this_call` marker so a concurrent observer of a just-created
+record is distinguishable from its creator), `ApprovalManager`
+(`grant()`/`deny()`/`check()`), `SessionManager` (the shared index),
+`AuditLogger` (the shared per-scope sequence/index), `Scheduler`
+(heap/jobs/callbacks — a job's own callback runs outside the lock),
+and `ExecutiveRuntime` (one lock per task id, spanning the *entire*
+`_advance()` call including `resume()`'s reload — this is the one
+deliberately coarse lock in the set, because loading *before* the lock
+would let a second racing `resume()` work off a stale snapshot).
+
+**A bounded, documented exception to three "locked" frameworks**: this
+priority also added narrow, additive locks to `core/`'s `EventBus`,
+`memory-factory`'s `FileMemoryPolicy`/`SQLiteMemoryPolicy`, and
+`mcp-factory`'s `MetricsCollector` — each framework's own full
+pre-existing test suite still passes unmodified (core 47/47,
+memory-factory 24/24, mcp-factory 70/70). `FileMemoryPolicy`'s fix in
+particular closes a real, silent data-loss bug (concurrent `remember()`
+calls to different keys in the same kind file could lose one entirely
+via a whole-file load-mutate-save race) — not a theoretical concern.
+`SQLiteMemoryPolicy` previously couldn't be used cross-thread at all
+(`check_same_thread=True` by default); it now can be.
+
+**A real, previously-undiscovered bug this priority found**:
+`ExecutionTracker.begin()`'s original get-or-create was a genuine
+check-then-act race — two threads could both observe "no record for
+this key" and both create one, defeating the exact guarantee Priority
+17.2 exists to provide. Closed with a lock plus a `claimed_this_call`
+marker (see `execution.py`); `delegation.py`'s
+`_CLAIMED_NON_TERMINAL_STATES` now includes `EXEC_REQUESTED`.
+
+**What's NOT built**: cross-process/distributed coordination (no
+distributed lock, no multi-worker-safe file locking — two separate OS
+processes can still race); a deeper audit of
+`UniversalToolRegistry`/rate-limit enforcement beyond `MetricsCollector`;
+`Orchestrator`/`ChiefDomainAgent`/`InMemoryMemoryPolicy` were audited
+and found already safe (read-only shared state / single atomic dict
+ops respectively), so nothing was changed there. See
+`layla/python/tests/test_concurrency.py` for the real,
+`threading.Thread`-based proof behind every claim above.
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
@@ -400,8 +454,8 @@ already covers it — extending that list requires an ADR.
 
 # Testing Guide
 
-178 tests as of Priority 17.3 (119 Phase 16 + 30 Priority 17.1 + 21
-Priority 17.2 + 8 Priority 17.3), run via:
+189 tests as of Priority 17.4 (119 Phase 16 + 30 Priority 17.1 + 21
+Priority 17.2 + 8 Priority 17.3 + 11 Priority 17.4), run via:
 ```bash
 PYTHONPATH="core/python;router/python;factories/agent-factory/python;factories/knowledge-factory/python;factories/mcp-factory/python;factories/memory-factory/python;factories/security-factory/python;layla/python" \
   python -m unittest discover -s layla/python/tests

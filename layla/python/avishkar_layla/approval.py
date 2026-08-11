@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
+import threading
 import time
 from typing import Any, Callable, Dict, Optional
 
@@ -62,6 +63,14 @@ class ApprovalManager:
         self._clock = clock
         self._default_ttl_seconds = default_ttl_seconds
         self._requests: Dict[str, ApprovalRequest] = {}
+        # Priority 17.4 (ADR-0024): a single lock over every read-
+        # modify-write sequence below -- grant()/deny() each do
+        # _require() (read) then mutate then _save() (write); two
+        # concurrent grant()/deny() calls on the same request_id (the
+        # "simultaneous approvals" scenario) must not interleave.
+        # RLock because require_granted() calls check() calls
+        # _require(), all while already holding the lock.
+        self._lock = threading.RLock()
 
     def _save(self, record: ApprovalRequest) -> None:
         self._requests[record.id] = record
@@ -74,73 +83,77 @@ class ApprovalManager:
     def request(
         self, task_id: str, action_description: str, risk_level: str, *, requested_by: Optional[str] = None
     ) -> ApprovalRequest:
-        now = self._clock()
-        request_id = new_id("approval")
+        with self._lock:
+            now = self._clock()
+            request_id = new_id("approval")
 
-        if risk_level == RISK_LOW:
-            record = ApprovalRequest(
-                id=request_id, task_id=task_id, action_description=action_description,
-                risk_level=risk_level, status="granted", auto=True,
-                created_at=_iso(now), decided_at=_iso(now), reason="auto-granted: LOW risk",
-                requested_by=requested_by,
-            )
-        elif self._approval_gate is not None:
-            # Synchronous decision via the reused ApprovalGate -- see
-            # module docstring.
-            granted = self._approval_gate.evaluate(Task(input=action_description))
-            record = ApprovalRequest(
-                id=request_id, task_id=task_id, action_description=action_description,
-                risk_level=risk_level, status="granted" if granted else "denied",
-                created_at=_iso(now), decided_at=_iso(now),
-                reason="ApprovalGate decision", requested_by=requested_by,
-            )
-        else:
-            record = ApprovalRequest(
-                id=request_id, task_id=task_id, action_description=action_description,
-                risk_level=risk_level, status="pending",
-                created_at=_iso(now), expiration=_iso(now + self._default_ttl_seconds),
-                requested_by=requested_by,
-            )
+            if risk_level == RISK_LOW:
+                record = ApprovalRequest(
+                    id=request_id, task_id=task_id, action_description=action_description,
+                    risk_level=risk_level, status="granted", auto=True,
+                    created_at=_iso(now), decided_at=_iso(now), reason="auto-granted: LOW risk",
+                    requested_by=requested_by,
+                )
+            elif self._approval_gate is not None:
+                # Synchronous decision via the reused ApprovalGate -- see
+                # module docstring.
+                granted = self._approval_gate.evaluate(Task(input=action_description))
+                record = ApprovalRequest(
+                    id=request_id, task_id=task_id, action_description=action_description,
+                    risk_level=risk_level, status="granted" if granted else "denied",
+                    created_at=_iso(now), decided_at=_iso(now),
+                    reason="ApprovalGate decision", requested_by=requested_by,
+                )
+            else:
+                record = ApprovalRequest(
+                    id=request_id, task_id=task_id, action_description=action_description,
+                    risk_level=risk_level, status="pending",
+                    created_at=_iso(now), expiration=_iso(now + self._default_ttl_seconds),
+                    requested_by=requested_by,
+                )
 
-        self._save(record)
-        return record
+            self._save(record)
+            return record
 
     def grant(self, request_id: str, *, session_id: Optional[str] = None, reason: str = "") -> ApprovalRequest:
-        record = self._require(request_id)
-        if self._is_expired(record):
-            raise ApprovalExpiredError(f"approval request {request_id!r} expired before it was granted")
-        if self._authorization is not None:
-            session = self._authorization.require(session_id, PERM_APPROVE)
-            if record.requested_by is not None and session.principal.id == record.requested_by:
-                raise PermissionDeniedError(
-                    f"principal {session.principal.id!r} cannot approve its own request {request_id!r} "
-                    f"(self-approval is never allowed)"
-                )
-        record.status = "granted"
-        record.decided_at = _iso(self._clock())
-        record.reason = reason
-        self._save(record)
-        return record
+        with self._lock:
+            record = self._require(request_id)
+            if self._is_expired(record):
+                raise ApprovalExpiredError(f"approval request {request_id!r} expired before it was granted")
+            if self._authorization is not None:
+                session = self._authorization.require(session_id, PERM_APPROVE)
+                if record.requested_by is not None and session.principal.id == record.requested_by:
+                    raise PermissionDeniedError(
+                        f"principal {session.principal.id!r} cannot approve its own request {request_id!r} "
+                        f"(self-approval is never allowed)"
+                    )
+            record.status = "granted"
+            record.decided_at = _iso(self._clock())
+            record.reason = reason
+            self._save(record)
+            return record
 
     def deny(self, request_id: str, *, session_id: Optional[str] = None, reason: str = "") -> ApprovalRequest:
-        record = self._require(request_id)
-        if self._authorization is not None:
-            self._authorization.require(session_id, PERM_APPROVE)
-        record.status = "denied"
-        record.decided_at = _iso(self._clock())
-        record.reason = reason
-        self._save(record)
-        return record
+        with self._lock:
+            record = self._require(request_id)
+            if self._authorization is not None:
+                self._authorization.require(session_id, PERM_APPROVE)
+            record.status = "denied"
+            record.decided_at = _iso(self._clock())
+            record.reason = reason
+            self._save(record)
+            return record
 
     def check(self, request_id: str) -> str:
         """Returns 'pending' | 'granted' | 'denied' | 'expired' -- expiry
         is always computed live from `expiration`, never a stored flag
         that could drift (CONTRACT.md SS4).
         """
-        record = self._require(request_id)
-        if record.status == "pending" and self._is_expired(record):
-            return "expired"
-        return record.status
+        with self._lock:
+            record = self._require(request_id)
+            if record.status == "pending" and self._is_expired(record):
+                return "expired"
+            return record.status
 
     def require_granted(self, request_id: str) -> None:
         status = self.check(request_id)

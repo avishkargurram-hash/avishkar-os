@@ -215,6 +215,15 @@ Stated honestly, per STANDARDS.md's rule that this section must be true:
 - **Rate limits are declared, not enforced.** `ToolContract.rate_limit`
   exists in the contract; `ToolRuntime` does not yet throttle calls
   against it.
+- **`MetricsCollector` is thread-safe; the rest of `ToolRuntime`/
+  `UniversalToolRegistry` was not deeply audited for concurrency**
+  (Avishkar OS Phase 17.4 hardening, ADR-0024). `MetricsCollector.
+  record()`'s counter increments were a confirmed read-modify-write
+  race under concurrent tool calls and are now locked. Rate-limit
+  enforcement (already unimplemented, above) and registry mutation
+  were not part of that pass — treat concurrent `ToolRuntime.execute()`
+  calls as verified thread-safe only for the metrics they record, not
+  for every internal data structure.
 - **Two protocol adapters exist** (MCP, REST); GraphQL, Python SDK, CLI,
   Database, Filesystem, and Webhook are documented extension points with
   no code — see Extension Guide.

@@ -21,8 +21,9 @@ untestable "trust me").
 
 from __future__ import annotations
 
+import threading
 import time
-from typing import Any, Callable, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple
 
 from avishkar_agent import Orchestrator
 from avishkar_core import get_logger
@@ -137,6 +138,26 @@ class ExecutiveRuntime:
         self._sleep_fn = sleep_fn
         self._logger = logger or get_logger("layla.runtime")
 
+        # Priority 17.4 (ADR-0024): one lock per task id, created
+        # lazily and never removed (a bounded-lifetime deployment can
+        # restart the process to reclaim it -- see README.md's
+        # concurrency model for why per-task-id, not a single global
+        # lock: two DIFFERENT tasks must be able to run _advance()
+        # fully concurrently, e.g. "10 simultaneous tasks" or several
+        # agents delegating in parallel; only two callers racing the
+        # *same* task id (e.g. a duplicate event redelivery, or two
+        # resume() calls after a flaky restart) need to be serialized.
+        self._task_locks: Dict[str, threading.Lock] = {}
+        self._task_locks_guard = threading.Lock()
+
+    def _lock_for_task(self, task_id: str) -> threading.Lock:
+        with self._task_locks_guard:
+            lock = self._task_locks.get(task_id)
+            if lock is None:
+                lock = threading.Lock()
+                self._task_locks[task_id] = lock
+            return lock
+
     @property
     def notifications(self):
         return self._notifications
@@ -178,7 +199,8 @@ class ExecutiveRuntime:
 
         task = LaylaTask(input=input_text, principal_id=principal_id)
         self._audit.record("layla.task.received", {"input": input_text}, task_id=task.id, principal_id=principal_id)
-        return self._advance(task, session_id=session_id)
+        with self._lock_for_task(task.id):
+            return self._advance(task, session_id=session_id)
 
     def resume(self, task_id: str, *, session_id: Optional[str] = None) -> LaylaTask:
         """Resume-in-place (Priority 17.3, ADR-0023): reloads a
@@ -196,33 +218,45 @@ class ExecutiveRuntime:
         persisted. Raises `PermissionDeniedError` if `authorization` is
         wired and the resuming session belongs to a different principal
         than the one the task was originally created for.
+
+        Concurrency (Priority 17.4, ADR-0024): the task is (re)loaded
+        from durable storage *after* acquiring this task id's lock, not
+        before -- two `resume()` calls racing the same task_id (a
+        duplicate event redelivery, two recovery scripts started at
+        once) would otherwise each load their own stale in-memory
+        snapshot before either one's `_advance()` runs, and the second
+        to actually execute would resume from an outdated state and
+        redo work the first one already finished. Loading inside the
+        lock means the second caller, once unblocked, re-reads
+        whatever the first caller just persisted.
         """
         principal_id: Optional[str] = None
         if self._authorization is not None:
             session = self._authorization.require(session_id, PERM_COMMAND)
             principal_id = session.principal.id
 
-        task = self._session.load(task_id)
-        if task is None:
-            raise SessionNotFoundError(f"no persisted task {task_id!r} to resume")
+        with self._lock_for_task(task_id):
+            task = self._session.load(task_id)
+            if task is None:
+                raise SessionNotFoundError(f"no persisted task {task_id!r} to resume")
 
-        if self._authorization is not None and task.principal_id is not None and task.principal_id != principal_id:
-            raise PermissionDeniedError(
-                f"session principal {principal_id!r} may not resume task {task_id!r}, "
-                f"which was created for a different principal"
+            if self._authorization is not None and task.principal_id is not None and task.principal_id != principal_id:
+                raise PermissionDeniedError(
+                    f"session principal {principal_id!r} may not resume task {task_id!r}, "
+                    f"which was created for a different principal"
+                )
+
+            if task.state in TERMINAL_STATES or task.state == REQUIRES_HUMAN:
+                # Nothing automatic to do: a terminal task is already
+                # done; REQUIRES_HUMAN needs an explicit human decision
+                # (fix the blocked_reason, grant/deny a stuck approval)
+                # before any further automatic progress is safe to make.
+                return task
+
+            self._audit.record(
+                "layla.task.resumed", {"from_state": task.state}, task_id=task.id, principal_id=task.principal_id,
             )
-
-        if task.state in TERMINAL_STATES or task.state == REQUIRES_HUMAN:
-            # Nothing automatic to do: a terminal task is already done;
-            # REQUIRES_HUMAN needs an explicit human decision (fix the
-            # blocked_reason, grant/deny a stuck approval) before any
-            # further automatic progress is safe to make.
-            return task
-
-        self._audit.record(
-            "layla.task.resumed", {"from_state": task.state}, task_id=task.id, principal_id=task.principal_id,
-        )
-        return self._advance(task, session_id=session_id)
+            return self._advance(task, session_id=session_id)
 
     def _advance(self, task: LaylaTask, *, session_id: Optional[str]) -> LaylaTask:
         """The single pipeline both handle_event() (task.state ==

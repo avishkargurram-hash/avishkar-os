@@ -71,8 +71,18 @@ and `build_memory_policy` resolution tests for all three config values.
 - No TTL/expiry policy — `episodic` memories accumulate indefinitely;
   retention policy is a Future Roadmap item, same gap `memory-factory`'s
   original placeholder README already flagged.
-- `SQLiteMemoryPolicy` is single-connection, not safe for concurrent
-  writers from multiple processes.
+- Both backends are now thread-safe **within a single process**
+  (Avishkar OS Phase 17.4 hardening, ADR-0024): `FileMemoryPolicy` and
+  `SQLiteMemoryPolicy` each gained an internal lock closing real races
+  in their read-modify-write operations (`FileMemoryPolicy`'s in
+  particular was a genuine silent-data-loss bug, not just a
+  theoretical one — concurrent `remember()` calls for different keys
+  in the same kind file could lose one entirely). Neither is safe for
+  **concurrent writers across multiple OS processes** — no file
+  locking (`FileMemoryPolicy`) or WAL-mode coordination
+  (`SQLiteMemoryPolicy`) is implemented; a multi-process/multi-worker
+  deployment needs external coordination this framework doesn't
+  provide.
 
 ## Future Roadmap
 - Retention/expiry policies (PII-aware) per STANDARDS.md's original

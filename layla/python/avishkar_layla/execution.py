@@ -13,6 +13,7 @@ from __future__ import annotations
 import dataclasses
 import datetime
 import re
+import threading
 import time
 from typing import Any, Callable, Mapping, Optional
 
@@ -101,6 +102,25 @@ class ExecutionTracker:
     def __init__(self, memory: LaylaMemoryPolicy, *, clock: Callable[[], float] = time.time) -> None:
         self._memory = memory
         self._clock = clock
+        # Priority 17.4 (ADR-0024): a single, coarse-grained lock over
+        # every mutating operation on this tracker instance. begin()'s
+        # get-then-create is a real check-then-act race under real
+        # concurrency (two threads both see "no record," both create
+        # one) -- the exact thing idempotency exists to prevent.
+        # Coarse rather than per-key: these are fast, local-memory-
+        # backend calls (no network I/O), so a single lock is simple
+        # and correct rather than needing per-key lock lifecycle
+        # management; see CONTRACT.md SS18 and README.md's concurrency
+        # model for why this is the deliberate tradeoff, not an
+        # oversight. The lock is held only across the read+create/
+        # read+modify step, never across the actual delegated work
+        # (DelegationEngine calls the orchestrator between begin() and
+        # the final transition(), entirely unlocked).
+        # RLock, not Lock: resolve_unknown() holds the lock across its
+        # own read-and-check, then calls transition() (which also takes
+        # the lock) to perform the actual write -- a plain Lock would
+        # deadlock on that re-entry from the same thread.
+        self._lock = threading.RLock()
 
     def get(self, idempotency_key: str) -> Optional[ExecutionRecord]:
         record = self._memory.recall(_KIND, f"execution:{idempotency_key}")
@@ -110,47 +130,65 @@ class ExecutionTracker:
         """Idempotent: if this key already has a record, returns the
         EXISTING record unchanged rather than resetting it -- the
         caller inspects `.status` to decide what to do (CONTRACT.md
-        SS16). A brand-new key gets a fresh REQUESTED record.
+        SS16). A brand-new key gets a fresh REQUESTED record, and that
+        creation is atomic with respect to other begin() calls on the
+        same tracker (Priority 17.4): only one concurrent caller ever
+        observes "no existing record" for a given key.
 
         Raises IdempotencyConflictError if the same key was already
         used for a *different* operation (mismatched description) --
         a key-collision bug or an attempted reuse of one operation's
         idempotency key for another must never silently return the
         wrong cached result.
+
+        The returned record also carries a `claimed_this_call`
+        attribute (Priority 17.4; not a persisted dataclass field --
+        never round-trips through get()/dataclasses.asdict) that is
+        `True` only for the caller whose begin() actually created the
+        record, and `False` for every other caller (concurrent or
+        sequential) who found one already there. `DelegationEngine`
+        uses this to distinguish "I own this key, proceed" from "this
+        key is already claimed, refuse" -- both cases return a record
+        with `status == EXEC_REQUESTED` and would be indistinguishable
+        by status alone.
         """
-        existing = self.get(idempotency_key)
-        if existing is not None:
-            if existing.description != description:
-                raise IdempotencyConflictError(
-                    f"idempotency_key {idempotency_key!r} was already used for a different operation "
-                    f"(original: {existing.description!r}, this call: {description!r})"
-                )
-            return existing
-        now = _iso(self._clock())
-        record = ExecutionRecord(
-            idempotency_key=idempotency_key, operation_kind=operation_kind, description=description,
-            status=EXEC_REQUESTED, created_at=now, updated_at=now,
-        )
-        self._save(record)
+        with self._lock:
+            existing = self.get(idempotency_key)
+            if existing is not None:
+                if existing.description != description:
+                    raise IdempotencyConflictError(
+                        f"idempotency_key {idempotency_key!r} was already used for a different operation "
+                        f"(original: {existing.description!r}, this call: {description!r})"
+                    )
+                existing.claimed_this_call = False
+                return existing
+            now = _iso(self._clock())
+            record = ExecutionRecord(
+                idempotency_key=idempotency_key, operation_kind=operation_kind, description=description,
+                status=EXEC_REQUESTED, created_at=now, updated_at=now,
+            )
+            record.claimed_this_call = True
+            self._save(record)
         return record
 
     def transition(
         self, idempotency_key: str, new_status: str, *,
         result: Optional[Mapping[str, Any]] = None, error: Optional[str] = None, increment_attempts: bool = False,
     ) -> ExecutionRecord:
-        record = self.get(idempotency_key)
-        if record is None:
-            raise KeyError(f"no ExecutionRecord for idempotency_key {idempotency_key!r} -- call begin() first")
-        record.status = new_status
-        if result is not None:
-            record.result = dict(result)
-        if error is not None:
-            record.error = error
-        if increment_attempts:
-            record.attempts += 1
-        record.updated_at = _iso(self._clock())
-        self._save(record)
-        return record
+        with self._lock:
+            record = self.get(idempotency_key)
+            if record is None:
+                raise KeyError(f"no ExecutionRecord for idempotency_key {idempotency_key!r} -- call begin() first")
+            record.status = new_status
+            if result is not None:
+                record.result = dict(result)
+            if error is not None:
+                record.error = error
+            if increment_attempts:
+                record.attempts += 1
+            record.updated_at = _iso(self._clock())
+            self._save(record)
+            return record
 
     def resolve_unknown(self, idempotency_key: str, resolved_status: str, *, note: str = "") -> ExecutionRecord:
         """The explicit, human/caller-driven resolution path for an
@@ -161,15 +199,16 @@ class ExecutionTracker:
         record, so it can't be used to silently overwrite a real
         COMPLETED/FAILED outcome.
         """
-        record = self.get(idempotency_key)
-        if record is None:
-            raise KeyError(f"no ExecutionRecord for idempotency_key {idempotency_key!r}")
-        if record.status != EXEC_UNKNOWN:
-            raise ValueError(
-                f"resolve_unknown() called on a record with status {record.status!r}, not UNKNOWN -- "
-                f"only an uncertain outcome needs manual resolution"
-            )
-        return self.transition(idempotency_key, resolved_status, error=note or record.error)
+        with self._lock:
+            record = self.get(idempotency_key)
+            if record is None:
+                raise KeyError(f"no ExecutionRecord for idempotency_key {idempotency_key!r}")
+            if record.status != EXEC_UNKNOWN:
+                raise ValueError(
+                    f"resolve_unknown() called on a record with status {record.status!r}, not UNKNOWN -- "
+                    f"only an uncertain outcome needs manual resolution"
+                )
+            return self.transition(idempotency_key, resolved_status, error=note or record.error)
 
     def _save(self, record: ExecutionRecord) -> None:
         self._memory.remember(

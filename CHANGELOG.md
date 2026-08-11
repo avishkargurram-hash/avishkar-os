@@ -401,4 +401,47 @@ its first consumer.
   collapsing to `REQUIRES_HUMAN` once actually denied/expired. 8 new
   tests (178 total for Layla).
 
+- **Phase 17.4 (Concurrency & Event System Hardening) locked
+  (ADR-0024)**: audited `EventBus`, `Scheduler`, `ExecutiveRuntime`,
+  `DelegationEngine`, the Agent Framework, Memory, and `ToolRuntime` by
+  reading actual mutation patterns rather than assuming. Found and
+  fixed real races: `ExecutionTracker.begin()`'s get-or-create was a
+  genuine check-then-act race that could let two concurrent callers
+  both create an idempotency record for the same key -- defeating the
+  exact guarantee Priority 17.2 exists to provide; closed with a lock
+  plus a non-persisted `claimed_this_call` marker on the returned
+  record (distinguishing "I created this" from "I observed one already
+  there," since both cases share the same `EXEC_REQUESTED` status), and
+  `_CLAIMED_NON_TERMINAL_STATES` now includes `EXEC_REQUESTED`.
+  `ApprovalManager.grant()`/`deny()`, `SessionManager.save()`'s shared
+  index, `AuditLogger.record()`'s shared per-scope sequence number, and
+  `Scheduler`'s heap/jobs/callbacks all gained a guarding lock (a
+  callback/handler never runs while the lock is held, to avoid blocking
+  unrelated operations or deadlocking on re-entrant callbacks).
+  `ExecutiveRuntime` gained one lock per task id spanning the *entire*
+  `_advance()` call, including `resume()`'s reload -- closing a real gap
+  where two racing `resume()` calls on the same task could each work
+  off a stale in-memory snapshot and duplicate delegated work. As a
+  narrow, directive-authorized exception to three otherwise-locked
+  frameworks (justified because Phase 17 explicitly names EventBus/
+  Memory/ToolRuntime as audit/harden targets, and because every change
+  is additive with zero effect on single-threaded behavior): `core`'s
+  `EventBus` gained a lock around `_subscribers`/`_next_id`;
+  `memory-factory`'s `FileMemoryPolicy` gained a lock closing a real,
+  silent data-loss bug (concurrent `remember()` calls for different
+  keys in the same kind file could lose one entirely via a whole-file
+  load-mutate-save race) and `SQLiteMemoryPolicy` gained
+  `check_same_thread=False` plus a lock (it previously could not be
+  used cross-thread *at all*); `mcp-factory`'s `MetricsCollector`
+  gained a lock around its counter increments. `Orchestrator`/
+  `ChiefDomainAgent`/`InMemoryMemoryPolicy` were audited and found
+  already safe (read-only shared state after construction / single
+  atomic dict operations, respectively) and left untouched. 11 new
+  tests (`test_concurrency.py`, real `threading.Thread`s, a sleep-
+  injecting test double plus `threading.Barrier` to deterministically
+  widen and hit race windows too narrow for natural GIL scheduling) --
+  189 total for Layla, up from 178, zero regressions; all three touched
+  external frameworks' own full test suites also still pass unmodified
+  (core 47/47, memory-factory 24/24, mcp-factory 70/70).
+
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

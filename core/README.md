@@ -114,6 +114,14 @@ logger.info("starting", timeout=config.get("router.timeout"))
   work (open a connection, warm a cache) — don't register just to appear
   in a list; that's what `list()` without registration overhead is for
   once discovery-only needs arise (see Future Roadmap).
+- `EventBus` is thread-safe within a single process (Avishkar OS Phase
+  17.4 hardening, ADR-0024): `subscribe()`/`unsubscribe()`/`publish()`
+  are internally locked. A subscribed handler still runs outside that
+  lock, so a handler that raises or blocks doesn't corrupt the
+  subscriber list, but a slow handler does delay delivery to the
+  remaining handlers in that `publish()` call (synchronous delivery is
+  unchanged from Phase 1 — see CONTRACT.md SS3). Not safe across
+  multiple OS processes — this remains a single-process, in-memory bus.
 
 ## Anti-Patterns
 - Reaching into another component's internals instead of going through

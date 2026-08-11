@@ -2,12 +2,27 @@
 
 See CONTRACT.md SS3 for the full contract, and schemas/event.schema.json
 for the Event envelope shape.
+
+Concurrency (Priority 17.4 platform-wide hardening pass, ADR-0024):
+`_subscribers`/`_next_id` are guarded by a lock. This is a narrow,
+additive exception to core/'s Phase 1 "locked" status -- justified
+because the Phase 17 directive explicitly names EventBus as an audit/
+harden target, and because the fix changes nothing about single-
+threaded behavior (every existing core/ test still passes unmodified).
+subscribe()/unsubscribe() mutate the dict/list; publish() takes a
+consistent snapshot of matching handlers under the lock, then invokes
+them *outside* it -- holding the lock during an arbitrary handler
+would block every other publish()/subscribe()/unsubscribe() call for
+as long as that handler runs, and a handler that itself calls back
+into publish()/subscribe() (a realistic pattern -- see AuditLogger
+subscribers) would deadlock on a non-reentrant lock.
 """
 
 from __future__ import annotations
 
 import dataclasses
 import datetime
+import threading
 import uuid
 from typing import Callable, Dict, List
 
@@ -40,19 +55,22 @@ class EventBus:
     def __init__(self) -> None:
         self._subscribers: Dict[str, List[Subscription]] = {}
         self._next_id = 0
+        self._lock = threading.Lock()
 
     def subscribe(self, event_type: str, handler: Callable[[Event], None]) -> Subscription:
         """event_type "*" subscribes to every event (for logging/audit use)."""
-        self._next_id += 1
-        subscription = Subscription(event_type=event_type, handler=handler, _id=self._next_id)
-        self._subscribers.setdefault(event_type, []).append(subscription)
-        return subscription
+        with self._lock:
+            self._next_id += 1
+            subscription = Subscription(event_type=event_type, handler=handler, _id=self._next_id)
+            self._subscribers.setdefault(event_type, []).append(subscription)
+            return subscription
 
     def unsubscribe(self, subscription: Subscription) -> None:
-        bucket = self._subscribers.get(subscription.event_type, [])
-        self._subscribers[subscription.event_type] = [
-            s for s in bucket if s._id != subscription._id
-        ]
+        with self._lock:
+            bucket = self._subscribers.get(subscription.event_type, [])
+            self._subscribers[subscription.event_type] = [
+                s for s in bucket if s._id != subscription._id
+            ]
 
     def publish(self, event_type: str, payload: dict, source: str) -> Event:
         """Construct and deliver an Event to every matching handler,
@@ -67,7 +85,8 @@ class EventBus:
             timestamp=datetime.datetime.now(datetime.timezone.utc).isoformat(),
             source=source,
         )
-        handlers = list(self._subscribers.get(event_type, [])) + list(self._subscribers.get("*", []))
+        with self._lock:
+            handlers = list(self._subscribers.get(event_type, [])) + list(self._subscribers.get("*", []))
         for subscription in handlers:
             try:
                 subscription.handler(event)
