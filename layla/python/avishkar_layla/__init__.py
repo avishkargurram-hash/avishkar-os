@@ -76,6 +76,7 @@ from .personal_model import (
     PersonalModel,
 )
 from .planning import Planner
+from .prediction import Prediction, PredictionEngine
 from .proactive import (
     ACTION_ACT,
     ACTION_ASK,
@@ -216,5 +217,7 @@ __all__ = [
     "ACTION_ASK",
     "ACTION_ACT",
     "ACTION_URGENTLY_ALERT",
+    "Prediction",
+    "PredictionEngine",
     "__version__",
 ]

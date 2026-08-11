@@ -46,6 +46,30 @@ class TestSessionManagerInMemory(unittest.TestCase):
 
         self.assertEqual({t.id for t in incomplete}, {in_progress.id})
 
+    def test_list_all_includes_terminal_and_non_terminal_tasks(self):
+        from avishkar_agent import InMemoryMemoryPolicy
+
+        manager = SessionManager(LaylaMemoryPolicy(InMemoryMemoryPolicy()))
+        sm = StateMachine()
+
+        in_progress = LaylaTask(input="a")
+        sm.transition(in_progress, UNDERSTANDING)
+        manager.save(in_progress)
+
+        done = LaylaTask(input="b")
+        sm.transition(done, UNDERSTANDING)
+        for state in ("CONTEXT_LOADING", "PLANNING", "EXECUTING", "VERIFYING", "SYNTHESIZING", COMPLETED):
+            sm.transition(done, state)
+        manager.save(done)
+
+        self.assertEqual({t.id for t in manager.list_all()}, {in_progress.id, done.id})
+
+    def test_list_all_with_no_saved_tasks_is_empty(self):
+        from avishkar_agent import InMemoryMemoryPolicy
+
+        manager = SessionManager(LaylaMemoryPolicy(InMemoryMemoryPolicy()))
+        self.assertEqual(manager.list_all(), ())
+
 
 class TestSessionManagerCrossInstanceRestartRecovery(unittest.TestCase):
     """The load-bearing proof: a process restart followed by a fresh

@@ -106,3 +106,15 @@ class SessionManager:
             return ()
         tasks = (self.load(task_id) for task_id in index_record.value)
         return tuple(t for t in tasks if t is not None and t.state not in TERMINAL_STATES)
+
+    def list_all(self) -> Tuple[LaylaTask, ...]:
+        """Every persisted task regardless of state (Mission Layla Part
+        3, PredictionEngine) -- the same index this class already
+        maintains, without `list_incomplete()`'s terminal-state filter.
+        Additive: nothing about list_incomplete()'s own behavior changes.
+        """
+        index_record = self._memory.recall(_KIND, _INDEX_KEY)
+        if index_record is None:
+            return ()
+        tasks = (self.load(task_id) for task_id in index_record.value)
+        return tuple(t for t in tasks if t is not None)
