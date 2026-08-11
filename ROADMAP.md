@@ -484,7 +484,22 @@ architecturally significant), tests, docs, and commit.
   `FileMemoryPolicy` recovery test), and a timeout on a non-READ step
   lands on a real, non-terminal `UNKNOWN` state that only an explicit
   `resolve_unknown()` can clear. 21 new tests (170 total for Layla).
-- 💤 17.3 Durable Execution & Resume-in-Place
+- ✅ **17.3 Durable Execution & Resume-in-Place** (ADR-0023) —
+  `ExecutiveRuntime.resume(task_id)` reloads a persisted task and
+  continues it from exactly its last checkpoint, via one shared,
+  state-guarded pipeline (`_advance()`) that `handle_event()` also
+  drives — not a second workflow engine. `LaylaTask` gains persisted
+  `plan`/`pending_approval_id` fields; `ApprovalManager` gains an
+  optional `memory=` for cross-restart durability. Delegation-loop
+  resume composes directly with 17.2's `ExecutionTracker` (an already-
+  COMPLETED step is never re-run), which is the actual mechanism behind
+  the directive's own "50-company task crashes after company 17, resume
+  from company 18" example — proven at runnable scale in
+  `layla/examples/crash_recovery_scenario.py` (5 steps, crash after 3).
+  Found and fixed a real, previously-latent bug in the process:
+  `DelegationEngine`'s own per-step approval re-check, redundant with
+  `ExecutiveRuntime`'s task-level gate, could wrongly deny a resumed,
+  already-granted delegation. 8 new tests (178 total for Layla).
 - 💤 17.4 Concurrency & Event System Hardening
 - 💤 17.5 Controlled Live Integration Validation
 

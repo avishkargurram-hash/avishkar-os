@@ -359,4 +359,46 @@ its first consumer.
   never modify earlier locked frameworks" discipline. 21 new tests
   (170 total for Layla).
 
+- **Phase 17.3 (Durable Execution & Resume-in-Place) locked
+  (ADR-0023)**: `ExecutiveRuntime.resume(task_id, session_id=None)` --
+  reloads a persisted `LaylaTask` and continues it from exactly the
+  state it was last checkpointed in. `handle_event()` and `resume()`
+  are two thin entry points around one shared, state-guarded
+  `_advance()` pipeline -- every stage is guarded by the task's current
+  `state`, so a reloaded task skips straight to its first unfinished
+  stage instead of restarting. Not a second workflow engine: reuses the
+  same `StateMachine`/`Planner`/`ApprovalManager`/`DelegationEngine`
+  every other path already goes through. `LaylaTask` gains two
+  persisted fields -- `plan` (the actual `Plan`, not just `plan_id` --
+  a resumed task never re-plans) and `pending_approval_id` (so a task
+  left `APPROVAL_PENDING` can have that exact request re-checked).
+  `ApprovalManager` gains an optional `memory=` parameter -- omitted,
+  behavior unchanged (in-process dict, lost on restart); supplied, as
+  `ExecutiveRuntime` always does, every approval request/grant/deny is
+  persisted, so a pending or decided approval survives a restart.
+  Delegation-loop resume composes directly with Priority 17.2's
+  `ExecutionTracker`: a resumed `EXECUTING` task re-runs the full
+  delegation loop over its persisted plan, and an already-`COMPLETED`
+  step is returned from cache without invoking the orchestrator again
+  -- the actual mechanism satisfying the directive's own "a 50-company
+  research task crashes after company 17, must resume from company 18"
+  example, proven at runnable scale (5 steps, crash after 3, only the 2
+  remaining steps re-delegated) in
+  `layla/examples/crash_recovery_scenario.py`. A real, previously-
+  latent bug was found and fixed in the process: `DelegationEngine`'s
+  own per-step approval re-check (a legitimate standalone feature) is
+  redundant with `ExecutiveRuntime`'s task-level risk/approval gate,
+  and was invisible in Phase 16/17.1 because an ungated pending
+  task-level approval never reached `DELEGATING` -- but `resume()` can
+  now legitimately carry a task-level-granted approval through to
+  `DELEGATING`, where the orphaned per-step request (its id never
+  surfaced to any human) would have wrongly denied it; fixed by no
+  longer wiring `approval_manager=` into the `DelegationEngine`
+  `ExecutiveRuntime` constructs internally. Also fixed: Phase 16/17.1
+  always collapsed a genuinely-pending, ungated approval straight to
+  `REQUIRES_HUMAN`, since nothing could ever check it again --
+  `APPROVAL_PENDING` is now a real, persisted, resumable state, only
+  collapsing to `REQUIRES_HUMAN` once actually denied/expired. 8 new
+  tests (178 total for Layla).
+
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

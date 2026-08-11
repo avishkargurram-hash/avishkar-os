@@ -14,10 +14,29 @@ import dataclasses
 from typing import Optional, Tuple
 
 from .memory_policy import LaylaMemoryPolicy
-from .types import TERMINAL_STATES, LaylaTask, StateTransition
+from .types import TERMINAL_STATES, LaylaTask, Plan, PlanStep, StateTransition
 
 _KIND = "long_term"
 _INDEX_KEY = "session:__index__"
+
+
+def _plan_to_dict(plan: Optional[Plan]) -> Optional[dict]:
+    if plan is None:
+        return None
+    return {
+        "id": plan.id,
+        "task_id": plan.task_id,
+        "steps": [dataclasses.asdict(s) for s in plan.steps],
+    }
+
+
+def _plan_from_dict(data: Optional[dict]) -> Optional[Plan]:
+    if data is None:
+        return None
+    return Plan(
+        id=data["id"], task_id=data["task_id"],
+        steps=tuple(PlanStep(**s) for s in data["steps"]),
+    )
 
 
 def _task_to_dict(task: LaylaTask) -> dict:
@@ -31,6 +50,8 @@ def _task_to_dict(task: LaylaTask) -> dict:
         "result": task.result,
         "blocked_reason": task.blocked_reason,
         "principal_id": task.principal_id,
+        "plan": _plan_to_dict(task.plan),
+        "pending_approval_id": task.pending_approval_id,
     }
 
 
@@ -45,6 +66,8 @@ def _task_from_dict(data: dict) -> LaylaTask:
         result=data.get("result"),
         blocked_reason=data.get("blocked_reason"),
         principal_id=data.get("principal_id"),
+        plan=_plan_from_dict(data.get("plan")),
+        pending_approval_id=data.get("pending_approval_id"),
     )
 
 

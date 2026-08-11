@@ -3,14 +3,20 @@ explicit event-driven loop from Part IX:
 IDLE -> EVENT -> INGEST -> UNDERSTAND -> DECIDE -> PLAN -> ACT/DELEGATE
 -> VERIFY -> SLEEP/WAIT. See CONTRACT.md SS11.
 
-handle_event() processes one event end to end, synchronously and
-deterministically -- the unit this module's own tests exercise.
-run_forever() is the actual "keep the lights on" entry point a real
-deployment's process supervisor calls; see README.md Deployment for
-why that loop itself is not exercised as a literal infinite loop in
-tests (see README.md Testing Strategy for how the loop body is tested
-instead -- run_forever(max_iterations=N) makes this a real, finite,
-directly testable method rather than an untestable "trust me").
+handle_event() processes one NEW request end to end, synchronously and
+deterministically. resume() (Priority 17.3, ADR-0023) continues an
+existing, persisted, non-terminal LaylaTask from exactly the state it
+was last saved in -- both are thin entry points around the single
+`_advance()` pipeline, which is itself resumable because every stage
+is guarded by the task's CURRENT state rather than assumed to start
+fresh; see CONTRACT.md SS17 for the checkpoint/resume contract this
+implements. run_forever() is the actual "keep the lights on" entry
+point a real deployment's process supervisor calls; see README.md
+Deployment for why that loop itself is not exercised as a literal
+infinite loop in tests (see README.md Testing Strategy for how the
+loop body is tested instead -- run_forever(max_iterations=N) makes
+this a real, finite, directly testable method rather than an
+untestable "trust me").
 """
 
 from __future__ import annotations
@@ -28,7 +34,7 @@ from .auth import AuthorizationManager
 from .capability_resolver import CapabilityResolver
 from .context import ContextBuilder
 from .delegation import DelegationEngine
-from .errors import PermissionDeniedError, UnresolvedConflictError
+from .errors import PermissionDeniedError, SessionNotFoundError, UnresolvedConflictError
 from .execution import ExecutionTracker
 from .identity import PERM_COMMAND, RISK_PERMISSION
 from .intent import IntentInterpreter
@@ -48,13 +54,16 @@ from .types import (
     DELEGATING,
     EXECUTING,
     PLANNING,
+    RECEIVED,
     REQUIRES_HUMAN,
     RISK_LOW,
     SYNTHESIZING,
+    TERMINAL_STATES,
     UNDERSTANDING,
     VERIFYING,
     WAITING,
     LaylaTask,
+    Plan,
 )
 
 
@@ -87,11 +96,33 @@ class ExecutiveRuntime:
         self._planner = Planner(self._capability_resolver)
 
         self._authorization = authorization
-        self._approval = ApprovalManager(approval_gate=approval_gate, authorization=authorization, clock=time.time)
+        # `memory=memory` (Priority 17.3, ADR-0023): ExecutiveRuntime
+        # already requires a real `memory`, so ApprovalRequests are
+        # durable by default -- a pending/decided approval survives a
+        # restart, not just an in-process dict. See approval.py.
+        self._approval = ApprovalManager(
+            approval_gate=approval_gate, authorization=authorization, memory=memory, clock=time.time,
+        )
         self._execution_tracker = execution_tracker
+        # No `approval_manager=` here (Priority 17.3 fix, ADR-0023): the
+        # task-level risk/approval decision in _advance() already fully
+        # gates whether DELEGATING is ever reached at all -- every
+        # PlanStep's risk_level is assigned from the same overall
+        # classify_risk(task.input) call (see planning.py), so passing
+        # the same ApprovalManager into DelegationEngine here would
+        # create a SECOND, independent ApprovalRequest per step. That
+        # was harmless as long as REQUIRES_HUMAN was a dead end (Phase
+        # 16/17.1: an ungated pending task-level approval never reached
+        # DELEGATING), but resume() (this priority) can now carry a
+        # task-level-granted approval through to DELEGATING, where the
+        # redundant per-step request -- never itself granted by anyone,
+        # since its id was never surfaced -- would wrongly deny it. This
+        # DelegationEngine still accepts `approval_manager=` for direct,
+        # standalone use (see test_delegation.py); ExecutiveRuntime just
+        # doesn't need or want a second gate on a decision it already
+        # made.
         self._delegation = DelegationEngine(
-            orchestrator, approval_manager=self._approval, execution_tracker=execution_tracker,
-            event_bus=event_bus, clock=clock, sleep_fn=sleep_fn,
+            orchestrator, execution_tracker=execution_tracker, event_bus=event_bus, clock=clock, sleep_fn=sleep_fn,
         )
         self._validator = ResultValidator()
         self._conflicts = ConflictResolver()
@@ -123,13 +154,14 @@ class ExecutiveRuntime:
         """The ExecutionTracker this runtime was constructed with, or
         None if idempotency tracking (Priority 17.2) wasn't wired in --
         callers use this to inspect/resolve_unknown() on an execution
-        record after handle_event() returns, e.g. from a recovery script.
+        record after handle_event()/resume() returns, e.g. from a
+        recovery script.
         """
         return self._execution_tracker
 
     def handle_event(self, input_text: str, *, session_id: Optional[str] = None) -> LaylaTask:
-        """Processes one request end to end through the state machine.
-        Deterministic and synchronous -- see module docstring.
+        """Processes one NEW request end to end through the state
+        machine. Deterministic and synchronous -- see module docstring.
 
         `session_id` (Priority 17.1, ADR-0021): when this runtime was
         constructed with an `authorization=`, a valid `session_id`
@@ -146,138 +178,240 @@ class ExecutiveRuntime:
 
         task = LaylaTask(input=input_text, principal_id=principal_id)
         self._audit.record("layla.task.received", {"input": input_text}, task_id=task.id, principal_id=principal_id)
+        return self._advance(task, session_id=session_id)
 
-        self._state_machine.transition(task, UNDERSTANDING)
-        intent = self._intent.interpret(task.input)
-        self._audit.record(
-            "layla.intent.classified",
-            {"category": intent.category, "urgency": intent.urgency, "requires_action": intent.requires_action},
-            task_id=task.id, principal_id=principal_id,
-        )
+    def resume(self, task_id: str, *, session_id: Optional[str] = None) -> LaylaTask:
+        """Resume-in-place (Priority 17.3, ADR-0023): reloads a
+        persisted LaylaTask by id and continues it from exactly the
+        state it was last checkpointed in -- no re-planning (the Plan
+        itself is persisted), no re-deciding an already-decided
+        approval, and no duplicate delegation side effects when
+        `execution_tracker` is wired (an already-COMPLETED step's
+        ExecutionRecord makes DelegationEngine skip re-invoking the
+        orchestrator for it -- see execution.py and CONTRACT.md SS15).
+        Calling `resume()` is itself idempotent: a terminal or
+        `REQUIRES_HUMAN` task is returned unchanged, never re-processed.
 
-        self._state_machine.transition(task, CONTEXT_LOADING)
-        task.context = self._context_builder.build(
-            task, self._memory, memory_lookups=self._memory_lookups, knowledge_bases=self._knowledge_bases,
-        )
+        Raises `SessionNotFoundError` if no task with this id was ever
+        persisted. Raises `PermissionDeniedError` if `authorization` is
+        wired and the resuming session belongs to a different principal
+        than the one the task was originally created for.
+        """
+        principal_id: Optional[str] = None
+        if self._authorization is not None:
+            session = self._authorization.require(session_id, PERM_COMMAND)
+            principal_id = session.principal.id
 
-        self._state_machine.transition(task, PLANNING)
-        try:
-            plan = self._planner.plan(task)
-        except Exception as exc:  # noqa: BLE001 -- UnknownCapabilityError, normalized into REQUIRES_HUMAN
-            task.blocked_reason = str(exc)
-            self._state_machine.transition(task, REQUIRES_HUMAN)
-            self._audit.record("layla.plan.failed", {"reason": str(exc)}, task_id=task.id, principal_id=principal_id)
-            self._session.save(task)
+        task = self._session.load(task_id)
+        if task is None:
+            raise SessionNotFoundError(f"no persisted task {task_id!r} to resume")
+
+        if self._authorization is not None and task.principal_id is not None and task.principal_id != principal_id:
+            raise PermissionDeniedError(
+                f"session principal {principal_id!r} may not resume task {task_id!r}, "
+                f"which was created for a different principal"
+            )
+
+        if task.state in TERMINAL_STATES or task.state == REQUIRES_HUMAN:
+            # Nothing automatic to do: a terminal task is already done;
+            # REQUIRES_HUMAN needs an explicit human decision (fix the
+            # blocked_reason, grant/deny a stuck approval) before any
+            # further automatic progress is safe to make.
             return task
 
-        # Least-privilege capability enforcement (Priority 17.1 SS4): a
-        # role may restrict which capabilities (agent names) a session
-        # can invoke, independent of risk tier. Checked once, up front,
-        # against every step -- a plan naming even one disallowed
-        # capability is blocked in full rather than silently dropping
-        # that step and proceeding partially.
-        if self._authorization is not None:
-            session = self._authorization.authenticate(session_id)
-            for step in plan.steps:
-                try:
-                    self._authorization.authorize_capability(session, step.required_capability)
-                except PermissionDeniedError as exc:
-                    task.blocked_reason = str(exc)
-                    self._state_machine.transition(task, REQUIRES_HUMAN)
-                    self._audit.record(
-                        "layla.plan.capability_denied", {"capability": step.required_capability},
-                        task_id=task.id, principal_id=principal_id,
-                    )
-                    self._session.save(task)
-                    return task
-
-        task.plan_id = plan.id
         self._audit.record(
-            "layla.plan.created", {"plan_id": plan.id, "step_count": len(plan.steps)},
-            task_id=task.id, principal_id=principal_id,
+            "layla.task.resumed", {"from_state": task.state}, task_id=task.id, principal_id=task.principal_id,
         )
+        return self._advance(task, session_id=session_id)
 
-        overall_risk = classify_risk(task.input)
-        if overall_risk != RISK_LOW:
-            # Identity/risk integration point (Priority 17.1 SS3): a
-            # session lacking the risk-appropriate permission is denied
-            # outright -- Layla never even creates an ApprovalRequest
-            # for an action this principal isn't allowed to ask for.
-            if self._authorization is not None:
-                session = self._authorization.authenticate(session_id)
-                try:
-                    self._authorization.authorize(session, RISK_PERMISSION[overall_risk])
-                except PermissionDeniedError as exc:
-                    task.blocked_reason = str(exc)
-                    self._state_machine.transition(task, REQUIRES_HUMAN)
-                    self._audit.record(
-                        "layla.risk.permission_denied", {"risk_level": overall_risk},
-                        task_id=task.id, principal_id=principal_id,
-                    )
-                    self._session.save(task)
-                    return task
+    def _advance(self, task: LaylaTask, *, session_id: Optional[str]) -> LaylaTask:
+        """The single pipeline both handle_event() (task.state ==
+        RECEIVED) and resume() (task.state == wherever it was last
+        checkpointed) drive. Every stage is guarded by the task's
+        CURRENT state -- transitioning it is what lets the *next*
+        guard's condition become true, so a fresh task runs straight
+        through exactly like Phase 16 did, while a resumed task skips
+        directly to its first not-yet-done stage. See CONTRACT.md SS17.
+        """
+        principal_id = task.principal_id
 
-            self._state_machine.transition(task, APPROVAL_PENDING)
-            approval = self._approval.request(
-                task.id, f"execute plan {plan.id} for: {task.input}", overall_risk, requested_by=principal_id,
-            )
+        if task.state == RECEIVED:
+            self._state_machine.transition(task, UNDERSTANDING)
+            intent = self._intent.interpret(task.input)
             self._audit.record(
-                "layla.approval.requested", {"approval_id": approval.id, "risk_level": overall_risk, "status": approval.status},
+                "layla.intent.classified",
+                {"category": intent.category, "urgency": intent.urgency, "requires_action": intent.requires_action},
                 task_id=task.id, principal_id=principal_id,
             )
-            if approval.status != "granted":
-                task.blocked_reason = f"approval {approval.id} status={approval.status}"
+
+        if task.state == UNDERSTANDING:
+            self._state_machine.transition(task, CONTEXT_LOADING)
+            task.context = self._context_builder.build(
+                task, self._memory, memory_lookups=self._memory_lookups, knowledge_bases=self._knowledge_bases,
+            )
+
+        if task.state == CONTEXT_LOADING:
+            self._state_machine.transition(task, PLANNING)
+            try:
+                plan = self._planner.plan(task)
+            except Exception as exc:  # noqa: BLE001 -- UnknownCapabilityError, normalized into REQUIRES_HUMAN
+                task.blocked_reason = str(exc)
+                self._state_machine.transition(task, REQUIRES_HUMAN)
+                self._audit.record("layla.plan.failed", {"reason": str(exc)}, task_id=task.id, principal_id=principal_id)
+                self._session.save(task)
+                return task
+
+            # Least-privilege capability enforcement (Priority 17.1 SS4):
+            # a role may restrict which capabilities (agent names) a
+            # session can invoke, independent of risk tier. Checked once,
+            # up front, against every step -- a plan naming even one
+            # disallowed capability is blocked in full rather than
+            # silently dropping that step and proceeding partially.
+            if self._authorization is not None:
+                auth_session = self._authorization.authenticate(session_id)
+                for step in plan.steps:
+                    try:
+                        self._authorization.authorize_capability(auth_session, step.required_capability)
+                    except PermissionDeniedError as exc:
+                        task.blocked_reason = str(exc)
+                        self._state_machine.transition(task, REQUIRES_HUMAN)
+                        self._audit.record(
+                            "layla.plan.capability_denied", {"capability": step.required_capability},
+                            task_id=task.id, principal_id=principal_id,
+                        )
+                        self._session.save(task)
+                        return task
+
+            task.plan = plan
+            task.plan_id = plan.id
+            self._audit.record(
+                "layla.plan.created", {"plan_id": plan.id, "step_count": len(plan.steps)},
+                task_id=task.id, principal_id=principal_id,
+            )
+            # Durable checkpoint (Priority 17.3): the plan itself is now
+            # safe to resume from -- a crash from here on never needs to
+            # re-plan, only to continue with the same steps.
+            self._session.save(task)
+
+        plan: Optional[Plan] = task.plan  # populated just above, or (on resume) by an earlier save
+
+        if task.state == PLANNING:
+            overall_risk = classify_risk(task.input)
+            if overall_risk == RISK_LOW:
+                self._state_machine.transition(task, EXECUTING)
+            else:
+                # Identity/risk integration point (Priority 17.1 SS3): a
+                # session lacking the risk-appropriate permission is
+                # denied outright -- Layla never even creates an
+                # ApprovalRequest for an action this principal isn't
+                # allowed to ask for.
+                if self._authorization is not None:
+                    auth_session = self._authorization.authenticate(session_id)
+                    try:
+                        self._authorization.authorize(auth_session, RISK_PERMISSION[overall_risk])
+                    except PermissionDeniedError as exc:
+                        task.blocked_reason = str(exc)
+                        self._state_machine.transition(task, REQUIRES_HUMAN)
+                        self._audit.record(
+                            "layla.risk.permission_denied", {"risk_level": overall_risk},
+                            task_id=task.id, principal_id=principal_id,
+                        )
+                        self._session.save(task)
+                        return task
+
+                self._state_machine.transition(task, APPROVAL_PENDING)
+                approval = self._approval.request(
+                    task.id, f"execute plan {plan.id} for: {task.input}", overall_risk, requested_by=principal_id,
+                )
+                task.pending_approval_id = approval.id
+                self._audit.record(
+                    "layla.approval.requested",
+                    {"approval_id": approval.id, "risk_level": overall_risk, "status": approval.status},
+                    task_id=task.id, principal_id=principal_id,
+                )
+                # Durable checkpoint (Priority 17.3): a real, persisted
+                # APPROVAL_PENDING state -- resume() re-checks the same
+                # approval id rather than silently re-requesting a new
+                # one or giving up. See CONTRACT.md SS17 "interrupted
+                # approval."
+                self._session.save(task)
+
+        if task.state == APPROVAL_PENDING:
+            status = self._approval.check(task.pending_approval_id)
+            if status == "granted":
+                self._state_machine.transition(task, EXECUTING)
+            elif status == "pending":
+                # Still waiting on a human/gate decision -- not a
+                # failure, just not ready yet. Caller (or a scheduled
+                # retry) calls resume() again later.
+                return task
+            else:  # "denied" or "expired"
+                task.blocked_reason = f"approval {task.pending_approval_id} status={status}"
                 self._state_machine.transition(task, REQUIRES_HUMAN)
                 self._session.save(task)
                 return task
 
-        self._state_machine.transition(task, EXECUTING)
-        self._session.save(task)
+        if task.state == EXECUTING:
+            # Durable checkpoint (Priority 17.3): everything before this
+            # point is pure, cheap, and side-effect-free to redo; from
+            # here on, delegation can have real external effects, so the
+            # task is saved *before* the first delegate() call, not
+            # after.
+            self._session.save(task)
 
-        self._state_machine.transition(task, DELEGATING)
-        records = []
-        for step in plan.steps:
-            record = self._delegation.delegate(step, task_id=task.id, principal_id=principal_id)
-            records.append(record)
+            self._state_machine.transition(task, DELEGATING)
+            records = []
+            for step in plan.steps:
+                # Idempotency (Priority 17.2): if execution_tracker is
+                # wired, a step already COMPLETED from a prior attempt
+                # (e.g. a crash after step 17 of 50, resumed here) is
+                # returned from cache without invoking the orchestrator
+                # again -- see execution.py and CONTRACT.md SS15. Without
+                # it, a resumed DELEGATING phase re-runs every step, the
+                # same as any other optional-capability-omitted default.
+                record = self._delegation.delegate(step, task_id=task.id, principal_id=principal_id)
+                records.append(record)
+                self._audit.record(
+                    f"layla.delegation.{record.status}",
+                    {"step_id": record.step_id, "agent_name": record.agent_name, "attempts": record.attempts},
+                    task_id=task.id, principal_id=principal_id,
+                )
+                self._health.observe_delegation(record)
+
+            self._state_machine.transition(task, WAITING)
+            self._state_machine.transition(task, VERIFYING)
+            validation = self._validator.validate(records)
             self._audit.record(
-                f"layla.delegation.{record.status}",
-                {"step_id": record.step_id, "agent_name": record.agent_name, "attempts": record.attempts},
+                "layla.validation.completed",
+                {"all_completed": validation.all_completed, "failing": list(validation.failing)},
                 task_id=task.id, principal_id=principal_id,
             )
-            self._health.observe_delegation(record)
 
-        self._state_machine.transition(task, WAITING)
-        self._state_machine.transition(task, VERIFYING)
-        validation = self._validator.validate(records)
-        self._audit.record(
-            "layla.validation.completed", {"all_completed": validation.all_completed, "failing": list(validation.failing)},
-            task_id=task.id, principal_id=principal_id,
-        )
+            self._state_machine.transition(task, SYNTHESIZING)
+            conflicts = self._conflicts.detect(records)
+            if conflicts:
+                task.blocked_reason = f"{len(conflicts)} unresolved conflict(s) among delegated results"
+                self._audit.record(
+                    "layla.conflict.detected", {"conflicts": [c.reason for c in conflicts]},
+                    task_id=task.id, principal_id=principal_id,
+                )
+                self._state_machine.transition(task, REQUIRES_HUMAN)
+                self._session.save(task)
+                return task
 
-        self._state_machine.transition(task, SYNTHESIZING)
-        conflicts = self._conflicts.detect(records)
-        if conflicts:
-            task.blocked_reason = f"{len(conflicts)} unresolved conflict(s) among delegated results"
-            self._audit.record(
-                "layla.conflict.detected", {"conflicts": [c.reason for c in conflicts]},
-                task_id=task.id, principal_id=principal_id,
-            )
-            self._state_machine.transition(task, REQUIRES_HUMAN)
+            try:
+                summary = self._synthesizer.synthesize(records, conflicts)
+            except UnresolvedConflictError as exc:  # pragma: no cover -- conflicts already handled above
+                task.blocked_reason = str(exc)
+                self._state_machine.transition(task, REQUIRES_HUMAN)
+                self._session.save(task)
+                return task
+
+            task.result = summary
+            self._state_machine.transition(task, COMPLETED)
+            self._audit.record("layla.task.completed", {"result": summary}, task_id=task.id, principal_id=principal_id)
             self._session.save(task)
-            return task
 
-        try:
-            summary = self._synthesizer.synthesize(records, conflicts)
-        except UnresolvedConflictError as exc:  # pragma: no cover -- conflicts already handled above
-            task.blocked_reason = str(exc)
-            self._state_machine.transition(task, REQUIRES_HUMAN)
-            self._session.save(task)
-            return task
-
-        task.result = summary
-        self._state_machine.transition(task, COMPLETED)
-        self._audit.record("layla.task.completed", {"result": summary}, task_id=task.id, principal_id=principal_id)
-        self._session.save(task)
         return task
 
     def run_forever(self, *, max_iterations: Optional[int] = None, tick_interval_seconds: float = 1.0) -> int:

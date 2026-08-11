@@ -341,7 +341,83 @@ idempotency key of `{task_id}:{plan_step.id}`:
   not guarantee. A subsequent `delegate()` call for the same key is then
   refused until an explicit `resolve_unknown()`.
 
-## §16. Errors
+## §16. Resume-in-place and durable execution (Priority 17.3, ADR-0023)
+
+`LaylaTask` gains two persisted fields: `plan: Optional[Plan]` (the
+actual `Plan`, not just `plan_id` — a resumed task never re-plans) and
+`pending_approval_id: Optional[str]` (the live `ApprovalRequest.id`
+while `state == APPROVAL_PENDING` — a resumed task re-checks the same
+request rather than losing track of it). `SessionManager` persists
+both (`session.py`'s `_task_to_dict`/`_task_from_dict`).
+
+`ApprovalManager(..., memory: Optional[LaylaMemoryPolicy] = None)` —
+*optional*, same additive pattern as every other Priority 17
+integration point. Omitted: `ApprovalRequest`s live only in an
+in-process dict, exactly as Phase 16/17.1 (lost on restart).
+Supplied — as `ExecutiveRuntime` always does, since it already
+requires a `memory` — every `request()`/`grant()`/`deny()` is also
+persisted (`kind="long_term"`, `approval:{request_id}`), so a pending
+approval, or one decided while the process was down, survives a
+restart and is visible to a completely different `ApprovalManager`
+instance querying the same store.
+
+`ExecutiveRuntime.handle_event()` and `.resume(task_id, session_id=)`
+are two thin entry points around one shared, re-entrant pipeline: every
+stage is guarded by the task's *current* `state`, not assumed to start
+fresh, so calling it against an already-partway-through task continues
+it rather than redoing completed work. Concretely:
+- `handle_event()` starts a task at `RECEIVED` and drives it straight
+  through, identically to Phase 16/17.1.
+- `resume(task_id)` reloads a persisted task by id. A terminal task or
+  one in `REQUIRES_HUMAN` is returned **unchanged** — resuming is
+  idempotent, and `REQUIRES_HUMAN` needs an explicit human decision
+  first (grant/deny a stuck approval, fix a `blocked_reason`), not an
+  automatic retry.
+- A task reloaded at `APPROVAL_PENDING` has its `pending_approval_id`
+  re-checked live. `"granted"` → continues to `EXECUTING`. `"pending"`
+  → returns unchanged (still waiting; call `resume()` again later).
+  `"denied"`/`"expired"` → `REQUIRES_HUMAN`.
+- A task reloaded at `EXECUTING` (the last durable checkpoint before
+  delegation begins) re-runs the full delegation loop over the
+  persisted `plan.steps`. When `execution_tracker` (§15) is wired, an
+  already-`COMPLETED` step is returned from cache without invoking the
+  orchestrator again — this is the actual mechanism that makes
+  resuming a large multi-step plan (e.g. 50 companies, crashed after
+  17) continue from the correct point rather than restart blindly, and
+  it is `DelegationEngine`'s existing idempotency machinery (Priority
+  17.2), not a second, parallel resume mechanism.
+
+**Durable checkpoints** — `self._session.save(task)` is called at
+exactly three points in the pipeline, each chosen because it is the
+last point before something either expensive (re-planning) or
+externally consequential (delegation, an approval decision) happens:
+right after a `Plan` is created and capability-checked (state
+`PLANNING`), right after an `ApprovalRequest` is created (state
+`APPROVAL_PENDING`), and right before the delegation loop starts (state
+`EXECUTING`). States before the first checkpoint (`RECEIVED`/
+`UNDERSTANDING`/`CONTEXT_LOADING`) are pure, synchronous, and
+side-effect-free — nothing is ever persisted mid-way through them, so
+there is nothing to resume from there; a genuine crash that early
+simply means the request was never durably received and must be
+resubmitted via `handle_event()`.
+
+**A real bug this priority found and fixed**: `DelegationEngine`, when
+constructed with its own `approval_manager=`, independently re-checks
+approval for every non-LOW-risk `PlanStep` — a legitimate standalone
+feature (see `test_delegation.py`), but Priority 17.2/17.1's design
+already has `ExecutiveRuntime` fully gate the *task-level* risk/approval
+decision before `EXECUTING` is ever reached. Wiring the same
+`ApprovalManager` into both created a second, independent
+`ApprovalRequest` per step whose id was never surfaced anywhere a human
+could grant it — harmless in Phase 16/17.1, where an ungated pending
+task-level approval always collapsed straight to `REQUIRES_HUMAN` and
+`DELEGATING` was never reached, but a real, previously-latent bug once
+`resume()` could legitimately carry a task-level-granted approval
+through to `DELEGATING`. Fixed by no longer passing `approval_manager=`
+into the `DelegationEngine` `ExecutiveRuntime` constructs internally —
+`DelegationEngine` still accepts it for direct, standalone use.
+
+## §17. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,

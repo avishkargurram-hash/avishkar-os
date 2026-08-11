@@ -1215,3 +1215,130 @@ automatic resolution of `UNKNOWN` outcomes (deliberately manual).
 `docs/production-readiness.md` must state that idempotency protection
 covers the Layla→Agent delegation seam only, not every possible
 external side effect an agent's own tools might perform.
+
+## ADR-0023: Resume-in-place is two entry points around one shared, state-guarded pipeline — not a second workflow engine, built on Priority 17.2's ExecutionTracker rather than duplicating it
+
+**Status:** Accepted · **Date:** 2026-08-11
+
+**Context:** Priority 17.3 of the Phase 17 directive requires Layla to
+survive interruption -- its own named example: a 50-company research
+task that crashes after company 17 must resume from company 18, not
+restart blindly. It explicitly forbids building a separate workflow
+engine, requiring reuse of "the existing Layla runtime and frameworks."
+`SessionManager` (Phase 16) already persisted a `LaylaTask`'s `state`
+and `history`, and `ExecutionTracker` (Priority 17.2, ADR-0022) already
+persisted per-delegation-step outcomes keyed `{task_id}:{step.id}` --
+but nothing tied them together into an actual resumable pipeline:
+`ExecutiveRuntime.handle_event()` was a single monolithic method that
+only ever ran a task from `RECEIVED`, and the `Plan` itself (the steps
+a resumed task would need to continue) was never persisted at all.
+
+**Decision:**
+1. **One pipeline, two entry points, not two pipelines.**
+   `handle_event()` (new task, starts at `RECEIVED`) and `resume()`
+   (existing task, starts wherever it was last checkpointed) both call
+   a single private `_advance(task, session_id=)`. Every stage inside
+   it is guarded by `if task.state == X:` rather than assumed to run in
+   sequence from the top -- transitioning `task.state` inside a guard is
+   what makes the *next* guard's condition become true, so a fresh task
+   runs straight through exactly as Phase 16 did, and a reloaded task
+   skips directly to its first unfinished stage. This is the entire
+   mechanism; there is no separate scheduler, queue, or state-transition
+   table beyond the one `StateMachine` already enforces.
+2. **The Plan itself becomes persisted state, not just its id.**
+   `LaylaTask.plan: Optional[Plan]` (additive field) and
+   `SessionManager` serializes it. Reconstructing a plan via `Planner`
+   again on resume would be a *different* operation (possibly different
+   capabilities inferred, a new `Plan.id`) than continuing the one
+   already committed to; a resumed task must continue the *same* plan.
+3. **Idempotent step-skipping is Priority 17.2's `ExecutionTracker`,
+   reused, not reimplemented.** A resumed task at `EXECUTING` re-runs
+   the *entire* delegation loop over `plan.steps` from the top --
+   deliberately not "resume from step N," which would require Layla to
+   track per-step progress a second time. Instead, each
+   `DelegationEngine.delegate()` call independently checks
+   `ExecutionTracker` (already there, Priority 17.2): an already-
+   `COMPLETED` step returns its cached result without invoking the
+   orchestrator again. This is the actual mechanism satisfying the
+   directive's "resume from company 18, not from scratch" example --
+   built by composing 17.2 and 17.3, not by inventing a second
+   checkpoint format.
+4. **Three durable checkpoints, chosen by consequence, not by state
+   count.** `self._session.save(task)` fires right after a `Plan` is
+   created (state `PLANNING`), right after an `ApprovalRequest` is
+   created (state `APPROVAL_PENDING`), and right before delegation
+   starts (state `EXECUTING`) -- each the last point before something
+   either expensive (re-planning) or externally consequential
+   (delegation, an approval decision) happens. States before the first
+   checkpoint are pure, synchronous, side-effect-free computation with
+   nothing persisted mid-way; a crash that early means the request was
+   never durably received, and resubmitting via `handle_event()` is the
+   correct recovery, not finer-grained checkpointing of code that does
+   no I/O.
+5. **`APPROVAL_PENDING` becomes a real, resumable, persisted state.**
+   Phase 16/17.1 collapsed an ungated pending approval straight to
+   `REQUIRES_HUMAN` within the same synchronous call, because nothing
+   could ever come back to check it again. Resume-in-place needs a task
+   to actually be resumable *from* `APPROVAL_PENDING`, so
+   `ExecutiveRuntime` now leaves it there and only collapses to
+   `REQUIRES_HUMAN` once the request is actually denied/expired. This
+   required `ApprovalManager` to gain an optional `memory=` parameter
+   (the same additive pattern as everywhere else in Priority 17) so the
+   pending decision itself survives a restart, not just the task
+   record referencing it.
+6. **A real, previously-latent bug, found by actually running the
+   resume scenario end-to-end, fixed rather than worked around.**
+   `DelegationEngine`'s own `approval_manager=` parameter re-checks
+   approval per-step independently of `ExecutiveRuntime`'s task-level
+   decision. In Phase 16/17.1 this was dormant (an ungated pending
+   task-level approval never reached `DELEGATING` in the first place).
+   Once `resume()` could legitimately carry a task-level-granted
+   approval through to `DELEGATING`, the orphaned per-step
+   `ApprovalRequest` -- created fresh inside `delegate()`, its id never
+   surfaced anywhere a human could grant it -- wrongly denied the step.
+   Fixed by no longer passing `approval_manager=` into the
+   `DelegationEngine` `ExecutiveRuntime` constructs internally, since
+   `ExecutiveRuntime` already fully gates the decision before
+   `EXECUTING` is ever reached; `DelegationEngine` keeps the parameter
+   for direct, standalone use (`test_delegation.py`).
+
+**Alternatives considered:**
+1. *A separate `WorkflowEngine`/`ResumableTask` abstraction* -- rejected
+   per the directive's own explicit instruction and because nothing
+   about resuming needs new machinery: the existing `StateMachine`,
+   `Planner`, `ApprovalManager`, `DelegationEngine`, and `SessionManager`
+   already cover every piece; the only genuine gaps were "the plan isn't
+   persisted" and "the pipeline can't be entered mid-way," both closed
+   additively.
+2. *Track per-step delegation progress as a new field on `LaylaTask`
+   (e.g. `completed_step_ids`)* -- rejected: this would duplicate
+   `ExecutionTracker`'s own per-step state in a second location that
+   could drift out of sync with it; re-running the full loop and
+   letting `ExecutionTracker` skip completed steps keeps exactly one
+   source of truth per step.
+3. *Auto-collapse `APPROVAL_PENDING` to `REQUIRES_HUMAN` as before, and
+   have `resume()` treat `REQUIRES_HUMAN` as resumable too* -- rejected:
+   `REQUIRES_HUMAN` is deliberately a broader bucket (capability denied,
+   plan failed, conflict detected, approval denied/expired) where
+   "resume automatically" is not always correct; keeping
+   `APPROVAL_PENDING` genuinely alive lets `resume()` treat exactly one
+   well-defined case (an undecided approval) as safely re-checkable,
+   while `REQUIRES_HUMAN` stays a true dead end requiring an explicit
+   human decision first.
+
+**Consequences:** `types.py` gains two additive `LaylaTask` fields
+(`plan`, `pending_approval_id`); `session.py` serializes both;
+`approval.py` gains an optional `memory=` parameter; `runtime.py`'s
+`handle_event()` body is restructured into the shared, state-guarded
+`_advance()` plus the new `resume()` entry point; `DelegationEngine`'s
+`ExecutiveRuntime` no longer passes it an `approval_manager=`. Zero
+regressions verified (170 → 178 tests, all passing, the original 170
+unmodified). What remains explicitly unbuilt: sub-step-granularity
+resume for `UNDERSTANDING`/`CONTEXT_LOADING`/`PLANNING` (unnecessary --
+those phases do no I/O); automatic re-driving of `REQUIRES_HUMAN` tasks
+once a human acts (a deployment's own code calls `resume()` after the
+decision); coordination if multiple processes call `resume()` on the
+same task concurrently (Priority 17.4's concern, not this one's).
+`docs/production-readiness.md` must state that resume-in-place has been
+verified via simulated crashes (fresh objects against the same on-disk
+store), not via an actual killed OS process.

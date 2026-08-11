@@ -24,6 +24,8 @@ line names the real framework Layla is a client of.
 ```
 ExecutiveRuntime (event loop: IDLE -> EVENT -> INGEST -> UNDERSTAND ->
                    DECIDE -> PLAN -> ACT/DELEGATE -> VERIFY -> SLEEP/WAIT)
+  |-- handle_event() / resume()   (Priority 17.3: two entry points, one
+  |                                 shared, state-guarded _advance() pipeline)
   |-- StateMachine            (genuinely new: Layla's own explicit lifecycle)
   |-- IntentInterpreter        (genuinely new: real keyword classifier)
   |-- ContextBuilder            (composes) -> LaylaMemoryPolicy -> avishkar_agent.MemoryPolicy (Phase 5)
@@ -49,8 +51,9 @@ layla/
 ├── python/avishkar_layla/       reference implementation (25 modules)
 │   └── channels/                   communication channel adapters
 ├── examples/
-│   └── end_to_end_scenario.py       Part IX's real, narrated demonstration
-└── python/tests/                   170 tests (as of Priority 17.2)
+│   ├── end_to_end_scenario.py       Part IX's real, narrated demonstration
+│   └── crash_recovery_scenario.py   resume-in-place demonstration (Priority 17.3)
+└── python/tests/                   178 tests (as of Priority 17.3)
 ```
 
 ## Naming Standards
@@ -74,6 +77,13 @@ component's own interface.
 ## Examples
 `python layla/examples/end_to_end_scenario.py` — see Part IX
 Demonstration, below, for its full narrated output.
+`python layla/examples/crash_recovery_scenario.py` — a 5-step plan
+"crashes" after 3 steps (simulated the same way every crash-recovery
+test in this codebase does: a fresh runtime against the same on-disk
+store); a second, brand-new runtime resumes the task and completes
+only the 2 remaining steps, proving via a real orchestrator call count
+that the 3 already-done steps are never re-run. See "Resume-in-Place /
+Durable Execution," below.
 
 ## Best Practices
 - Always pass a real, injectable `clock`/`sleep_fn` in tests (the same
@@ -209,6 +219,102 @@ which is a `mcp-factory` change, not a Layla one. No automatic
 resolution of `UNKNOWN` outcomes (e.g. polling a provider's status API)
 — `resolve_unknown()` is deliberately a manual, explicit call.
 
+# Resume-in-Place / Durable Execution (Priority 17.3, ADR-0023)
+
+**Status: IMPLEMENTED.** `ExecutiveRuntime.resume(task_id,
+session_id=None) -> LaylaTask` reloads a persisted task and continues
+it from exactly the state it was last checkpointed in — no
+re-planning, no re-deciding an already-decided approval, and (when
+`execution_tracker` is wired, Priority 17.2) no re-running an
+already-completed delegation. This directly answers the directive's
+own example: a 50-company research task that crashes after company 17
+resumes from company 18, not from scratch — see
+`layla/examples/crash_recovery_scenario.py` for a runnable, smaller-
+scale (5 companies, crash after 3) proof.
+
+`handle_event()` and `resume()` are two thin entry points around one
+shared, re-entrant pipeline (`_advance()`): every stage is guarded by
+the task's *current* `state`. A fresh task runs straight through,
+identically to Phase 16/17.1; a reloaded task skips directly to its
+first not-yet-done stage. This is deliberately **not** a second
+workflow engine — it reuses the exact same `StateMachine`, `Planner`,
+`ApprovalManager`, and `DelegationEngine` every other code path already
+goes through (the Phase 17 directive's explicit instruction for this
+priority).
+
+Two new persisted `LaylaTask` fields make this possible: `plan` (the
+actual `Plan`, not just `plan_id` — reconstructing a plan via the
+`Planner` again on resume would be a *different* operation, not a
+continuation) and `pending_approval_id` (so a task genuinely left
+`APPROVAL_PENDING` — see below — can have that specific request
+re-checked, not silently abandoned).
+
+**A real behavior change this priority required**: Phase 16/17.1
+always collapsed a genuinely-pending (no `ApprovalGate` wired,
+awaiting an external `grant()`/`deny()`) approval straight to
+`REQUIRES_HUMAN` within the same synchronous call, because nothing
+could ever come back to check it again. Resume-in-place needed a task
+to actually be resumable *from* `APPROVAL_PENDING`, so
+`ExecutiveRuntime` now leaves it there — genuinely persisted, via
+`ApprovalManager`'s new optional `memory=` durability (see below) — and
+only collapses to `REQUIRES_HUMAN` once the request is actually
+`denied`/`expired`. No existing test depended on the old collapse-on-
+pending behavior; this is a strict improvement, not a breaking change
+covered up.
+
+**`ApprovalManager(..., memory=None)`** — optional, the same additive
+pattern as everywhere else in Priority 17. Omitted: `ApprovalRequest`s
+live only in an in-process dict, exactly as before (lost on restart).
+`ExecutiveRuntime` always supplies it (it already requires a `memory`),
+so a pending or decided approval survives a restart and is visible to
+a completely different `ApprovalManager` instance querying the same
+store — proven in `test_risk_and_approval.py::
+TestApprovalManagerDurability` and end-to-end in
+`test_resume.py::TestResumeInterruptedApproval`.
+
+**Durable checkpoints**: `self._session.save(task)` is called at
+exactly three points — right after a `Plan` is created (state
+`PLANNING`), right after an `ApprovalRequest` is created (state
+`APPROVAL_PENDING`), and right before delegation starts (state
+`EXECUTING`). Everything before the first checkpoint
+(`RECEIVED`/`UNDERSTANDING`/`CONTEXT_LOADING`) is pure, synchronous,
+side-effect-free computation with nothing persisted mid-way — a crash
+that early means the request was never durably received; resubmit it
+via `handle_event()`. `resume()` is itself idempotent: calling it on an
+already-`COMPLETED` (or otherwise terminal) task, or on one in
+`REQUIRES_HUMAN`, returns the task unchanged rather than reprocessing
+it.
+
+**A real, previously-latent bug this priority found and fixed**:
+`DelegationEngine`, when given its own `approval_manager=`,
+independently re-checks approval for every non-LOW-risk step — useful
+standalone (`test_delegation.py`), but redundant when driven through
+`ExecutiveRuntime`, which already fully gates the task-level risk
+decision before `EXECUTING` is ever reached (every `PlanStep`'s
+`risk_level` is assigned from the same task-level `classify_risk()`
+call). Wiring the same `ApprovalManager` into both created a *second*,
+independent `ApprovalRequest` per step whose id was never surfaced
+anywhere a human could grant it. This was invisible in Phase 16/17.1,
+where `DELEGATING` was never reached with a genuinely-pending,
+ungated task-level approval — but `resume()` can now legitimately carry
+a task-level-granted approval through to `DELEGATING`, where the
+orphaned per-step request would have wrongly denied it. Fixed by no
+longer passing `approval_manager=` into `ExecutiveRuntime`'s internal
+`DelegationEngine`; caught by actually running the resume scenario
+end-to-end, not by inspection.
+
+**What's NOT built**: resuming *within* `UNDERSTANDING`/
+`CONTEXT_LOADING`/`PLANNING` at sub-step granularity — those phases are
+fast, synchronous, and side-effect-free, so a crash there is handled
+by simply resubmitting the request, not by finer-grained checkpointing.
+Automatic re-driving of `REQUIRES_HUMAN` tasks once a human acts — a
+deployment's own code calls `resume()` (or the lower-level
+`StateMachine`/`ApprovalManager` APIs directly) after the human
+decision is made; there is no polling loop that notices a
+`REQUIRES_HUMAN` task became actionable on its own. No distributed
+coordination if multiple processes might try to `resume()` the same
+task concurrently — see Priority 17.4.
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
@@ -263,9 +369,14 @@ something that restarts it on crash (systemd, a container orchestrator,
 a cloud scheduler) — this is standard infrastructure, deliberately not
 reimplemented here (STANDARDS.md's reuse-first principle: don't build
 a process supervisor when the OS/orchestrator already has one).
-`SessionManager`'s durable state means a restart resumes incomplete
-tasks (`list_incomplete()`) — the supervisor's job is only to restart
-the process, not to preserve state itself.
+`SessionManager`'s durable state means a restart can resume incomplete
+tasks: call `sessions.list_incomplete()` on startup and `resume(task.id)`
+each one (Priority 17.3, ADR-0023) — the supervisor's job is only to
+restart the process, not to preserve state itself. A restart also
+needs the *same* `execution_tracker=`/`memory=` backing store the
+crashed process used (a `FileMemoryPolicy`/`SQLiteMemoryPolicy` at a
+stable path, not `InMemoryMemoryPolicy`) or there is nothing to resume
+from.
 
 Minimum to run:
 ```bash
@@ -289,8 +400,8 @@ already covers it — extending that list requires an ADR.
 
 # Testing Guide
 
-170 tests as of Priority 17.2 (119 Phase 16 + 30 Priority 17.1 + 21
-Priority 17.2), run via:
+178 tests as of Priority 17.3 (119 Phase 16 + 30 Priority 17.1 + 21
+Priority 17.2 + 8 Priority 17.3), run via:
 ```bash
 PYTHONPATH="core/python;router/python;factories/agent-factory/python;factories/knowledge-factory/python;factories/mcp-factory/python;factories/memory-factory/python;factories/security-factory/python;layla/python" \
   python -m unittest discover -s layla/python/tests
@@ -306,8 +417,13 @@ expiration, contradictory instructions), idempotency/crash-recovery
 (`test_execution.py`, `test_delegation_idempotency.py`,
 `test_runtime_idempotency.py` — duplicate retries, timeout-to-UNKNOWN,
 resolve_unknown, cross-instance crash recovery via `FileMemoryPolicy`),
-and one deterministic end-to-end fixture
-(`test_end_to_end_scenario.py`) matching Part IX.
+resume-in-place (`test_resume.py` — resuming a completed/unknown/
+`REQUIRES_HUMAN` task, crash-mid-delegation recovery, interrupted-
+approval recovery across three separate `ExecutiveRuntime` instances;
+`test_risk_and_approval.py::TestApprovalManagerDurability` for
+`ApprovalManager`'s own cross-instance persistence), and one
+deterministic end-to-end fixture (`test_end_to_end_scenario.py`)
+matching Part IX.
 
 # Troubleshooting Guide
 
@@ -336,6 +452,17 @@ and one deterministic end-to-end fixture
   bug, since `DelegationEngine` derives keys from `task_id`/`step.id`,
   which are random per task/plan). Check for accidental task-id reuse
   before retrying.
+- **`resume()` keeps returning the task unchanged, still
+  `APPROVAL_PENDING`** — nobody has called `grant()`/`deny()` on
+  `task.pending_approval_id` yet. This is correct, not a bug —
+  `resume()` only re-checks a decision, it never makes one.
+- **`resume()` re-runs every delegated step instead of skipping
+  completed ones** — `execution_tracker` wasn't passed to the
+  `ExecutiveRuntime` that's calling `resume()`, or it's a *different*
+  `ExecutionTracker`/`memory` than the one the crashed process used.
+  Idempotent skipping is Priority 17.2's `ExecutionTracker`, not a
+  property of `resume()` itself — see Idempotency & Side-Effect Safety,
+  above.
 
 # Security Considerations
 

@@ -91,5 +91,44 @@ class TestApprovalManagerPendingFlow(unittest.TestCase):
             manager.require_granted(request.id)
 
 
+class TestApprovalManagerDurability(unittest.TestCase):
+    """Priority 17.3, ADR-0023: when `memory` is wired, an
+    ApprovalRequest survives a restart -- the same cross-instance
+    persistence proof pattern test_session.py established. Without
+    `memory` (every test above), behavior is unchanged from Phase
+    16/17.1: an in-process dict, lost on restart.
+    """
+
+    def test_pending_request_is_visible_to_a_fresh_instance_against_the_same_store(self):
+        import tempfile
+        from pathlib import Path
+
+        from avishkar_memory import FileMemoryPolicy
+
+        from avishkar_layla import LaylaMemoryPolicy
+
+        with tempfile.TemporaryDirectory() as tmp:
+            memory = LaylaMemoryPolicy(FileMemoryPolicy(Path(tmp)))
+            first = ApprovalManager(memory=memory)
+            request = first.request("task-1", "send a wire transfer", RISK_HIGH)
+            self.assertEqual(request.status, "pending")
+
+            second = ApprovalManager(memory=memory)  # simulated restart: brand-new instance, same store
+            self.assertEqual(second.check(request.id), "pending")
+
+            second.grant(request.id, reason="confirmed with finance")
+
+            third = ApprovalManager(memory=memory)  # a third instance sees the grant, not just the second's cache
+            self.assertEqual(third.check(request.id), "granted")
+
+    def test_without_memory_a_fresh_instance_knows_nothing(self):
+        first = ApprovalManager()  # no memory= -- Phase 16/17.1 behavior, unchanged
+        request = first.request("task-1", "send a wire transfer", RISK_HIGH)
+
+        second = ApprovalManager()
+        with self.assertRaises(KeyError):
+            second.check(request.id)
+
+
 if __name__ == "__main__":
     unittest.main()

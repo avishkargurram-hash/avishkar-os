@@ -70,6 +70,11 @@ class LaylaTask:
     result: Optional[str] = None
     blocked_reason: Optional[str] = None
     principal_id: Optional[str] = None  # who this task is being processed on behalf of (Priority 17.1)
+    # Priority 17.3 (resume-in-place, ADR-0023): the actual Plan, not just
+    # its id, persisted so a resumed task can continue DELEGATING without
+    # re-planning -- see CONTRACT.md SS17 and session.py.
+    plan: Optional["Plan"] = None
+    pending_approval_id: Optional[str] = None
 
 
 # --- Memory (CONTRACT.md SS2) -----------------------------------------------

@@ -13,10 +13,21 @@ in Phase 16 -- no identity enforcement, every existing test unaffected.
 When supplied, grant()/deny() require a valid `session_id` holding
 PERM_APPROVE, and refuse self-approval (the same principal that
 requested an action can never be the one who approves it).
+
+Durability (Priority 17.3, ADR-0023): `memory` is an *optional*
+constructor argument. When omitted, `ApprovalRequest`s live only in an
+in-process dict, exactly as in Phase 16/17.1 -- lost on restart, same
+as before. When supplied (as `ExecutiveRuntime` always does, since it
+already requires a `memory`), every request/grant/deny is also
+persisted through the same `LaylaMemoryPolicy` every other Layla
+component uses (`kind="long_term"`, `approval:{request_id}`) -- a
+pending approval, or the outcome of one that was decided while this
+process was down, survives a restart. See CONTRACT.md SS17.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import datetime
 import time
 from typing import Any, Callable, Dict, Optional
@@ -25,7 +36,10 @@ from avishkar_agent import ApprovalGate, Task
 
 from .errors import ApprovalDeniedError, ApprovalExpiredError, PermissionDeniedError
 from .identity import PERM_APPROVE
+from .memory_policy import LaylaMemoryPolicy
 from .types import RISK_LOW, ApprovalRequest, new_id
+
+_KIND = "long_term"
 
 
 def _iso(epoch_seconds: float) -> str:
@@ -38,14 +52,24 @@ class ApprovalManager:
         *,
         approval_gate: Optional[ApprovalGate] = None,
         authorization: Optional[Any] = None,
+        memory: Optional[LaylaMemoryPolicy] = None,
         clock: Callable[[], float] = time.time,
         default_ttl_seconds: float = 3600.0,
     ) -> None:
         self._approval_gate = approval_gate
         self._authorization = authorization
+        self._memory = memory
         self._clock = clock
         self._default_ttl_seconds = default_ttl_seconds
         self._requests: Dict[str, ApprovalRequest] = {}
+
+    def _save(self, record: ApprovalRequest) -> None:
+        self._requests[record.id] = record
+        if self._memory is not None:
+            self._memory.remember(
+                _KIND, f"approval:{record.id}", dataclasses.asdict(record),
+                provenance="approval-manager", importance="high",
+            )
 
     def request(
         self, task_id: str, action_description: str, risk_level: str, *, requested_by: Optional[str] = None
@@ -78,7 +102,7 @@ class ApprovalManager:
                 requested_by=requested_by,
             )
 
-        self._requests[request_id] = record
+        self._save(record)
         return record
 
     def grant(self, request_id: str, *, session_id: Optional[str] = None, reason: str = "") -> ApprovalRequest:
@@ -95,6 +119,7 @@ class ApprovalManager:
         record.status = "granted"
         record.decided_at = _iso(self._clock())
         record.reason = reason
+        self._save(record)
         return record
 
     def deny(self, request_id: str, *, session_id: Optional[str] = None, reason: str = "") -> ApprovalRequest:
@@ -104,6 +129,7 @@ class ApprovalManager:
         record.status = "denied"
         record.decided_at = _iso(self._clock())
         record.reason = reason
+        self._save(record)
         return record
 
     def check(self, request_id: str) -> str:
@@ -131,7 +157,13 @@ class ApprovalManager:
         return self._clock() > datetime.datetime.fromisoformat(record.expiration).timestamp()
 
     def _require(self, request_id: str) -> ApprovalRequest:
-        try:
-            return self._requests[request_id]
-        except KeyError as exc:
-            raise KeyError(f"no approval request with id {request_id!r}") from exc
+        record = self._requests.get(request_id)
+        if record is not None:
+            return record
+        if self._memory is not None:
+            stored = self._memory.recall(_KIND, f"approval:{request_id}")
+            if stored is not None:
+                record = ApprovalRequest(**stored.value)
+                self._requests[request_id] = record  # cache for subsequent calls this process
+                return record
+        raise KeyError(f"no approval request with id {request_id!r}")
