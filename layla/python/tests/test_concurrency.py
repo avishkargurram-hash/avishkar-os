@@ -36,7 +36,7 @@ from avishkar_layla.runtime import ExecutiveRuntime
 from avishkar_layla.scheduler import Scheduler
 from avishkar_layla.session import SessionManager
 from avishkar_layla.state_machine import StateMachine
-from avishkar_layla.types import COMPLETED, RISK_HIGH, RISK_MEDIUM, UNDERSTANDING, LaylaTask, PlanStep
+from avishkar_layla.types import COMPLETED, RISK_HIGH, UNDERSTANDING, LaylaTask, PlanStep
 
 
 def _agent(name: str, domain: str, response_text: str) -> ChiefDomainAgent:

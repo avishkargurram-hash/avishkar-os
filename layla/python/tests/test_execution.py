@@ -47,7 +47,7 @@ class TestExecutionTrackerLifecycle(unittest.TestCase):
 
     def test_begin_is_idempotent_returns_existing_record_unchanged(self):
         tracker = self._tracker()
-        first = tracker.begin("key-1", OP_WRITE, "send an email")
+        tracker.begin("key-1", OP_WRITE, "send an email")
         tracker.transition("key-1", EXEC_EXECUTING)
 
         second = tracker.begin("key-1", OP_WRITE, "send an email")

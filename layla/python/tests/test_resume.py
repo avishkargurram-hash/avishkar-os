@@ -16,7 +16,6 @@ from pathlib import Path
 
 from avishkar_agent import (
     AgentBlueprint,
-    ApprovalGate,
     ChiefDomainAgent,
     InMemoryMemoryPolicy,
     Orchestrator,
@@ -31,7 +30,6 @@ from avishkar_layla.runtime import ExecutiveRuntime
 from avishkar_layla.types import (
     APPROVAL_PENDING,
     COMPLETED,
-    DELEGATING,
     EXECUTING,
     REQUIRES_HUMAN,
 )
@@ -184,7 +182,7 @@ class TestResumeMidDelegation(unittest.TestCase):
 
             # Pre-complete exactly one step's execution record, as if a
             # prior, now-crashed attempt got that far.
-            completed_step, remaining_step = plan.steps[0], plan.steps[1]
+            completed_step = plan.steps[0]  # plan.steps[1] is the remaining, not-yet-run step
             crashed_task_id = "crashed-task-1"
             tracker.begin(f"{crashed_task_id}:{completed_step.id}", "READ", completed_step.input)
             tracker.transition(

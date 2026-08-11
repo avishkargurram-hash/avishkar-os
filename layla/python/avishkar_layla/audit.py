@@ -12,7 +12,7 @@ from __future__ import annotations
 import dataclasses
 import datetime
 import threading
-from typing import Any, Dict, Mapping, Optional, Tuple
+from typing import Any, Mapping, Optional, Tuple
 
 from .memory_policy import LaylaMemoryPolicy
 from .types import AuditRecord
