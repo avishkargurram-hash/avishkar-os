@@ -24,10 +24,12 @@ from avishkar_knowledge import KnowledgeBase
 
 from .approval import ApprovalManager
 from .audit import AuditLogger
+from .auth import AuthorizationManager
 from .capability_resolver import CapabilityResolver
 from .context import ContextBuilder
 from .delegation import DelegationEngine
-from .errors import UnresolvedConflictError
+from .errors import PermissionDeniedError, UnresolvedConflictError
+from .identity import PERM_COMMAND, RISK_PERMISSION
 from .intent import IntentInterpreter
 from .memory_policy import LaylaMemoryPolicy
 from .monitoring import HealthMonitor
@@ -63,6 +65,7 @@ class ExecutiveRuntime:
         agent_domains: Mapping[str, str],
         memory: LaylaMemoryPolicy,
         approval_gate: Optional[Any] = None,
+        authorization: Optional[AuthorizationManager] = None,
         event_bus: Optional[Any] = None,
         knowledge_bases: Sequence[KnowledgeBase] = (),
         memory_lookups: Sequence[Tuple[str, str]] = (),
@@ -81,7 +84,8 @@ class ExecutiveRuntime:
         self._capability_resolver = CapabilityResolver(agent_domains)
         self._planner = Planner(self._capability_resolver)
 
-        self._approval = ApprovalManager(approval_gate=approval_gate, clock=time.time)
+        self._authorization = authorization
+        self._approval = ApprovalManager(approval_gate=approval_gate, authorization=authorization, clock=time.time)
         self._delegation = DelegationEngine(
             orchestrator, approval_manager=self._approval, event_bus=event_bus, clock=clock, sleep_fn=sleep_fn,
         )
@@ -110,19 +114,32 @@ class ExecutiveRuntime:
     def sessions(self) -> SessionManager:
         return self._session
 
-    def handle_event(self, input_text: str) -> LaylaTask:
+    def handle_event(self, input_text: str, *, session_id: Optional[str] = None) -> LaylaTask:
         """Processes one request end to end through the state machine.
         Deterministic and synchronous -- see module docstring.
+
+        `session_id` (Priority 17.1, ADR-0021): when this runtime was
+        constructed with an `authorization=`, a valid `session_id`
+        holding PERM_COMMAND is required or this raises immediately,
+        before a LaylaTask is even created -- an unauthenticated caller
+        never gets as far as UNDERSTANDING. When no `authorization=`
+        was supplied, `session_id` is accepted but ignored (Phase 16
+        behavior, unchanged).
         """
-        task = LaylaTask(input=input_text)
-        self._audit.record("layla.task.received", {"input": input_text}, task_id=task.id)
+        principal_id: Optional[str] = None
+        if self._authorization is not None:
+            session = self._authorization.require(session_id, PERM_COMMAND)
+            principal_id = session.principal.id
+
+        task = LaylaTask(input=input_text, principal_id=principal_id)
+        self._audit.record("layla.task.received", {"input": input_text}, task_id=task.id, principal_id=principal_id)
 
         self._state_machine.transition(task, UNDERSTANDING)
         intent = self._intent.interpret(task.input)
         self._audit.record(
             "layla.intent.classified",
             {"category": intent.category, "urgency": intent.urgency, "requires_action": intent.requires_action},
-            task_id=task.id,
+            task_id=task.id, principal_id=principal_id,
         )
 
         self._state_machine.transition(task, CONTEXT_LOADING)
@@ -136,20 +153,64 @@ class ExecutiveRuntime:
         except Exception as exc:  # noqa: BLE001 -- UnknownCapabilityError, normalized into REQUIRES_HUMAN
             task.blocked_reason = str(exc)
             self._state_machine.transition(task, REQUIRES_HUMAN)
-            self._audit.record("layla.plan.failed", {"reason": str(exc)}, task_id=task.id)
+            self._audit.record("layla.plan.failed", {"reason": str(exc)}, task_id=task.id, principal_id=principal_id)
             self._session.save(task)
             return task
 
+        # Least-privilege capability enforcement (Priority 17.1 SS4): a
+        # role may restrict which capabilities (agent names) a session
+        # can invoke, independent of risk tier. Checked once, up front,
+        # against every step -- a plan naming even one disallowed
+        # capability is blocked in full rather than silently dropping
+        # that step and proceeding partially.
+        if self._authorization is not None:
+            session = self._authorization.authenticate(session_id)
+            for step in plan.steps:
+                try:
+                    self._authorization.authorize_capability(session, step.required_capability)
+                except PermissionDeniedError as exc:
+                    task.blocked_reason = str(exc)
+                    self._state_machine.transition(task, REQUIRES_HUMAN)
+                    self._audit.record(
+                        "layla.plan.capability_denied", {"capability": step.required_capability},
+                        task_id=task.id, principal_id=principal_id,
+                    )
+                    self._session.save(task)
+                    return task
+
         task.plan_id = plan.id
-        self._audit.record("layla.plan.created", {"plan_id": plan.id, "step_count": len(plan.steps)}, task_id=task.id)
+        self._audit.record(
+            "layla.plan.created", {"plan_id": plan.id, "step_count": len(plan.steps)},
+            task_id=task.id, principal_id=principal_id,
+        )
 
         overall_risk = classify_risk(task.input)
         if overall_risk != RISK_LOW:
+            # Identity/risk integration point (Priority 17.1 SS3): a
+            # session lacking the risk-appropriate permission is denied
+            # outright -- Layla never even creates an ApprovalRequest
+            # for an action this principal isn't allowed to ask for.
+            if self._authorization is not None:
+                session = self._authorization.authenticate(session_id)
+                try:
+                    self._authorization.authorize(session, RISK_PERMISSION[overall_risk])
+                except PermissionDeniedError as exc:
+                    task.blocked_reason = str(exc)
+                    self._state_machine.transition(task, REQUIRES_HUMAN)
+                    self._audit.record(
+                        "layla.risk.permission_denied", {"risk_level": overall_risk},
+                        task_id=task.id, principal_id=principal_id,
+                    )
+                    self._session.save(task)
+                    return task
+
             self._state_machine.transition(task, APPROVAL_PENDING)
-            approval = self._approval.request(task.id, f"execute plan {plan.id} for: {task.input}", overall_risk)
+            approval = self._approval.request(
+                task.id, f"execute plan {plan.id} for: {task.input}", overall_risk, requested_by=principal_id,
+            )
             self._audit.record(
                 "layla.approval.requested", {"approval_id": approval.id, "risk_level": overall_risk, "status": approval.status},
-                task_id=task.id,
+                task_id=task.id, principal_id=principal_id,
             )
             if approval.status != "granted":
                 task.blocked_reason = f"approval {approval.id} status={approval.status}"
@@ -163,12 +224,12 @@ class ExecutiveRuntime:
         self._state_machine.transition(task, DELEGATING)
         records = []
         for step in plan.steps:
-            record = self._delegation.delegate(step, task_id=task.id)
+            record = self._delegation.delegate(step, task_id=task.id, principal_id=principal_id)
             records.append(record)
             self._audit.record(
                 f"layla.delegation.{record.status}",
                 {"step_id": record.step_id, "agent_name": record.agent_name, "attempts": record.attempts},
-                task_id=task.id,
+                task_id=task.id, principal_id=principal_id,
             )
             self._health.observe_delegation(record)
 
@@ -177,7 +238,7 @@ class ExecutiveRuntime:
         validation = self._validator.validate(records)
         self._audit.record(
             "layla.validation.completed", {"all_completed": validation.all_completed, "failing": list(validation.failing)},
-            task_id=task.id,
+            task_id=task.id, principal_id=principal_id,
         )
 
         self._state_machine.transition(task, SYNTHESIZING)
@@ -185,7 +246,8 @@ class ExecutiveRuntime:
         if conflicts:
             task.blocked_reason = f"{len(conflicts)} unresolved conflict(s) among delegated results"
             self._audit.record(
-                "layla.conflict.detected", {"conflicts": [c.reason for c in conflicts]}, task_id=task.id,
+                "layla.conflict.detected", {"conflicts": [c.reason for c in conflicts]},
+                task_id=task.id, principal_id=principal_id,
             )
             self._state_machine.transition(task, REQUIRES_HUMAN)
             self._session.save(task)
@@ -201,7 +263,7 @@ class ExecutiveRuntime:
 
         task.result = summary
         self._state_machine.transition(task, COMPLETED)
-        self._audit.record("layla.task.completed", {"result": summary}, task_id=task.id)
+        self._audit.record("layla.task.completed", {"result": summary}, task_id=task.id, principal_id=principal_id)
         self._session.save(task)
         return task
 

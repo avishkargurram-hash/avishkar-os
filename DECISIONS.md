@@ -1019,3 +1019,93 @@ consumer), `factories/mcp-factory`, `factories/memory-factory`,
 the widest dependency footprint of anything in this repository, which
 is expected and correct for the outermost composition layer. No
 existing framework's locked source is modified to build it.
+
+---
+
+## ADR-0021: Layla identity/authentication is a minimal, additive `Principal`/`Session`/`Role`/`Permission` model — not an enterprise IAM system, not a breaking change
+
+**Status:** Accepted · **Date:** 2026-08-11
+
+**Context:** The Phase 16 forensic audit (SEC-3, MEDIUM) found that
+**no authentication/authorization model exists anywhere in this
+platform** — any caller with code-level access to a `ChiefDomainAgent`
+or `ExecutiveRuntime` can act as any "user," and nothing prevents an
+autonomous agent from granting itself broader authority than it was
+invoked with. Priority 17.1 of the Phase 17 directive asks for a real
+identity boundary integrated with Layla's existing
+`IntentInterpreter`/`risk.classify_risk`/`CapabilityResolver`/
+`ApprovalManager`/`DelegationEngine`/`AuditLogger` — explicitly
+**not** "enterprise identity infrastructure this platform doesn't
+need," and explicitly required to keep all 149 (119 Phase 16 + 30
+Phase 17.1) Layla tests — and the platform's other 542 — passing
+unmodified.
+
+**Decision:**
+1. **A minimal, real, in-process model** (`identity.py`): `Principal`
+   (id, kind ∈ {user, agent, system}), `Role` (a fixed six-permission
+   vocabulary, optionally scoped to specific capabilities), `Session`
+   (issued, expiring, revocable). No JWT/OAuth/OIDC machinery — those
+   integrate *behind* `AuthorizationManager.issue_session()` later
+   (a real deployment would replace/wrap session issuance with a real
+   IdP; nothing else in this design needs to change for that).
+2. **A fixed permission vocabulary, not open-ended RBAC strings** —
+   `PERM_COMMAND`/`PERM_INVOKE_AGENT`/`PERM_INVOKE_AGENT_WRITE`/
+   `PERM_INVOKE_AGENT_HIGH_RISK`/`PERM_APPROVE`/`PERM_TOOL_INVOKE`.
+   Adding a permission is a deliberate code change to this list, not a
+   runtime string any caller can invent to bypass enforcement.
+3. **Every integration point is additive.** `ExecutiveRuntime`,
+   `ApprovalManager`, `DelegationEngine`, `AuditLogger` all accept
+   `authorization`/`session_id`/`principal_id`/`requested_by` as
+   **optional** parameters defaulting to `None`. Omitted: behavior is
+   byte-for-byte Phase 16 (verified — all 119 original Layla tests
+   pass unmodified against the Phase 17.1 code). Supplied: full
+   enforcement activates. This is the same "extend, don't break"
+   discipline `approval_gate=`/`scheduler=`/`event_bus=` already
+   established as optional `ExecutiveRuntime` constructor arguments in
+   Phase 16 — Priority 17.1 follows the existing pattern rather than
+   inventing a new one.
+4. **Structural, not conventional, anti-escalation.**
+   `AuthorizationManager.issue_session()` *refuses* to issue a session
+   granting `PERM_INVOKE_AGENT_HIGH_RISK` or `PERM_APPROVE` to a
+   `kind="agent"` `Principal` — checked against the role's actual
+   permission set at issuance time, regardless of the role's name.
+   Even a maliciously-named custom role (`register_role(Role("sneaky",
+   (PERM_APPROVE,)))`) cannot be granted to an agent-kind principal —
+   proven by test, not merely documented (Priority 17.1 SS5's explicit
+   requirement).
+5. **Least-privilege capability enforcement composes by union.**
+   `Role.allowed_capabilities` (`None` = unrestricted) lets a
+   deployment scope a session to specific Chief Domain Agents;
+   `ExecutiveRuntime` checks every `PlanStep.required_capability`
+   against it *before* delegating, blocking the whole plan (not
+   silently dropping the disallowed step) if any step fails the check.
+6. **Self-approval is always denied**, independent of role —
+   `ApprovalRequest.requested_by` is compared against the approving
+   session's `principal.id` in `ApprovalManager.grant()`, even if that
+   principal separately holds `PERM_APPROVE` via another role.
+
+**Alternatives considered:**
+1. *Integrate a real OAuth/OIDC library now* — rejected per the
+   directive's own explicit instruction ("do not invent enterprise
+   identity infrastructure the platform does not currently need") and
+   STANDARDS.md's YAGNI principle: no deployment exists yet to
+   configure a real IdP against.
+2. *Make `session_id` a required parameter everywhere* — rejected:
+   would break all 119 Phase 16 tests and every existing example
+   script, for a security property better achieved by making
+   enforcement opt-in-and-total (once `authorization=` is supplied,
+   nothing bypasses it) rather than mandatory-and-disruptive.
+3. *A single flat permission list with no `Role` grouping* — rejected:
+   roles are the natural unit an operator actually assigns ("give
+   Alice the operator role"), and `allowed_capabilities` needed a home
+   more specific than a bare permission string.
+
+**Consequences:** `layla/python/avishkar_layla/auth.py` and
+`identity.py` depend on nothing outside `layla/` itself and stdlib —
+the identity model doesn't reach into `core/`/`agent-factory`/etc.,
+keeping it a pure addition. A real identity provider integration
+(API keys, device auth, a real OIDC flow) is real future work, tracked
+in `layla/README.md`'s Priority 17.1 section, not built speculatively
+here. `docs/production-readiness.md` (Priority 17's final deliverable)
+must state plainly that this is a foundation, not a hardened,
+externally-audited auth system.

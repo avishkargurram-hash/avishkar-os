@@ -304,4 +304,25 @@ its first consumer.
   security/reliability/integration/performance/code-quality findings
   and recommended Phase 17+ work in the audit document itself.
 
+- **Phase 17.1 (Authentication & Identity) locked (ADR-0021)**:
+  `Principal`/`Role`/`Session`/`AuthorizationManager`
+  (`layla/python/avishkar_layla/identity.py`, `auth.py`) -- a minimal,
+  additive identity boundary responding directly to the Phase 16
+  audit's SEC-3 finding (no auth model existed anywhere in the
+  platform). `ExecutiveRuntime`, `ApprovalManager`, and
+  `DelegationEngine` all accept `authorization=` as an *optional*
+  constructor argument -- omitted, behavior is byte-for-byte Phase 16
+  (all 119 original Layla tests pass unmodified); supplied, every
+  `handle_event()` call authenticates and requires `PERM_COMMAND`
+  before a task exists, checks the session's risk-tier permission
+  before even creating an `ApprovalRequest`, enforces
+  `Role.allowed_capabilities` against every planned step
+  (least-privilege capability enforcement), and `ApprovalManager
+  .grant()` requires `PERM_APPROVE` and always denies self-approval.
+  An agent-kind `Principal` can structurally never be issued high-risk
+  or approval authority -- `AuthorizationManager.issue_session()`
+  checks the role's actual permission set, not its name, so even a
+  maliciously-renamed custom role is refused. 30 new tests (149 total
+  for Layla).
+
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

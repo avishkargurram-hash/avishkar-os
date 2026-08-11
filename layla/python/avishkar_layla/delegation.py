@@ -49,18 +49,19 @@ class DelegationEngine:
         self._sleep_fn = sleep_fn
         self._logger = logger or get_logger("layla.delegation")
 
-    def delegate(self, plan_step: PlanStep, *, task_id: str) -> DelegationRecord:
+    def delegate(self, plan_step: PlanStep, *, task_id: str, principal_id: Optional[str] = None) -> DelegationRecord:
         if self._approval_manager is not None and plan_step.risk_level != RISK_LOW:
             approval = self._approval_manager.request(
                 task_id,
                 f"delegate to capability '{plan_step.required_capability}': {plan_step.input}",
                 plan_step.risk_level,
+                requested_by=principal_id,
             )
             if approval.status != "granted":
                 record = DelegationRecord(
                     step_id=plan_step.id, agent_name="", status="denied", started_at=_now(),
                 )
-                self._publish("layla.delegation.denied", record, task_id)
+                self._publish("layla.delegation.denied", record, task_id, principal_id)
                 return record
 
         retry_policy = RetryPolicy(max_attempts=max(1, plan_step.max_attempts))
@@ -107,13 +108,14 @@ class DelegationEngine:
             record.status = "failed"
 
         self._publish(
-            f"layla.delegation.{record.status}", record, task_id,
+            f"layla.delegation.{record.status}", record, task_id, principal_id,
         )
         return record
 
-    def _publish(self, event_type: str, record: DelegationRecord, task_id: str) -> None:
+    def _publish(self, event_type: str, record: DelegationRecord, task_id: str, principal_id: Optional[str] = None) -> None:
         if self._event_bus is None:
             return
         payload = dataclasses.asdict(record)
         payload["task_id"] = task_id
+        payload["principal_id"] = principal_id
         self._event_bus.publish(event_type, payload, source="layla.delegation")

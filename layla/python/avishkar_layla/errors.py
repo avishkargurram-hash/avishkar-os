@@ -1,4 +1,4 @@
-"""Errors for Layla. See CONTRACT.md SS13."""
+"""Errors for Layla. See CONTRACT.md SS15."""
 
 from __future__ import annotations
 
@@ -42,3 +42,31 @@ class ApprovalDeniedError(LaylaError):
 
 class SessionNotFoundError(LaylaError):
     """SessionManager.load() found no persisted task for the given id."""
+
+
+class UnauthenticatedError(LaylaError):
+    """No valid, unexpired, unrevoked Session for a given session_id."""
+
+
+class PermissionDeniedError(LaylaError):
+    """An authenticated Session lacks a required permission or capability."""
+
+
+class EscalationDeniedError(LaylaError):
+    """An 'agent' kind Principal was about to be granted a permission it
+    can never hold (PERM_INVOKE_AGENT_HIGH_RISK, PERM_APPROVE) -- the
+    structural anti-self-escalation guard. See identity.py.
+    """
+
+
+class IdempotencyConflictError(LaylaError):
+    """An ExecutionRecord's idempotency key was reused with different
+    parameters than its original request -- see execution.py.
+    """
+
+
+class UnknownExecutionOutcomeError(LaylaError):
+    """A side-effecting operation's outcome could not be determined (e.g.
+    a timeout after the provider may have already acted) -- see
+    execution.py SS2's UNKNOWN state.
+    """

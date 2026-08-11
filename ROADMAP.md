@@ -454,6 +454,28 @@ via a future ADR when the platform is ready to schedule them:
 - Hosting/infra provisioning for products — a candidate for a future
   `infra-factory` if the need proves reusable across products, not before.
 
+## Phase 17 — Hardening & Production Readiness — 🚧 IN PROGRESS (2026-08-11)
+
+Post-Phase-16 hardening against the forensic audit's own findings.
+Five priorities, worked sequentially; each gets its own ADR (where
+architecturally significant), tests, docs, and commit.
+
+- ✅ **17.1 Authentication & Identity** (ADR-0021) — `Principal`/
+  `Role`/`Session`/`AuthorizationManager` (`layla/python/avishkar_layla/
+  identity.py`, `auth.py`). Fully additive: `ExecutiveRuntime`/
+  `ApprovalManager`/`DelegationEngine` accept `authorization=` as an
+  *optional* argument — omitted, all 119 Phase 16 tests behave
+  unchanged; supplied, every request is authenticated, risk-tier and
+  capability permissions are enforced before delegation, self-approval
+  is always denied, and an agent-kind `Principal` can structurally
+  never hold high-risk or approval authority (checked against actual
+  permissions at session-issuance time, not role naming). 30 new
+  tests (149 total for Layla).
+- 💤 17.2 Idempotency & Side-Effect Safety
+- 💤 17.3 Durable Execution & Resume-in-Place
+- 💤 17.4 Concurrency & Event System Hardening
+- 💤 17.5 Controlled Live Integration Validation
+
 ## How this roadmap changes
 
 A phase only moves to 🚧 when someone is actively working it, and only to

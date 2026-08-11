@@ -31,14 +31,20 @@ class AuditLogger:
     def __init__(self, memory: LaylaMemoryPolicy) -> None:
         self._memory = memory
 
-    def record(self, event_type: str, payload: Mapping[str, Any], *, task_id: Optional[str] = None) -> AuditRecord:
+    def record(
+        self, event_type: str, payload: Mapping[str, Any], *, task_id: Optional[str] = None,
+        principal_id: Optional[str] = None,
+    ) -> AuditRecord:
         scope = _scope(task_id)
         index_key = f"audit:__index__:{scope}"
         index_record = self._memory.recall(_KIND, index_key)
         sequence = len(index_record.value) if index_record else 0
         entry_key = f"audit:{scope}:{sequence}"
 
-        record = AuditRecord(event_type=event_type, payload=dict(payload), task_id=task_id, recorded_at=_now())
+        record = AuditRecord(
+            event_type=event_type, payload=dict(payload), task_id=task_id, recorded_at=_now(),
+            principal_id=principal_id,
+        )
         self._memory.remember(_KIND, entry_key, dataclasses.asdict(record), provenance="audit-logger")
 
         keys = list(index_record.value) if index_record else []

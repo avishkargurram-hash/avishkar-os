@@ -30,6 +30,7 @@ def _task_to_dict(task: LaylaTask) -> dict:
         "plan_id": task.plan_id,
         "result": task.result,
         "blocked_reason": task.blocked_reason,
+        "principal_id": task.principal_id,
     }
 
 
@@ -43,6 +44,7 @@ def _task_from_dict(data: dict) -> LaylaTask:
         plan_id=data.get("plan_id"),
         result=data.get("result"),
         blocked_reason=data.get("blocked_reason"),
+        principal_id=data.get("principal_id"),
     )
 
 

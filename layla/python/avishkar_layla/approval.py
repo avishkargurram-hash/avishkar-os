@@ -6,17 +6,25 @@ established (ADR-0011 SS7). ApprovalManager adds the risk-tiering layer
 (LOW auto-grants; MEDIUM/HIGH go through a gate, or stay pending for an
 external grant()/deny() call when no gate is wired) that doesn't exist
 anywhere else in this platform.
+
+Identity (Priority 17.1, ADR-0021): `authorization` is an *optional*
+constructor argument. When omitted, grant()/deny() behave exactly as
+in Phase 16 -- no identity enforcement, every existing test unaffected.
+When supplied, grant()/deny() require a valid `session_id` holding
+PERM_APPROVE, and refuse self-approval (the same principal that
+requested an action can never be the one who approves it).
 """
 
 from __future__ import annotations
 
 import datetime
 import time
-from typing import Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 from avishkar_agent import ApprovalGate, Task
 
-from .errors import ApprovalDeniedError, ApprovalExpiredError
+from .errors import ApprovalDeniedError, ApprovalExpiredError, PermissionDeniedError
+from .identity import PERM_APPROVE
 from .types import RISK_LOW, ApprovalRequest, new_id
 
 
@@ -29,15 +37,19 @@ class ApprovalManager:
         self,
         *,
         approval_gate: Optional[ApprovalGate] = None,
+        authorization: Optional[Any] = None,
         clock: Callable[[], float] = time.time,
         default_ttl_seconds: float = 3600.0,
     ) -> None:
         self._approval_gate = approval_gate
+        self._authorization = authorization
         self._clock = clock
         self._default_ttl_seconds = default_ttl_seconds
         self._requests: Dict[str, ApprovalRequest] = {}
 
-    def request(self, task_id: str, action_description: str, risk_level: str) -> ApprovalRequest:
+    def request(
+        self, task_id: str, action_description: str, risk_level: str, *, requested_by: Optional[str] = None
+    ) -> ApprovalRequest:
         now = self._clock()
         request_id = new_id("approval")
 
@@ -46,6 +58,7 @@ class ApprovalManager:
                 id=request_id, task_id=task_id, action_description=action_description,
                 risk_level=risk_level, status="granted", auto=True,
                 created_at=_iso(now), decided_at=_iso(now), reason="auto-granted: LOW risk",
+                requested_by=requested_by,
             )
         elif self._approval_gate is not None:
             # Synchronous decision via the reused ApprovalGate -- see
@@ -55,29 +68,39 @@ class ApprovalManager:
                 id=request_id, task_id=task_id, action_description=action_description,
                 risk_level=risk_level, status="granted" if granted else "denied",
                 created_at=_iso(now), decided_at=_iso(now),
-                reason="ApprovalGate decision",
+                reason="ApprovalGate decision", requested_by=requested_by,
             )
         else:
             record = ApprovalRequest(
                 id=request_id, task_id=task_id, action_description=action_description,
                 risk_level=risk_level, status="pending",
                 created_at=_iso(now), expiration=_iso(now + self._default_ttl_seconds),
+                requested_by=requested_by,
             )
 
         self._requests[request_id] = record
         return record
 
-    def grant(self, request_id: str, *, reason: str = "") -> ApprovalRequest:
+    def grant(self, request_id: str, *, session_id: Optional[str] = None, reason: str = "") -> ApprovalRequest:
         record = self._require(request_id)
         if self._is_expired(record):
             raise ApprovalExpiredError(f"approval request {request_id!r} expired before it was granted")
+        if self._authorization is not None:
+            session = self._authorization.require(session_id, PERM_APPROVE)
+            if record.requested_by is not None and session.principal.id == record.requested_by:
+                raise PermissionDeniedError(
+                    f"principal {session.principal.id!r} cannot approve its own request {request_id!r} "
+                    f"(self-approval is never allowed)"
+                )
         record.status = "granted"
         record.decided_at = _iso(self._clock())
         record.reason = reason
         return record
 
-    def deny(self, request_id: str, *, reason: str = "") -> ApprovalRequest:
+    def deny(self, request_id: str, *, session_id: Optional[str] = None, reason: str = "") -> ApprovalRequest:
         record = self._require(request_id)
+        if self._authorization is not None:
+            self._authorization.require(session_id, PERM_APPROVE)
         record.status = "denied"
         record.decided_at = _iso(self._clock())
         record.reason = reason

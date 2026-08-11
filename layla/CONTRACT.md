@@ -245,9 +245,49 @@ directly) into one context mapping handed to the `Planner`. A pure
 composer — it does not itself decide what's relevant beyond what the
 caller asks it to look up.
 
-## §14. Errors
+## §14. Identity and authorization (Priority 17.1, ADR-0021)
+
+`Principal(id, kind, display_name="")` — `kind` one of `"user"` /
+`"agent"` / `"system"`. `Role(name, permissions, allowed_capabilities=
+None)` — a fixed, small permission vocabulary
+(`PERM_COMMAND`/`PERM_INVOKE_AGENT`/`PERM_INVOKE_AGENT_WRITE`/
+`PERM_INVOKE_AGENT_HIGH_RISK`/`PERM_APPROVE`/`PERM_TOOL_INVOKE`), not
+an open-ended RBAC string namespace. `Session(id, principal, role_names,
+issued_at, expires_at=None, revoked=False)`.
+
+`AuthorizationManager.issue_session(principal, role_names,
+ttl_seconds=None) -> Session` — refuses (`EscalationDeniedError`) to
+grant a role carrying `PERM_INVOKE_AGENT_HIGH_RISK` or `PERM_APPROVE`
+to a `kind="agent"` `Principal`, structurally, regardless of which role
+is named — an autonomous agent can never hold high-risk or approval
+authority, by construction, not by convention (Priority 17.1 SS5).
+`.authenticate(session_id) -> Session` (raises `UnauthenticatedError`
+for unknown/revoked/expired). `.authorize(session, permission)` /
+`.authorize_capability(session, capability)` (raise
+`PermissionDeniedError`). `.require(session_id, permission) -> Session`
+combines both.
+
+**Integration is entirely additive** — every component above
+(`ExecutiveRuntime`, `ApprovalManager`, `DelegationEngine`,
+`AuditLogger`) accepts `authorization`/`session_id`/`principal_id` as
+*optional* parameters. Omitted, behavior is identical to Phase 16 (no
+identity enforcement). Supplied: `ExecutiveRuntime.handle_event()`
+authenticates and requires `PERM_COMMAND` before a `LaylaTask` is even
+created; after planning, every `PlanStep.required_capability` is
+checked against the session's `allowed_capabilities` (least-privilege
+capability enforcement, SS4); before an `APPROVAL_PENDING` transition,
+the session must hold the risk-tier permission (`RISK_PERMISSION[risk]`)
+or the task is denied without ever creating an `ApprovalRequest`;
+`ApprovalManager.grant()` requires `PERM_APPROVE` and refuses
+self-approval (`ApprovalRequest.requested_by == session.principal.id`
+is always denied); every `AuditRecord` carries the acting
+`principal_id`.
+
+## §15. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,
 `DelegationTimeoutError`, `UnresolvedConflictError`,
-`ApprovalExpiredError`, `ApprovalDeniedError`, `SessionNotFoundError`.
+`ApprovalExpiredError`, `ApprovalDeniedError`, `SessionNotFoundError`,
+`UnauthenticatedError`, `PermissionDeniedError`, `EscalationDeniedError`,
+`IdempotencyConflictError`, `UnknownExecutionOutcomeError`.

@@ -10,6 +10,7 @@ frameworks' public contracts.
 
 from .approval import ApprovalManager
 from .audit import AuditLogger
+from .auth import AuthorizationManager
 from .capability_resolver import CapabilityResolver
 from .context import ContextBuilder
 from .delegation import DelegationEngine
@@ -17,12 +18,31 @@ from .errors import (
     ApprovalDeniedError,
     ApprovalExpiredError,
     DelegationTimeoutError,
+    EscalationDeniedError,
+    IdempotencyConflictError,
     InvalidTransitionError,
     LaylaError,
     MemoryPolicyViolationError,
+    PermissionDeniedError,
     SessionNotFoundError,
+    UnauthenticatedError,
     UnknownCapabilityError,
+    UnknownExecutionOutcomeError,
     UnresolvedConflictError,
+)
+from .identity import (
+    ALL_PERMISSIONS,
+    BUILTIN_ROLES,
+    PERM_APPROVE,
+    PERM_COMMAND,
+    PERM_INVOKE_AGENT,
+    PERM_INVOKE_AGENT_HIGH_RISK,
+    PERM_INVOKE_AGENT_WRITE,
+    PERM_TOOL_INVOKE,
+    RISK_PERMISSION,
+    Principal,
+    Role,
+    Session,
 )
 from .intent import Intent, IntentInterpreter
 from .memory_policy import LaylaMemoryPolicy
@@ -110,5 +130,23 @@ __all__ = [
     "ApprovalExpiredError",
     "ApprovalDeniedError",
     "SessionNotFoundError",
+    "AuthorizationManager",
+    "Principal",
+    "Role",
+    "Session",
+    "BUILTIN_ROLES",
+    "ALL_PERMISSIONS",
+    "PERM_COMMAND",
+    "PERM_INVOKE_AGENT",
+    "PERM_INVOKE_AGENT_WRITE",
+    "PERM_INVOKE_AGENT_HIGH_RISK",
+    "PERM_APPROVE",
+    "PERM_TOOL_INVOKE",
+    "RISK_PERMISSION",
+    "UnauthenticatedError",
+    "PermissionDeniedError",
+    "EscalationDeniedError",
+    "IdempotencyConflictError",
+    "UnknownExecutionOutcomeError",
     "__version__",
 ]

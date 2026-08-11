@@ -69,6 +69,7 @@ class LaylaTask:
     plan_id: Optional[str] = None
     result: Optional[str] = None
     blocked_reason: Optional[str] = None
+    principal_id: Optional[str] = None  # who this task is being processed on behalf of (Priority 17.1)
 
 
 # --- Memory (CONTRACT.md SS2) -----------------------------------------------
@@ -121,6 +122,7 @@ class ApprovalRequest:
     expiration: Optional[str] = None
     decided_at: Optional[str] = None
     reason: str = ""
+    requested_by: Optional[str] = None  # Principal.id of the requester, for self-approval prevention
 
 
 # --- Planning / Delegation (CONTRACT.md SS5-6) ------------------------------
@@ -194,6 +196,7 @@ class AuditRecord:
     payload: Mapping[str, Any]
     task_id: Optional[str]
     recorded_at: str = ""
+    principal_id: Optional[str] = None
 
 
 # --- Scheduling (CONTRACT.md SS7) -------------------------------------------

@@ -120,12 +120,44 @@ through `UNDERSTANDING -> CONTEXT_LOADING -> PLANNING ->
 `StateMachine.transition()` rejects anything not in
 `ALLOWED_TRANSITIONS` — see `test_state_machine.py`.
 
+# Authentication & Identity (Priority 17.1, ADR-0021)
+
+**Status: IMPLEMENTED** as a minimal, additive foundation;
+**PARTIALLY IMPLEMENTED / FUTURE** for real-world identity provider
+integration. `Principal`/`Role`/`Session`/`AuthorizationManager`
+(`identity.py`/`auth.py`) give Layla a real, in-process identity
+boundary — six fixed permissions, roles that bundle them, sessions
+that expire/revoke. `ExecutiveRuntime`, `ApprovalManager`, and
+`DelegationEngine` all accept it as an **optional** constructor
+argument: omitted, behavior is identical to Phase 16 (no enforcement,
+every original test still passes); supplied, every request is
+authenticated and authorized before a `LaylaTask` is even created. An
+agent-kind `Principal` can *structurally never* be granted high-risk or
+approval authority (`AuthorizationManager.issue_session()` refuses it
+outright, checked against the role's actual permissions, not its
+name) — see CONTRACT.md §14 and `test_auth.py`'s
+`TestAgentSelfEscalationPrevention`.
+
+**What's NOT built**: any real identity provider integration (OAuth/
+OIDC/API keys/device auth) — `issue_session()` is the seam a real IdP
+plugs in behind; nothing else in this design needs to change for that.
+No persistence for `Session`s (in-memory only, like `NotificationManager`)
+— a restart forgets active sessions, same as re-authenticating with any
+session-based system after a server restart. No fine-grained per-tool
+permission (`PERM_TOOL_INVOKE` is reserved but not yet wired into
+`ToolRuntime` calls — Layla doesn't call tools directly today, only
+through delegated agents).
+
 # Permission Model
 
-**Status: IMPLEMENTED** for the mechanism, **PARTIALLY IMPLEMENTED**
-for policy authoring. `risk.classify_risk()` is a real, pattern-based
-LOW/MEDIUM/HIGH classifier (CONTRACT.md §4). Every `DelegationEngine
-.delegate()` call checks `ApprovalManager` first for MEDIUM/HIGH steps.
+**Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
+pattern-based LOW/MEDIUM/HIGH classifier (CONTRACT.md §4), mapped to a
+required permission (`RISK_PERMISSION`, CONTRACT.md §14) when identity
+is wired. Every `DelegationEngine.delegate()` call checks
+`ApprovalManager` first for MEDIUM/HIGH steps; `ExecutiveRuntime`
+checks the session's risk-tier permission *before* even creating an
+`ApprovalRequest`, and separately checks `Role.allowed_capabilities`
+against every planned step (least-privilege capability enforcement).
 What's not built: an authoring UI/DSL for a deployment to add its own
 risk patterns beyond editing `risk.py` directly — real future work.
 
@@ -136,7 +168,11 @@ consults a real `avishkar_agent.ApprovalGate` synchronously when one is
 wired (grant/deny immediately), or leaves the request `"pending"` for
 an external `grant()`/`deny()` call when no gate is wired. Expiration
 is always computed live from `ApprovalRequest.expiration`, never a
-stored flag — see CONTRACT.md §4 and `test_risk_and_approval.py`.
+stored flag — see CONTRACT.md §4 and `test_risk_and_approval.py`. When
+identity is wired, `grant()`/`deny()` require a session holding
+`PERM_APPROVE`, and self-approval (`ApprovalRequest.requested_by ==`
+the approving session's principal) is always denied regardless of role
+— see CONTRACT.md §14 and `test_approval_identity.py`.
 
 # Memory Policy
 
@@ -242,3 +278,35 @@ See Part XIV's full list; concretely enforced in this codebase:
   which — per that framework's own README — denies rather than
   pretends to sandbox in v1); this is an inherited limitation, not a
   new gap Layla introduces.
+
+## Threat model and security boundaries (Priority 17.1)
+
+**Trusted**: the process running `ExecutiveRuntime`; whatever issued a
+`Session` via `AuthorizationManager.issue_session()` (today, that's
+application code with direct Python access — see below).
+
+**Untrusted / treated as data, never authority**: `task.input` text
+content beyond its literal keyword matches; `DelegationRecord.output`
+from any delegated agent; `ContextBuilder`-pulled knowledge/memory
+content. None of these can grant a permission, approve a request, or
+change a `Session`'s roles — verified structurally (§ above), not by a
+text filter that could be phrased around.
+
+**Explicitly out of scope for this identity model** (Priority 17.1's
+"do not invent enterprise infrastructure" boundary):
+- **Transport security** — how a `session_id` reaches
+  `handle_event()` safely (TLS, a real API gateway) is a deployment
+  concern, not this library's.
+- **Credential issuance** — `issue_session()` trusts its caller's
+  `Principal`/`role_names` arguments completely; there is no login
+  flow, password check, or MFA here. **Anyone who can call
+  `issue_session()` can mint a session for any principal with any
+  role** (short of the agent-escalation ceiling). This is the single
+  most important boundary to understand before using this in
+  production: `AuthorizationManager` enforces authorization *after* a
+  session exists; it does not authenticate a real-world user by
+  itself. A real deployment puts a real IdP in front of
+  `issue_session()`.
+- **Cross-process/distributed sessions** — `Session`s live in one
+  `AuthorizationManager` instance's memory, like `NotificationManager`.
+  A multi-process deployment needs a shared session store; not built.
