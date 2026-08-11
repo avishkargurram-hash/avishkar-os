@@ -454,7 +454,7 @@ via a future ADR when the platform is ready to schedule them:
 - Hosting/infra provisioning for products — a candidate for a future
   `infra-factory` if the need proves reusable across products, not before.
 
-## Phase 17 — Hardening & Production Readiness — 🚧 IN PROGRESS (2026-08-11)
+## Phase 17 — Hardening & Production Readiness — ✅ COMPLETE (2026-08-11)
 
 Post-Phase-16 hardening against the forensic audit's own findings.
 Five priorities, worked sequentially; each gets its own ADR (where
@@ -537,6 +537,15 @@ architecturally significant), tests, docs, and commit.
   `docs/live-integration-guide.md`). 1 new test (190 total for Layla,
   189 passing + 1 skipped by default); router's own 42 tests still pass
   unmodified.
+
+**Phase 17 complete**: all five priorities locked, 732 platform tests
+(731 passing + 1 deliberately skipped by design), zero regressions,
+two real previously-latent bugs found and fixed by actually running
+scenarios end-to-end, one documented and bounded exception to three
+otherwise-locked frameworks. See `docs/production-readiness.md` for
+the honest production-readiness gate and
+`docs/phase17-forensic-report.md` for the full forensic accounting —
+neither claims more than what was actually run and observed.
 
 ## How this roadmap changes
 

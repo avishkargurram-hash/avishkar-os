@@ -48,18 +48,20 @@ sibling directories are two different things, not a duplication.
 
 ## Status
 
-As of 2026-08-09, all 15 planned phases are locked: 16 frameworks
-(Core Engine, AI Router, Agent Framework, Universal Integration,
-Memory, Knowledge, Workflow, Prompt, Template, Starter Kit,
-Evaluation, Security, plus four documented-but-deferred per
-[DECISIONS.md](./DECISIONS.md) ADR-0009) and all 11 locked-roster
-Chief Domain Agents ([DECISIONS.md](./DECISIONS.md) ADR-0007) are
-real, tested, and documented — 542 tests passing platform-wide, zero
-known regressions. See [docs/final-integration.md](./docs/final-integration.md)
-for a real, runnable proof of how the core systems connect, and
+As of 2026-08-11, all 15 originally-planned phases are locked, plus
+Phase 16 (Layla — Avishkar OS's Personal Executive Intelligence layer,
+[layla/](./layla/)) and Phase 17 (Hardening & Production Readiness:
+identity/authorization, idempotency, resume-in-place, concurrency
+hardening, and controlled live integration validation) — **732 tests
+passing platform-wide** (731 passing + 1 deliberately skipped by
+design — a live-API test gated behind explicit opt-in credentials),
+zero known regressions. See
+[docs/final-integration.md](./docs/final-integration.md) for a real,
+runnable proof of how the core systems connect,
+[docs/production-readiness.md](./docs/production-readiness.md) for an
+honest account of what is and isn't production-ready today, and
 [ROADMAP.md](./ROADMAP.md) for the full phase-by-phase history and
-what's next (deferred frameworks, additional starter kits, real
-product integration).
+what's next.
 
 ## License
 

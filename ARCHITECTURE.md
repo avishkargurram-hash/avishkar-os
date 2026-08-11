@@ -26,7 +26,9 @@ belong in Avishkar OS.
 The Master Build Directive calls these 16 modules "Frameworks"; ADR-0002
 called them "Factories." Both names point at the same folders — see
 [DECISIONS.md](./DECISIONS.md) ADR-0005. A **Framework** is a factory (or
-platform-wide capability like `core/`/`router/`) documented and built to
+platform-wide capability like `core/`/`router/`/`layla/` — see ADR-0020
+for why Layla, added in Phase 16, is a third member of this category
+rather than a factory or a Chief Domain Agent) documented and built to
 the fuller bar in [STANDARDS.md](./STANDARDS.md) §2.2 (Vision, Folder
 Structure, Naming Standards, Extension Model, Best Practices,
 Anti-Patterns), not a different or renamed directory. Use "Framework" when
@@ -197,7 +199,7 @@ repo.
 ## 7. Status
 
 As of 2026-08-09 (Phase 15, Final Integration), the structure this
-document describes is fully implemented, not just scaffolded: every
+document describes was fully implemented, not just scaffolded: every
 `factories/*` entry (12 built, 4 documented-but-deferred per
 [DECISIONS.md](./DECISIONS.md) ADR-0009), `core/`, `router/`, and all
 11 locked-roster `agents/*` (ADR-0007) are real code with contracts,
@@ -205,6 +207,24 @@ tests, and runnable examples — not README-only structure. The library
 shelves (`memory/`, `knowledge/`, `workflows/`, `templates/`,
 `starters/`) each hold at least one concrete, product-facing instance
 as of Phase 14, in addition to the reusable engines living in their
-owning factories. See [docs/final-integration.md](./docs/final-integration.md)
-for a real, cross-cutting proof that the pieces connect, and
-[ROADMAP.md](./ROADMAP.md) for the full build history.
+owning factories.
+
+Phase 16 (2026-08-11) added `layla/` — Avishkar OS's Personal
+Executive Intelligence layer — as a third platform-wide capability
+alongside `core/`/`router/` (ADR-0020): a client of every other
+framework's public contract, never a duplicate of one. Phase 17
+(2026-08-11) hardened it across five priorities — authentication/
+authorization, idempotency, resume-in-place/durable execution,
+concurrency, and controlled live integration validation (ADR-0021
+through ADR-0025) — including a narrow, documented, additive exception
+to `core/`'s and two factories' otherwise-locked status where the
+Phase 17 directive explicitly named them as audit/harden targets (see
+ADR-0024). The platform now stands at 732 tests, 731 passing plus one
+deliberately skipped by design (a live-API test gated behind explicit
+opt-in credentials).
+
+See [docs/final-integration.md](./docs/final-integration.md) for a
+real, cross-cutting proof that the Phase 1–15 pieces connect,
+[docs/production-readiness.md](./docs/production-readiness.md) for an
+honest account of what is and isn't production-ready after Phase 17,
+and [ROADMAP.md](./ROADMAP.md) for the full build history.
