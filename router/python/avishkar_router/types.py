@@ -60,6 +60,13 @@ class ProviderResponse:
     output_tokens: int
     stop_reason: Optional[str] = None
     raw: Any = None
+    # Priority 17.5 (ADR-0025): the provider's own request/message id,
+    # when the provider surfaces one (AnthropicProvider populates this
+    # from the real API response's `.id`; MockProvider leaves it None --
+    # a mock response has no real request to identify). Optional and
+    # additive -- every existing ModelProvider/test that never sets it
+    # is unaffected.
+    request_id: Optional[str] = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -74,3 +81,4 @@ class CompletionResponse:
     cost_usd: float
     latency_ms: float
     stop_reason: Optional[str] = None
+    request_id: Optional[str] = None  # Priority 17.5 -- see ProviderResponse.request_id

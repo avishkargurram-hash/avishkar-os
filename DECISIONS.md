@@ -1482,3 +1482,99 @@ multi-worker-safe file locking); a deeper audit of
 `MetricsCollector`. `docs/production-readiness.md` must state plainly
 that these locks provide single-process thread-safety, not
 multi-process/multi-worker safety.
+
+## ADR-0025: Controlled live integration validation is one env-gated, cost-bounded test, not a new "live mode" for Layla — built, verified to skip correctly, not fabricated as verified-live
+
+**Status:** Accepted · **Date:** 2026-08-11
+
+**Context:** Priority 17.5 of the Phase 17 directive, and the Phase 16
+forensic audit's own headline finding (SEC-1, HIGH), both name the same
+gap: every test in this platform, through 661+ tests across 16 phases,
+runs offline against dependency-injected fakes. `AnthropicProvider`
+(router/python/avishkar_router/providers/anthropic_provider.py)
+already existed, real and complete, tested only via an injected fake
+`client`. The directive explicitly forbids making Layla "fully
+autonomous against real external systems" and requires: opt-in only
+(default mock/offline), credentials from environment variables only,
+spend safeguards, tracking of model/latency/tokens/cost/request id/
+errors/retries, validation of the *full* Layla→Router→provider→
+response→validation→synthesis path, no real destructive/financial/
+messaging side effects, and — critically — "if credentials unavailable
+... do NOT fabricate successful live validation."
+
+**Decision:**
+1. **One test file, `@unittest.skipUnless`-gated on two independent
+   conditions** (`LIVE_TEST_MODE` env var AND a real
+   `ANTHROPIC_API_KEY`), not a new runtime mode, config flag, or code
+   path inside `ExecutiveRuntime`/`DelegationEngine` itself. Layla's
+   own code has no notion of "live mode" — the gating lives entirely in
+   the test, which is the correct place for something that must default
+   to never running.
+2. **Validates through Layla, not just through Router directly.** The
+   test builds a real `ChiefDomainAgent` wired to a real `Router`+
+   `AnthropicProvider`, registers it with a real `Orchestrator`, and
+   drives it through `ExecutiveRuntime.handle_event()` — exercising
+   `Planner`, `DelegationEngine`, `ResultValidator`, and
+   `ExecutiveSynthesizer` for real, not just confirming the Router-level
+   plumbing (already covered, offline, by router/python/tests).
+3. **Safety by construction, not by trusting the caller.** Fixed to the
+   cheapest catalog model (`claude-haiku-4-5`), `max_tokens=32`, one
+   fixed trivial prompt, and an explicit assertion that the real
+   reported cost stays under a hand-picked ceiling ($0.01) — the test
+   fails loudly, not silently, if cost is ever higher than expected.
+   The task itself is phrased read-only/LOW-risk so it never reaches
+   `DelegationEngine`'s write-classified idempotency path or triggers
+   an `ApprovalManager` gate — no tool/channel adapter is invoked at
+   all.
+4. **Closed a real, small observability gap this priority actually
+   needed.** `Router.route()` already computed and logged/published
+   `cost_usd`/`latency_ms`/`input_tokens`/`output_tokens` per call
+   (Phase 2) — the one thing missing for the directive's explicit
+   "track ... request ID" requirement was the provider's own request
+   id, silently available only inside `ProviderResponse.raw` and
+   discarded by the time `Router.route()` built `CompletionResponse`.
+   Added `request_id: Optional[str] = None` to both dataclasses
+   (additive, defaults `None`, `MockProvider` unaffected) and populated
+   it in `AnthropicProvider` from the real response's `.id`. Also added
+   `DelegationRecord.cost_usd: float = 0.0` (Layla's own type) so real
+   spend is visible at the Layla layer without reaching into `Router.
+   cost_tracker` directly.
+5. **No credentials were available when this priority was built, and
+   that is stated plainly, not worked around.** The skip path was
+   verified (the test correctly reports `skipped`, not a fabricated
+   `ok`); a real live run against the Anthropic API was not performed
+   as part of this work. `docs/live-integration-guide.md` and
+   `docs/production-readiness.md` say this explicitly — per the
+   directive's own closing instruction, "be honest about anything that
+   could not actually be verified."
+
+**Alternatives considered:**
+1. *A `LIVE_TEST_MODE` flag threaded through `ExecutiveRuntime`/
+   `DelegationEngine` itself* — rejected: Layla's own runtime has no
+   legitimate reason to know or care whether a test harness intends to
+   spend real money; that concern belongs entirely in the test that
+   constructs a real vs. fake provider, not in production code.
+2. *Mock the Anthropic SDK's HTTP layer with a recorded cassette
+   (VCR-style) instead of a real opt-in call* — rejected for this
+   priority: a cassette replay is still not a live call and wouldn't
+   satisfy the directive's explicit ask to validate against the real
+   provider; it's reasonable *future* work for a faster CI-safe smoke
+   test, not a substitute for this priority's requirement.
+3. *Run the live test automatically whenever `ANTHROPIC_API_KEY`
+   happens to be present in the environment* — rejected: `LIVE_TEST_MODE`
+   is a second, independent, explicit gate specifically so an API key
+   present for some *other* reason (a developer's shell profile) never
+   silently triggers a billed call nobody asked for in this run.
+
+**Consequences:** `router/python/avishkar_router/types.py`,
+`router.py`, `providers/anthropic_provider.py`, and
+`schemas/completion-response.schema.json` gained one additive field
+each (`request_id`); `layla/python/avishkar_layla/types.py` and
+`delegation.py` gained `DelegationRecord.cost_usd`. One new test file,
+skipped by default, zero regressions (190 Layla tests, up from 189,
+189 passing + 1 skipped; router's own 42 tests still pass unmodified).
+`docs/live-integration-guide.md` gives exact execution instructions.
+What remains true after this priority: the platform's live-external-
+call coverage is exactly one test, exercised zero times against a real
+key during this work — real, ready, and honestly reported as such, not
+inflated into a claim of verified live behavior.

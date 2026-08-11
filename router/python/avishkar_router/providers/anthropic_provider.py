@@ -134,4 +134,5 @@ class AnthropicProvider(ModelProvider):
             output_tokens=response.usage.output_tokens,
             stop_reason=response.stop_reason,
             raw=response,
+            request_id=getattr(response, "id", None),
         )

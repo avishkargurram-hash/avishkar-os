@@ -520,7 +520,23 @@ architecturally significant), tests, docs, and commit.
   `threading.Thread`s) — 189 total for Layla; all three touched
   external frameworks' own full suites still pass unmodified (core
   47/47, memory-factory 24/24, mcp-factory 70/70).
-- 💤 17.5 Controlled Live Integration Validation
+- ✅ **17.5 Controlled Live Integration Validation** (ADR-0025) — one
+  new, env-gated test
+  (`layla/python/tests/test_live_anthropic_integration.py`,
+  `@unittest.skipUnless(LIVE_TEST_MODE=1 and ANTHROPIC_API_KEY)`)
+  validates the full `ExecutiveRuntime` → `Planner` → `DelegationEngine`
+  → a real `ChiefDomainAgent` → real `Router` → real `AnthropicProvider`
+  → live Anthropic API → `ResultValidator` → `ExecutiveSynthesizer`
+  path — fixed to the cheapest model, `max_tokens=32`, one trivial
+  read-only LOW-risk prompt, and an asserted `$0.01` cost ceiling.
+  `avishkar_router`'s `CompletionResponse`/`ProviderResponse` gained an
+  additive `request_id` field; Layla's `DelegationRecord` gained an
+  additive `cost_usd` field. **Credentials were not available when this
+  was built — the skip path was verified; a real live run against the
+  API was not performed, stated plainly, not fabricated** (see
+  `docs/live-integration-guide.md`). 1 new test (190 total for Layla,
+  189 passing + 1 skipped by default); router's own 42 tests still pass
+  unmodified.
 
 ## How this roadmap changes
 

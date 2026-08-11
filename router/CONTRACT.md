@@ -38,6 +38,7 @@ ProviderResponse {                 # returned by ModelProvider.complete()
   output_tokens: int
   stop_reason: string | null
   raw: any | null                  # provider-native response, for advanced use
+  request_id: string | null        # provider's own request/message id, when it has one (Priority 17.5)
 }
 
 CompletionResponse {               # returned by Router.route()
@@ -49,6 +50,7 @@ CompletionResponse {               # returned by Router.route()
   cost_usd: number
   latency_ms: number
   stop_reason: string | null
+  request_id: string | null        # Priority 17.5, ADR-0025 -- see ProviderResponse.request_id
 }
 ```
 

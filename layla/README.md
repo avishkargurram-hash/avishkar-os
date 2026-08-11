@@ -53,7 +53,7 @@ layla/
 ├── examples/
 │   ├── end_to_end_scenario.py       Part IX's real, narrated demonstration
 │   └── crash_recovery_scenario.py   resume-in-place demonstration (Priority 17.3)
-└── python/tests/                   189 tests (as of Priority 17.4)
+└── python/tests/                   190 tests (as of Priority 17.5; 1 live-gated, skipped by default)
 ```
 
 ## Naming Standards
@@ -369,6 +369,45 @@ ops respectively), so nothing was changed there. See
 `layla/python/tests/test_concurrency.py` for the real,
 `threading.Thread`-based proof behind every claim above.
 
+# Controlled Live Integration Validation (Priority 17.5, ADR-0025)
+
+**Status: infrastructure IMPLEMENTED; live run NOT PERFORMED** (no
+credentials were available in the environment this was built in — see
+below, stated plainly rather than glossed over).
+`layla/python/tests/test_live_anthropic_integration.py` is one
+deliberate, narrow exception to this platform's otherwise-universal
+offline-testing discipline: gated `@unittest.skipUnless(LIVE_TEST_MODE=1
+and a real ANTHROPIC_API_KEY)`, it validates the *full* path
+`ExecutiveRuntime.handle_event()` → `Planner` → `DelegationEngine` → a
+real `ChiefDomainAgent` → a real `avishkar_router.Router` → the real
+`AnthropicProvider` → the live Anthropic Messages API → `ResultValidator`
+→ `ExecutiveSynthesizer`. See CONTRACT.md §18 and
+`docs/live-integration-guide.md` for exact execution instructions.
+
+**Safeguards**: fixed to `claude-haiku-4-5` (cheapest catalog model),
+`max_tokens=32`, one trivial fixed prompt, and an explicit `$0.01` cost
+ceiling the test itself asserts against. The task is phrased read-only/
+LOW-risk — it never reaches a write-classified delegation, never
+triggers an approval gate, never invokes a tool/channel adapter. No
+email, message, financial operation, or destructive action of any kind
+happens anywhere in this test.
+
+**Observability**: `avishkar_router`'s `CompletionResponse`/
+`ProviderResponse` gained an additive `request_id` field (populated by
+`AnthropicProvider` from the live response's own `.id`), and Layla's
+own `DelegationRecord` gained an additive `cost_usd` field — closing
+the last gap in Router's already-real cost/latency/token tracking
+(`Router.route()` computed and logged/published those since Phase 2).
+
+**What's honestly NOT verified**: a real, successful live call against
+the Anthropic API. The skip path (missing credentials → skipped, not
+faked) was verified; the live path itself was not exercised, because
+no `ANTHROPIC_API_KEY` was available when this priority was built. Do
+not read "the infrastructure exists" as "it was proven to work end to
+end against the real API" — those are different claims, and only the
+first one is true here. Whoever runs it first with a real key should
+record the actual result in `docs/live-integration-guide.md`.
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
@@ -454,8 +493,11 @@ already covers it — extending that list requires an ADR.
 
 # Testing Guide
 
-189 tests as of Priority 17.4 (119 Phase 16 + 30 Priority 17.1 + 21
-Priority 17.2 + 8 Priority 17.3 + 11 Priority 17.4), run via:
+190 tests as of Priority 17.5 (119 Phase 16 + 30 Priority 17.1 + 21
+Priority 17.2 + 8 Priority 17.3 + 11 Priority 17.4 + 1 Priority 17.5),
+189 running offline and passing, 1 live-gated and skipped by default
+(`test_live_anthropic_integration.py` — see
+`docs/live-integration-guide.md` to actually run it), via:
 ```bash
 PYTHONPATH="core/python;router/python;factories/agent-factory/python;factories/knowledge-factory/python;factories/mcp-factory/python;factories/memory-factory/python;factories/security-factory/python;layla/python" \
   python -m unittest discover -s layla/python/tests

@@ -161,6 +161,12 @@ class DelegationRecord:
     started_at: str = ""
     completed_at: Optional[str] = None
     error: Optional[str] = None
+    # Priority 17.5 (ADR-0025): passed through from the delegated
+    # ChiefDomainAgent's own AgentResult.cost_usd when the call
+    # completes -- 0.0 for a mock/free provider, a real USD figure for
+    # a live model call. Lets a caller observe real spend at the Layla
+    # layer, not just by reaching into Router's own CostTracker.
+    cost_usd: float = 0.0
 
 
 @dataclasses.dataclass(frozen=True)

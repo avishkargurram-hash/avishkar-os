@@ -102,6 +102,7 @@ class DelegationEngine:
                 return DelegationRecord(
                     step_id=plan_step.id, agent_name=cached.get("agent_name", ""), status="completed",
                     output=cached.get("output"), attempts=existing.attempts, completed_at=existing.updated_at,
+                    cost_usd=cached.get("cost_usd", 0.0),
                 )
             # `claimed_this_call` (Priority 17.4) distinguishes "my own
             # begin() call just created this REQUESTED record, proceed"
@@ -176,6 +177,7 @@ class DelegationEngine:
 
             record.agent_name = result.agent_name
             record.output = result.output
+            record.cost_usd = result.cost_usd
             if result.status == "completed":
                 record.status = "completed"
                 record.completed_at = _now()
@@ -191,7 +193,7 @@ class DelegationEngine:
             if record.status == "completed":
                 self._execution_tracker.transition(
                     idempotency_key, EXEC_COMPLETED,
-                    result={"agent_name": record.agent_name, "output": record.output},
+                    result={"agent_name": record.agent_name, "output": record.output, "cost_usd": record.cost_usd},
                     increment_attempts=True,
                 )
             elif record.status == "timeout" and operation_kind != OP_READ:

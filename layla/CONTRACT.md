@@ -511,7 +511,57 @@ under far higher contention than this platform's current scale.
   "un-fired." This is the same lazy-deletion tradeoff the scheduler
   already documented before this priority, not a new gap.
 
-## §18. Errors
+## §18. Controlled live integration validation (Priority 17.5, ADR-0025)
+
+**Status: real infrastructure, opt-in only.** Every test in this
+platform through Priority 17.4 runs offline, against dependency-
+injected fakes — real, but never against a live external system (Phase
+16 audit finding SEC-1). This priority adds one deliberate, narrow
+exception: `layla/python/tests/test_live_anthropic_integration.py`,
+gated `@unittest.skipUnless(LIVE_TEST_MODE=1 and ANTHROPIC_API_KEY
+set)`. Default (either unset): skipped, not failed, not faked. See
+`docs/live-integration-guide.md` for exact execution instructions.
+
+When enabled, it validates the *full* path this platform has never
+exercised live: `ExecutiveRuntime.handle_event()` → `Planner` →
+`DelegationEngine` → a real `ChiefDomainAgent` → a real
+`avishkar_router.Router` → the real `AnthropicProvider` → the live
+Anthropic Messages API → a real response → `ResultValidator` →
+`ExecutiveSynthesizer`. Every piece of that chain except the network
+call itself was already real in Phase 16; this priority is the first
+time the network call is real too.
+
+**Safeguards, by construction**: fixed to `claude-haiku-4-5` (the
+cheapest catalog model), `max_tokens=32`, a single fixed trivial
+prompt, and an explicit cost-ceiling assertion (`$0.01`) that fails the
+test loudly rather than silently accepting unexpected spend. The task
+is phrased as a read-only, LOW-risk request — it never reaches
+`DelegationEngine`'s write-classified path, never triggers an approval
+gate, never invokes a tool/channel adapter. No email/message is sent;
+no record is created, modified, or deleted; no financial or
+destructive operation is performed anywhere in this test, live or not.
+
+**Tracking**: `router/python/avishkar_router/types.py` gained an
+additive `request_id: Optional[str] = None` field on both
+`ProviderResponse` and `CompletionResponse` (populated by
+`AnthropicProvider` from the live API response's own `.id`; `None` for
+`MockProvider`, which has no real request to identify) — closing the
+one gap in Router's already-real cost/latency/token tracking (`Router.
+route()` already computed `cost_usd`/`latency_ms`/`input_tokens`/
+`output_tokens` and logged/published them per call since Phase 2).
+`layla/python/avishkar_layla/types.py`'s `DelegationRecord` gained an
+additive `cost_usd: float = 0.0` field, passed through from the
+delegated agent's own `AgentResult.cost_usd`, so real spend is visible
+at the Layla layer, not only by reaching into `Router.cost_tracker`
+directly.
+
+**Credentials**: read from the `ANTHROPIC_API_KEY` environment variable
+only — never hardcoded, never logged, never committed. `git status`
+and a repository-wide secret scan (`security-factory.
+scan_repository_for_secrets()`) are part of this priority's own
+verification; see the Phase 17 final forensic report for the result.
+
+## §19. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,

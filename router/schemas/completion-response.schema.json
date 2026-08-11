@@ -13,7 +13,8 @@
     "output_tokens": { "type": "integer", "minimum": 0 },
     "cost_usd": { "type": "number", "minimum": 0 },
     "latency_ms": { "type": "number", "minimum": 0 },
-    "stop_reason": { "type": ["string", "null"] }
+    "stop_reason": { "type": ["string", "null"] },
+    "request_id": { "type": ["string", "null"] }
   },
   "additionalProperties": false
 }

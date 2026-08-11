@@ -147,6 +147,7 @@ class Router:
                 cost_usd=cost_usd,
                 latency_ms=elapsed_ms,
                 stop_reason=result.stop_reason,
+                request_id=result.request_id,
             )
 
         if not any_registered:

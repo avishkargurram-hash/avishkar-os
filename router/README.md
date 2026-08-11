@@ -182,7 +182,13 @@ be true, not aspirational:
   classes constructed directly (no network access was available in the
   environment this framework was built in, so a live end-to-end call
   against api.anthropic.com has not been exercised here — only the
-  request/response/error shapes, which are stable and documented).
+  request/response/error shapes, which are stable and documented). A
+  real, opt-in, env-gated live test exercising this exact provider
+  through Layla's full pipeline now exists (Avishkar OS Priority 17.5,
+  ADR-0025 — `layla/python/tests/test_live_anthropic_integration.py`,
+  `docs/live-integration-guide.md`); it was also not run against a real
+  key during that work (no credentials available then either) — stated
+  the same way there, not glossed over here.
 - **No streaming.** `ModelProvider.complete()` returns one complete
   response. A long-running agent that wants token-by-token output needs
   a future `stream()` method on the interface — not added speculatively.

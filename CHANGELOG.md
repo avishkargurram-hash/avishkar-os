@@ -444,4 +444,39 @@ its first consumer.
   external frameworks' own full test suites also still pass unmodified
   (core 47/47, memory-factory 24/24, mcp-factory 70/70).
 
+- **Phase 17.5 (Controlled Live Integration Validation) locked
+  (ADR-0025)**: one new, env-gated test
+  (`layla/python/tests/test_live_anthropic_integration.py`),
+  `@unittest.skipUnless(LIVE_TEST_MODE=1 and a real ANTHROPIC_API_KEY)`
+  -- skipped by default, exactly like every other test in this
+  platform is offline by default. Validates the full path
+  `ExecutiveRuntime.handle_event()` -> `Planner` -> `DelegationEngine`
+  -> a real `ChiefDomainAgent` -> a real `avishkar_router.Router` ->
+  the real `AnthropicProvider` -> the live Anthropic Messages API ->
+  `ResultValidator` -> `ExecutiveSynthesizer`, closing Phase 16's
+  headline audit finding (SEC-1: no test in this platform had ever
+  made a real network call). Fixed to `claude-haiku-4-5` (cheapest
+  catalog model), `max_tokens=32`, one trivial fixed read-only LOW-risk
+  prompt, and an explicit `$0.01` cost-ceiling assertion the test fails
+  loudly against rather than silently accepting unexpected spend; never
+  reaches a write-classified delegation, never triggers an approval
+  gate, never invokes a tool/channel adapter -- no email, message,
+  financial, or destructive operation anywhere in this test.
+  `avishkar_router`'s `CompletionResponse`/`ProviderResponse` gained an
+  additive `request_id` field (populated by `AnthropicProvider` from
+  the live response's own `.id`; `None` for `MockProvider`), closing
+  the one gap in Router's already-real cost/latency/token tracking
+  (computed and logged/published since Phase 2). Layla's own
+  `DelegationRecord` gained an additive `cost_usd` field, passed
+  through from the delegated agent's `AgentResult.cost_usd`.
+  **Credentials were not available in the environment this priority
+  was built in.** The skip path (missing credentials -> skipped, not
+  faked) was verified correct; a real live call against the Anthropic
+  API was NOT performed as part of this work -- stated plainly per the
+  directive's own explicit instruction not to fabricate successful live
+  validation. `docs/live-integration-guide.md` gives exact execution
+  instructions for whoever runs it first with a real key. 1 new test
+  (190 total for Layla: 189 passing offline + 1 skipped by default);
+  router's own 42 tests still pass unmodified.
+
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD
