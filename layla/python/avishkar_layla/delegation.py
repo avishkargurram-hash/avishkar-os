@@ -10,6 +10,19 @@ the third framework to reuse it, after workflow-factory), and
 timeout-aware (an elapsed-time check after the call returns -- see
 CONTRACT.md SS5 and README.md Limitations for why this is a documented
 non-preemptive boundary, not silently ignored).
+
+Idempotency (Priority 17.2, ADR-0022): `execution_tracker` is an
+*optional* constructor argument, the same additive pattern
+`approval_manager=`/`authorization=` already established. Omitted:
+behavior is unchanged from Phase 16/17.1. Supplied: every delegation is
+tracked under a real `ExecutionRecord` keyed `{task_id}:{step.id}` --
+a completed delegation short-circuits (the orchestrator is never
+called again for the same key); a delegation any other in-flight
+attempt already claimed (AUTHORIZED/APPROVED/EXECUTING/UNKNOWN) refuses
+to proceed for a non-READ operation rather than risk a duplicate side
+effect; a timeout on a non-READ operation is recorded UNKNOWN, not
+FAILED, because FAILED would imply "safe to retry" and a timeout does
+not guarantee that.
 """
 
 from __future__ import annotations
@@ -24,7 +37,21 @@ from avishkar_core import get_logger
 from avishkar_integration import RetryPolicy
 
 from .approval import ApprovalManager
+from .execution import (
+    EXEC_APPROVED,
+    EXEC_AUTHORIZED,
+    EXEC_COMPLETED,
+    EXEC_EXECUTING,
+    EXEC_FAILED,
+    EXEC_REJECTED,
+    EXEC_UNKNOWN,
+    OP_READ,
+    ExecutionTracker,
+    classify_operation,
+)
 from .types import RISK_LOW, DelegationRecord, PlanStep
+
+_CLAIMED_NON_TERMINAL_STATES = frozenset({EXEC_AUTHORIZED, EXEC_APPROVED, EXEC_EXECUTING, EXEC_UNKNOWN})
 
 
 def _now() -> str:
@@ -37,6 +64,7 @@ class DelegationEngine:
         orchestrator: Orchestrator,
         *,
         approval_manager: Optional[ApprovalManager] = None,
+        execution_tracker: Optional[ExecutionTracker] = None,
         event_bus: Optional[Any] = None,
         clock: Callable[[], float] = time.monotonic,
         sleep_fn: Callable[[float], None] = time.sleep,
@@ -44,12 +72,35 @@ class DelegationEngine:
     ) -> None:
         self._orchestrator = orchestrator
         self._approval_manager = approval_manager
+        self._execution_tracker = execution_tracker
         self._event_bus = event_bus
         self._clock = clock
         self._sleep_fn = sleep_fn
         self._logger = logger or get_logger("layla.delegation")
 
     def delegate(self, plan_step: PlanStep, *, task_id: str, principal_id: Optional[str] = None) -> DelegationRecord:
+        idempotency_key = f"{task_id}:{plan_step.id}"
+        operation_kind = classify_operation(plan_step.input)
+
+        if self._execution_tracker is not None:
+            existing = self._execution_tracker.begin(idempotency_key, operation_kind, plan_step.input)
+            if existing.status == EXEC_COMPLETED:
+                cached = existing.result or {}
+                return DelegationRecord(
+                    step_id=plan_step.id, agent_name=cached.get("agent_name", ""), status="completed",
+                    output=cached.get("output"), attempts=existing.attempts, completed_at=existing.updated_at,
+                )
+            if existing.status in _CLAIMED_NON_TERMINAL_STATES and operation_kind != OP_READ:
+                return DelegationRecord(
+                    step_id=plan_step.id, agent_name="", status="failed",
+                    error=(
+                        f"idempotency key {idempotency_key!r} is already {existing.status} from a prior "
+                        f"attempt that never reached a terminal state -- refusing to risk a duplicate "
+                        f"{operation_kind} side effect; resolve it explicitly first "
+                        f"(ExecutionTracker.resolve_unknown() if UNKNOWN)"
+                    ),
+                )
+
         if self._approval_manager is not None and plan_step.risk_level != RISK_LOW:
             approval = self._approval_manager.request(
                 task_id,
@@ -61,8 +112,19 @@ class DelegationEngine:
                 record = DelegationRecord(
                     step_id=plan_step.id, agent_name="", status="denied", started_at=_now(),
                 )
+                if self._execution_tracker is not None:
+                    self._execution_tracker.transition(idempotency_key, EXEC_REJECTED, error="approval not granted")
                 self._publish("layla.delegation.denied", record, task_id, principal_id)
                 return record
+
+        if self._execution_tracker is not None:
+            # Two real, recorded transitions -- matching Priority 17.2's
+            # explicit REQUESTED -> AUTHORIZED -> APPROVED lifecycle,
+            # even though this DelegationEngine's own approval check is
+            # the single decision point both map to.
+            self._execution_tracker.transition(idempotency_key, EXEC_AUTHORIZED)
+            self._execution_tracker.transition(idempotency_key, EXEC_APPROVED)
+            self._execution_tracker.transition(idempotency_key, EXEC_EXECUTING)
 
         retry_policy = RetryPolicy(max_attempts=max(1, plan_step.max_attempts))
         record = DelegationRecord(step_id=plan_step.id, agent_name="", status="pending", started_at=_now())
@@ -106,6 +168,22 @@ class DelegationEngine:
                 self._sleep_fn(retry_policy.backoff_seconds)
                 continue
             record.status = "failed"
+
+        if self._execution_tracker is not None:
+            if record.status == "completed":
+                self._execution_tracker.transition(
+                    idempotency_key, EXEC_COMPLETED,
+                    result={"agent_name": record.agent_name, "output": record.output},
+                    increment_attempts=True,
+                )
+            elif record.status == "timeout" and operation_kind != OP_READ:
+                # Genuinely uncertain -- the delegated agent/tool call
+                # may have partially executed. UNKNOWN, not FAILED:
+                # FAILED would imply "safe to retry," which a timeout on
+                # a WRITE/HIGH_RISK operation does not guarantee.
+                self._execution_tracker.transition(idempotency_key, EXEC_UNKNOWN, error=record.error, increment_attempts=True)
+            else:
+                self._execution_tracker.transition(idempotency_key, EXEC_FAILED, error=record.error, increment_attempts=True)
 
         self._publish(
             f"layla.delegation.{record.status}", record, task_id, principal_id,

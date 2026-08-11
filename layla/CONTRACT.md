@@ -283,7 +283,65 @@ self-approval (`ApprovalRequest.requested_by == session.principal.id`
 is always denied); every `AuditRecord` carries the acting
 `principal_id`.
 
-## §15. Errors
+## §15. Idempotency and side-effect safety (Priority 17.2, ADR-0022)
+
+`classify_operation(description) -> OP_READ | OP_WRITE | OP_HIGH_RISK`
+— a distinct axis from `risk.classify_risk`: risk asks "how much harm
+can this cause" (approval-worthiness); this asks "does retrying this
+risk duplicating a real-world effect" (idempotency-worthiness). A
+LOW-risk action can still be a WRITE that must never be silently
+retried (e.g. "send a routine status email"). **Fail-closed default**:
+text matching neither a recognized READ nor WRITE/HIGH_RISK verb is
+classified `OP_WRITE`, never `OP_READ` — an unrecognized action is
+treated as idempotency-sensitive until proven otherwise.
+
+`ExecutionRecord(idempotency_key, operation_kind, description, status,
+result=None, error=None, attempts=0, created_at, updated_at)`. Status
+lifecycle: `REQUESTED -> AUTHORIZED -> APPROVED -> EXECUTING ->
+COMPLETED`, with `REJECTED`/`CANCELLED`/`FAILED`/`EXPIRED` also
+terminal. **`UNKNOWN` is deliberately excluded from
+`TERMINAL_EXECUTION_STATES`** — an uncertain outcome (e.g. a timeout on
+a WRITE after the provider may have already accepted it) requires an
+explicit `resolve_unknown()` call, never a silent retry.
+
+`ExecutionTracker(memory: LaylaMemoryPolicy, clock=time.time)` —
+persisted through the same `LaylaMemoryPolicy` every other Layla
+component uses (`kind="long_term"`, keys namespaced
+`execution:{idempotency_key}`), not a second storage mechanism.
+`.begin(key, operation_kind, description) -> ExecutionRecord` is
+idempotent: an existing record for `key` is returned unchanged (the
+caller inspects `.status`), *unless* `description` differs from the
+original request for that same key, in which case it raises
+`IdempotencyConflictError` — a key collision must never silently
+return the wrong cached result. `.transition(key, new_status,
+result=None, error=None, increment_attempts=False)`.
+`.resolve_unknown(key, resolved_status, note="")` — refuses
+(`ValueError`) to touch anything but a genuinely `UNKNOWN` record, so
+it can never be used to silently overwrite a real `COMPLETED`/`FAILED`
+outcome.
+
+**`DelegationEngine` integration is entirely additive** —
+`execution_tracker` is an *optional* constructor parameter, the same
+pattern established by `approval_manager`/`authorization`. Omitted:
+behavior is identical to Phase 16/17.1. Supplied: every
+`delegate(plan_step, task_id, principal_id)` call is tracked under an
+idempotency key of `{task_id}:{plan_step.id}`:
+
+- An existing `COMPLETED` record short-circuits — the orchestrator is
+  **never invoked again** for that key; the cached `agent_name`/`output`
+  is returned directly.
+- An existing record still `AUTHORIZED`/`APPROVED`/`EXECUTING`/`UNKNOWN`
+  (i.e. claimed by a prior attempt that never reached a terminal state
+  — whether a concurrent duplicate call or a crash mid-flight) **refuses
+  to proceed** for any non-`READ` operation, fail-closed, rather than
+  risk a duplicate side effect. `READ` operations are exempt — retrying
+  a read never duplicates a real-world effect.
+- A `timeout` on a non-`READ` step transitions the record to `UNKNOWN`,
+  not `FAILED` — `FAILED` implies "safe to retry," which a timeout does
+  not guarantee. A subsequent `delegate()` call for the same key is then
+  refused until an explicit `resolve_unknown()`.
+
+## §16. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,

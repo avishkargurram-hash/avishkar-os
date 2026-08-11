@@ -471,7 +471,19 @@ architecturally significant), tests, docs, and commit.
   never hold high-risk or approval authority (checked against actual
   permissions at session-issuance time, not role naming). 30 new
   tests (149 total for Layla).
-- 💤 17.2 Idempotency & Side-Effect Safety
+- ✅ **17.2 Idempotency & Side-Effect Safety** (ADR-0022) —
+  `execution.classify_operation()` (READ/WRITE/HIGH_RISK, fail-closed
+  default) and `ExecutionTracker` (`layla/python/avishkar_layla/
+  execution.py`), persisted through the same `LaylaMemoryPolicy` every
+  other Layla component uses. Fully additive: `DelegationEngine`/
+  `ExecutiveRuntime` accept `execution_tracker=` as an *optional*
+  argument — omitted, all 149 prior tests behave unchanged; supplied,
+  a completed delegation never re-invokes the orchestrator on retry, an
+  in-flight or uncertain non-READ operation refuses a
+  concurrent/crash-recovered retry (proven via a real cross-instance
+  `FileMemoryPolicy` recovery test), and a timeout on a non-READ step
+  lands on a real, non-terminal `UNKNOWN` state that only an explicit
+  `resolve_unknown()` can clear. 21 new tests (170 total for Layla).
 - 💤 17.3 Durable Execution & Resume-in-Place
 - 💤 17.4 Concurrency & Event System Hardening
 - 💤 17.5 Controlled Live Integration Validation

@@ -29,6 +29,7 @@ from .capability_resolver import CapabilityResolver
 from .context import ContextBuilder
 from .delegation import DelegationEngine
 from .errors import PermissionDeniedError, UnresolvedConflictError
+from .execution import ExecutionTracker
 from .identity import PERM_COMMAND, RISK_PERMISSION
 from .intent import IntentInterpreter
 from .memory_policy import LaylaMemoryPolicy
@@ -66,6 +67,7 @@ class ExecutiveRuntime:
         memory: LaylaMemoryPolicy,
         approval_gate: Optional[Any] = None,
         authorization: Optional[AuthorizationManager] = None,
+        execution_tracker: Optional[ExecutionTracker] = None,
         event_bus: Optional[Any] = None,
         knowledge_bases: Sequence[KnowledgeBase] = (),
         memory_lookups: Sequence[Tuple[str, str]] = (),
@@ -86,8 +88,10 @@ class ExecutiveRuntime:
 
         self._authorization = authorization
         self._approval = ApprovalManager(approval_gate=approval_gate, authorization=authorization, clock=time.time)
+        self._execution_tracker = execution_tracker
         self._delegation = DelegationEngine(
-            orchestrator, approval_manager=self._approval, event_bus=event_bus, clock=clock, sleep_fn=sleep_fn,
+            orchestrator, approval_manager=self._approval, execution_tracker=execution_tracker,
+            event_bus=event_bus, clock=clock, sleep_fn=sleep_fn,
         )
         self._validator = ResultValidator()
         self._conflicts = ConflictResolver()
@@ -113,6 +117,15 @@ class ExecutiveRuntime:
     @property
     def sessions(self) -> SessionManager:
         return self._session
+
+    @property
+    def executions(self) -> Optional[ExecutionTracker]:
+        """The ExecutionTracker this runtime was constructed with, or
+        None if idempotency tracking (Priority 17.2) wasn't wired in --
+        callers use this to inspect/resolve_unknown() on an execution
+        record after handle_event() returns, e.g. from a recovery script.
+        """
+        return self._execution_tracker
 
     def handle_event(self, input_text: str, *, session_id: Optional[str] = None) -> LaylaTask:
         """Processes one request end to end through the state machine.

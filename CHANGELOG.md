@@ -325,4 +325,38 @@ its first consumer.
   maliciously-renamed custom role is refused. 30 new tests (149 total
   for Layla).
 
+- **Phase 17.2 (Idempotency & Side-Effect Safety) locked (ADR-0022)**:
+  `execution.classify_operation()` (READ/WRITE/HIGH_RISK -- a distinct
+  axis from `risk.classify_risk`, with a fail-closed default: text
+  matching neither a recognized READ nor WRITE/HIGH_RISK verb
+  classifies WRITE, never READ) and `ExecutionTracker`
+  (`layla/python/avishkar_layla/execution.py`), persisted through the
+  same `LaylaMemoryPolicy` every other Layla component already uses --
+  no new storage mechanism. `DelegationEngine` and `ExecutiveRuntime`
+  both accept `execution_tracker=` as an *optional* constructor
+  argument -- omitted, behavior is byte-for-byte Phase 16/17.1 (all 149
+  prior Layla tests pass unmodified); supplied, every delegation is
+  tracked under an idempotency key of `{task_id}:{plan_step.id}`: a
+  completed delegation short-circuits and never re-invokes the real
+  `Orchestrator` on a duplicate call; a record still
+  AUTHORIZED/APPROVED/EXECUTING/UNKNOWN from a prior attempt that never
+  reached a terminal state -- whether a concurrent duplicate call or a
+  crash mid-flight, which look identical from the record alone --
+  refuses any non-READ retry, fail-closed; a timeout on a non-READ step
+  lands on a real, non-terminal UNKNOWN state (deliberately excluded
+  from `TERMINAL_EXECUTION_STATES`) rather than FAILED, since FAILED
+  would imply "safe to retry" and a timeout does not guarantee that --
+  only an explicit `ExecutionTracker.resolve_unknown()` call clears it.
+  A new `IdempotencyConflictError` guards against the same key being
+  reused for a genuinely different operation. Proven via a real
+  cross-instance crash-recovery test: a fresh `ExecutionTracker` in a
+  brand-new process, against the same on-disk `FileMemoryPolicy` store
+  as a delegation left `EXECUTING` by a simulated crash, correctly
+  refuses to blindly re-run it. Does not reach into `mcp-factory`
+  (Phase 4, locked) -- idempotency tracking guards the one seam Layla
+  owns (`DelegationEngine.delegate()`), not a delegated agent's own
+  direct tool calls, per this repository's "later frameworks wrap,
+  never modify earlier locked frameworks" discipline. 21 new tests
+  (170 total for Layla).
+
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

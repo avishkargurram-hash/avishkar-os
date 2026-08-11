@@ -31,7 +31,8 @@ ExecutiveRuntime (event loop: IDLE -> EVENT -> INGEST -> UNDERSTAND ->
   |-- Planner                    (genuinely new) -> CapabilityResolver (genuinely new)
   |-- ApprovalManager              (genuinely new risk tiering) -> avishkar_agent.ApprovalGate (Phase 3, reused)
   |-- DelegationEngine              (genuinely new typed wrapper) -> avishkar_agent.Orchestrator (Phase 3, reused)
-  |                                                               -> avishkar_integration.RetryPolicy (Phase 4, reused)
+  |     |                                                         -> avishkar_integration.RetryPolicy (Phase 4, reused)
+  |     `-- ExecutionTracker (Priority 17.2, genuinely new)       -> LaylaMemoryPolicy (one storage mechanism, not a second)
   |-- ResultValidator/ConflictResolver (genuinely new)             -> avishkar_knowledge.HashingEmbedder (Phase 6, reused)
   |-- ExecutiveSynthesizer            (genuinely new)
   |-- AuditLogger / SessionManager      (genuinely new) -> LaylaMemoryPolicy (namespaced keys, see CONTRACT.md SS9-10)
@@ -45,11 +46,11 @@ ExecutiveRuntime (event loop: IDLE -> EVENT -> INGEST -> UNDERSTAND ->
 layla/
 ├── CONTRACT.md              language-agnostic contract
 ├── README.md                  this file
-├── python/avishkar_layla/       reference implementation (21 modules)
+├── python/avishkar_layla/       reference implementation (25 modules)
 │   └── channels/                   communication channel adapters
 ├── examples/
 │   └── end_to_end_scenario.py       Part IX's real, narrated demonstration
-└── python/tests/                   118 tests (as of Phase 16)
+└── python/tests/                   170 tests (as of Priority 17.2)
 ```
 
 ## Naming Standards
@@ -148,6 +149,66 @@ permission (`PERM_TOOL_INVOKE` is reserved but not yet wired into
 `ToolRuntime` calls — Layla doesn't call tools directly today, only
 through delegated agents).
 
+# Idempotency & Side-Effect Safety (Priority 17.2, ADR-0022)
+
+**Status: IMPLEMENTED** for the delegation path; **PARTIALLY
+IMPLEMENTED** for direct tool invocation (see below).
+`execution.classify_operation()` splits every action into `READ` /
+`WRITE` / `HIGH_RISK` — a distinct axis from `risk.classify_risk`: risk
+asks "how much harm"; this asks "does retrying this duplicate a
+real-world effect." The default is fail-closed: unrecognized text
+classifies as `WRITE`, never `READ`.
+
+`ExecutionTracker` (`execution.py`) persists an `ExecutionRecord` per
+idempotency key through the *same* `LaylaMemoryPolicy` every other
+Layla component already uses (`kind="long_term"`,
+`execution:{key}`) — one storage mechanism, not a second one. Lifecycle:
+`REQUESTED -> AUTHORIZED -> APPROVED -> EXECUTING -> COMPLETED`, with
+`REJECTED`/`CANCELLED`/`FAILED`/`EXPIRED` also terminal and `UNKNOWN`
+deliberately **not** terminal — an uncertain outcome (e.g. a timeout on
+a WRITE after the provider may already have accepted it) requires an
+explicit `resolve_unknown()` call before anything retries it.
+
+`DelegationEngine(..., execution_tracker=None)` — the same additive
+pattern as `approval_manager=`/`authorization=`: omitted, behavior is
+identical to Phase 16/17.1 (every original `test_delegation.py` test
+still passes unmodified); supplied, every `delegate()` call is keyed
+`{task_id}:{plan_step.id}` and:
+- a `COMPLETED` record short-circuits — the real `Orchestrator` is
+  **never invoked a second time** for that key;
+- a record still `AUTHORIZED`/`APPROVED`/`EXECUTING`/`UNKNOWN` (claimed
+  by a prior attempt — concurrent duplicate *or* a crash mid-flight,
+  which look identical from here) **refuses** any non-`READ` retry,
+  fail-closed;
+- a timeout on a non-`READ` step lands on `UNKNOWN`, not `FAILED` —
+  `FAILED` would imply "safe to retry," which a timeout does not
+  guarantee.
+
+`ExecutiveRuntime(..., execution_tracker=None)` threads the same
+optional tracker into its `DelegationEngine` and exposes it via
+`.executions` for a caller (or a recovery script, Priority 17.3) to
+inspect or `resolve_unknown()` after `handle_event()` returns. See
+`test_delegation_idempotency.py` (duplicate-call short-circuit,
+timeout-to-UNKNOWN, `resolve_unknown()`-unblocks-retry, and a real
+cross-instance crash-recovery proof using `FileMemoryPolicy` — a fresh
+`ExecutionTracker` in a brand-new process against the same on-disk
+store correctly refuses to blindly re-run a WRITE left `EXECUTING` by a
+simulated crash) and `test_runtime_idempotency.py`.
+
+**What's NOT built**: idempotency awareness inside `mcp-factory`'s
+`UniversalToolRegistry`/`ToolRuntime`/`ProtocolAdapter` themselves —
+those are Phase 4, locked, and this repository's own discipline is
+"later frameworks wrap, never modify earlier locked frameworks." Layla
+only ever reaches an external system *through* a delegated
+`ChiefDomainAgent`'s own tool calls, so `ExecutionTracker` guards the
+one seam Layla actually owns (`DelegationEngine.delegate()`); a
+delegated agent's own direct `ToolRuntime.invoke()` calls are outside
+this tracker's visibility today — real future work would thread an
+idempotency key down through `ToolContract`/`ProtocolAdapter` itself,
+which is a `mcp-factory` change, not a Layla one. No automatic
+resolution of `UNKNOWN` outcomes (e.g. polling a provider's status API)
+— `resolve_unknown()` is deliberately a manual, explicit call.
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
@@ -228,19 +289,25 @@ already covers it — extending that list requires an ADR.
 
 # Testing Guide
 
-118 tests as of Phase 16, run via:
+170 tests as of Priority 17.2 (119 Phase 16 + 30 Priority 17.1 + 21
+Priority 17.2), run via:
 ```bash
 PYTHONPATH="core/python;router/python;factories/agent-factory/python;factories/knowledge-factory/python;factories/mcp-factory/python;factories/memory-factory/python;factories/security-factory/python;layla/python" \
   python -m unittest discover -s layla/python/tests
 ```
-Categories: unit (state machine, memory policy, risk, scheduler),
-contract (every component's own dataclass/error shape), integration
-(delegation through a real `Orchestrator`, the full `ExecutiveRuntime`
-loop), adversarial (`test_adversarial.py` — prompt injection, hostile
+Categories: unit (state machine, memory policy, risk, scheduler,
+execution/idempotency classification), contract (every component's own
+dataclass/error shape), integration (delegation through a real
+`Orchestrator`, the full `ExecutiveRuntime` loop, execution-tracker
+wiring), adversarial (`test_adversarial.py` — prompt injection, hostile
 tool responses, unauthorized capability requests, duplicate events,
 memory corruption attempts, restart-during-execution, approval
-expiration, contradictory instructions), and one deterministic
-end-to-end fixture (`test_end_to_end_scenario.py`) matching Part IX.
+expiration, contradictory instructions), idempotency/crash-recovery
+(`test_execution.py`, `test_delegation_idempotency.py`,
+`test_runtime_idempotency.py` — duplicate retries, timeout-to-UNKNOWN,
+resolve_unknown, cross-instance crash recovery via `FileMemoryPolicy`),
+and one deterministic end-to-end fixture
+(`test_end_to_end_scenario.py`) matching Part IX.
 
 # Troubleshooting Guide
 
@@ -256,6 +323,19 @@ end-to-end fixture (`test_end_to_end_scenario.py`) matching Part IX.
   disagreed (cosine similarity below threshold); this is Layla
   correctly refusing to silently pick a side, not a bug — see
   CONTRACT.md §6.
+- **A delegation fails with `"...is already UNKNOWN from a prior
+  attempt..."`** — a previous call for that same `{task_id}:{step.id}`
+  timed out on a non-`READ` operation and its outcome was never
+  resolved. Call `ExecutionTracker.resolve_unknown(key, EXEC_COMPLETED
+  | EXEC_FAILED, note=...)` after confirming the real-world outcome
+  out-of-band (e.g. checking the provider's own dashboard/logs), then
+  retry — see CONTRACT.md §15. This is Layla correctly refusing to
+  guess, not a bug.
+- **`IdempotencyConflictError`** — the same idempotency key was reused
+  for a different operation than its original request (a key-collision
+  bug, since `DelegationEngine` derives keys from `task_id`/`step.id`,
+  which are random per task/plan). Check for accidental task-id reuse
+  before retrying.
 
 # Security Considerations
 

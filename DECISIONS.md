@@ -1109,3 +1109,109 @@ in `layla/README.md`'s Priority 17.1 section, not built speculatively
 here. `docs/production-readiness.md` (Priority 17's final deliverable)
 must state plainly that this is a foundation, not a hardened,
 externally-audited auth system.
+
+## ADR-0022: Idempotency is a real `ExecutionTracker` owned by `DelegationEngine`, keyed per-step, persisted through `LaylaMemoryPolicy` — not a second workflow engine, not a change to `mcp-factory`
+
+**Status:** Accepted · **Date:** 2026-08-11
+
+**Context:** Priority 17.2 of the Phase 17 directive requires that
+Layla distinguish READ from WRITE/HIGH-RISK operations, assign every
+externally consequential operation an idempotency key, persist
+execution state so retries cannot duplicate a real-world side effect,
+and handle uncertain outcomes (e.g. a timeout on a WRITE after the
+provider may have already accepted it) safely rather than blindly
+resending. The Phase 16 audit had already flagged (SEC-1/RE-2) that
+no live external call had ever been exercised and that
+`DelegationEngine`'s retry loop had no concept of "this attempt might
+have already had a real effect" — every retry today is unconditionally
+safe only because every test target is a mock.
+
+**Decision:**
+1. **A genuinely separate classifier from risk.** `execution.
+   classify_operation()` (READ/WRITE/HIGH_RISK) is not `risk.
+   classify_risk()` (LOW/MEDIUM/HIGH) wearing a new name — risk asks
+   "how much harm can this cause" (approval-worthiness); operation kind
+   asks "does retrying this risk duplicating a real effect"
+   (idempotency-worthiness). A LOW-risk action ("send a routine status
+   email") can still be a WRITE that must never be silently retried.
+   Fail-closed default: unrecognized text classifies `WRITE`, never
+   `READ`.
+2. **One storage mechanism, not a second one.** `ExecutionTracker`
+   persists `ExecutionRecord`s through the *same* `LaylaMemoryPolicy`
+   every other Layla component already uses — `kind="long_term"`
+   (already the locked backend's fourth fixed kind, per ADR-0020's own
+   discovery), keys namespaced `execution:{idempotency_key}`. No new
+   backend, no new dependency.
+3. **`DelegationEngine` owns idempotency, not a new engine.**
+   `execution_tracker` is an *optional* `DelegationEngine`/
+   `ExecutiveRuntime` constructor parameter — the identical additive
+   pattern ADR-0021 established for `authorization`. Omitted: behavior
+   is byte-for-byte Phase 16/17.1 (all 149 prior tests pass
+   unmodified). Supplied: every `delegate()` call is keyed
+   `{task_id}:{plan_step.id}`, checked before the retry loop runs, and
+   the record is transitioned to a terminal (or `UNKNOWN`) state after
+   it finishes. This directly satisfies the directive's explicit "do
+   NOT create a separate workflow engine — reuse existing Layla runtime
+   and frameworks" instruction (stated for Priority 17.3, but the same
+   principle governs 17.2's own integration point).
+4. **`UNKNOWN` is a real, non-terminal state, not folded into
+   `FAILED`.** A timeout on a non-READ operation cannot be assumed
+   safe to retry (the call may have landed) nor assumed failed (it may
+   not have) — it is recorded `UNKNOWN` and `TERMINAL_EXECUTION_STATES`
+   deliberately excludes it. The only way past it is
+   `ExecutionTracker.resolve_unknown()`, an explicit, human/caller-
+   driven call — never an automatic retry.
+5. **Fail-closed on any unresolved non-terminal state, not just
+   `UNKNOWN`.** A record still `AUTHORIZED`/`APPROVED`/`EXECUTING` —
+   which happens identically whether a second call arrived
+   concurrently or a first attempt crashed mid-flight, since
+   `DelegationEngine` cannot tell those two situations apart from the
+   record alone — refuses a non-READ retry rather than guessing which
+   case it is. This is the same conservative default Priority 17.3's
+   crash-recovery scenario needs, built once here rather than twice.
+6. **`mcp-factory` is not touched.** `ExecutionTracker` guards the one
+   seam Layla actually owns — `DelegationEngine.delegate()`, i.e. the
+   call *into* a `ChiefDomainAgent`. A delegated agent's own direct
+   `ToolRuntime.invoke()` calls remain outside this tracker's
+   visibility; threading an idempotency key through
+   `ToolContract`/`ProtocolAdapter` itself would be a `mcp-factory`
+   (Phase 4, locked) change, out of scope here per this repository's
+   "later frameworks wrap, never modify earlier locked frameworks"
+   discipline (already established for `channels/email_adapter.py` in
+   Phase 16).
+7. **`IdempotencyConflictError` guards key reuse, not just retries.**
+   `ExecutionTracker.begin()` compares the new call's `description`
+   against an existing record's; a mismatch (the same key reused for a
+   genuinely different operation — a collision bug, not a retry) raises
+   rather than silently returning the wrong cached result.
+
+**Alternatives considered:**
+1. *A generic distributed-transaction/saga library* — rejected: no
+   deployment need for cross-service transactional guarantees exists
+   yet; `ExecutionTracker` solves the actual stated problem (don't
+   duplicate a side effect on retry) without that machinery.
+2. *Fold operation classification into `risk.classify_risk`* — rejected:
+   conflates two independent questions (harm vs. duplication-safety);
+   a LOW-risk WRITE would otherwise never get idempotency protection.
+3. *Treat a timeout as `FAILED` and let the existing retry loop handle
+   it* — rejected: this is exactly the directive's named failure mode
+   ("do NOT blindly resend") — a `FAILED` status implies "safe to
+   retry," which a timeout does not guarantee for a WRITE/HIGH_RISK
+   step.
+4. *Store execution state as a new `episodic` memory kind, matching
+   `AuditLogger`* — rejected: `long_term` already fits (durable,
+   queried by key, not a stream), and reusing it — as `SessionManager`
+   and `ProjectStore` already do — avoids adding a de facto fifth kind
+   the locked backends were never designed for.
+
+**Consequences:** `layla/python/avishkar_layla/execution.py` depends
+only on `.memory_policy` and `.errors` — no new external dependency.
+`DelegationEngine`/`ExecutiveRuntime` gain one optional parameter each;
+zero regressions verified (149 → 170 tests, all passing, the original
+149 unmodified). What remains explicitly unbuilt: idempotency
+awareness inside a delegated agent's own direct tool calls (a
+`mcp-factory` change, tracked as future work in `layla/README.md`);
+automatic resolution of `UNKNOWN` outcomes (deliberately manual).
+`docs/production-readiness.md` must state that idempotency protection
+covers the Layla→Agent delegation seam only, not every possible
+external side effect an agent's own tools might perform.
