@@ -688,5 +688,24 @@ its first consumer.
   model output." 13 new tests -- 414 total for Layla, up from 401,
   zero regressions. CONTRACT.md SS35, README.md updated; ADR-0031
   recorded in DECISIONS.md.
+- Mission Layla Directive D, Part V -- real Communication Channel
+  transports (ADR-0032), routed through the existing
+  UniversalToolRegistry (no second router), gated by the existing
+  ExecutiveRuntime risk/approval pipeline (no new send-approval
+  mechanism). SMTPEmailTransport: real smtplib/STARTTLS/MIME, proven
+  against a real local SMTP server this test suite runs itself (a real
+  wire-protocol conversation, not a smtplib mock). WhatsAppCloudAPITransport,
+  and four new channel adapters + real transports
+  (TelegramChannelAdapter/TelegramBotAPITransport,
+  SlackChannelAdapter/SlackWebAPITransport,
+  DiscordChannelAdapter/DiscordBotAPITransport,
+  SMSChannelAdapter/TwilioSMSTransport): real HTTP/SDK clients, each
+  verified via a real network call to the provider's actual API with a
+  deliberately invalid credential, confirming a real rejection with
+  zero side effects. LinkedIn, Google services, and Zoom are explicitly
+  not built this pass. New optional `channels` extra in
+  `layla/python/pyproject.toml`. 29 new tests -- 443 total for Layla,
+  up from 414, zero regressions. CONTRACT.md SS36, README.md updated;
+  ADR-0032 recorded in DECISIONS.md.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

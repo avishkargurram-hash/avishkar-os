@@ -38,6 +38,9 @@ vision = ["pillow", "pytesseract", "opencv-python", "numpy"]
 # package beyond the stdlib. `playwright install chromium` is a
 # separate one-time step after `pip install`.
 computer_control = ["playwright", "pyautogui", "pyperclip"]
+# Mission Layla Directive D, Part V (Real Communication Channels).
+# SMTPEmailTransport needs no extra package (stdlib smtplib/email).
+channels = ["requests", "twilio"]
 
 [tool.setuptools.packages.find]
 where = ["."]

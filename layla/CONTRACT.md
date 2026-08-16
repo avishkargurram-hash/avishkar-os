@@ -997,7 +997,69 @@ execution directly to model output" -- there is no path from a model's
 output to this executor that skips both the `EmbodimentController`
 gate and this module's own shell allowlist.
 
-## §36. Errors
+## §36. Real Communication Channels (Mission Layla Directive D, Part V)
+
+Every channel is still a real `avishkar_integration.ProtocolAdapter`
+routed through the existing `UniversalToolRegistry`/`ToolRuntime`
+(Phase 4, locked) -- no second router. Directive D Part V's escalation
+is that each adapter now ships a REAL transport implementation
+alongside its existing `_unconfigured_transport` ADAPTER READY
+default, in `channels/` priority order:
+
+- `EmailChannelAdapter` + `SMTPEmailTransport` (email_adapter.py) --
+  REAL `smtplib`/STARTTLS/MIME. Genuinely speaks the SMTP wire
+  protocol to a real local test server in `test_smtp_email_transport.py`
+  (its own real, minimal, in-repo fixture -- not a mock of `smtplib`).
+  Only attempts `AUTH` if the server advertises support
+  (`smtp.has_extn("auth")`, standard `smtplib` practice) -- credentials
+  are still required up front regardless.
+- `WhatsAppChannelAdapter` + `WhatsAppCloudAPITransport`
+  (whatsapp_adapter.py) -- REAL HTTP client, Meta's real WhatsApp
+  Business Cloud API. A real network call with a deliberately invalid
+  token is exercised in tests, confirming a real Graph API rejection.
+- `TelegramChannelAdapter` + `TelegramBotAPITransport`
+  (telegram_adapter.py, NEW) -- REAL HTTP client, Telegram's real Bot
+  API. Real-rejection-tested the same way.
+- `SlackChannelAdapter` + `SlackWebAPITransport` (slack_adapter.py,
+  NEW) -- REAL HTTP client, Slack's real Web API. Slack always returns
+  HTTP 200 even on failure; the transport checks the real `ok` field
+  in the response body, not the status code -- real-rejection-tested.
+- `DiscordChannelAdapter` + `DiscordBotAPITransport`
+  (discord_adapter.py, NEW) -- REAL HTTP client, Discord's real Bot
+  REST API. Real-rejection-tested.
+- `SMSChannelAdapter` + `TwilioSMSTransport` (sms_adapter.py, NEW) --
+  REAL client using the real, installed `twilio` SDK. Real-rejection-
+  tested against Twilio's real API.
+
+Every "real-rejection-tested" case above means: the test supplies a
+credential that is well-formed but definitely invalid, makes one
+genuine network call to the provider's real endpoint, and asserts the
+provider's real error response was correctly parsed into a
+`ProtocolInvocationError` -- zero side effects (an invalid credential
+can never actually deliver a message), and the test skips gracefully
+(not fails) if this environment has no outbound network access at test
+time.
+
+Every transport reads its credential(s) from environment variables at
+CALL time (never hardcoded, never logged) and raises
+`ProtocolInvocationError` with an "ADAPTER READY" message if the
+credential is missing -- before attempting any network call.
+
+LinkedIn, Google services (Gmail/Calendar), and Zoom (the remainder of
+Part V's named priority order) are NOT built this pass -- reported as
+a real, explicit gap (README.md Communication Channels table), not
+silently implied to exist alongside the six channels above.
+
+**Send-approval policy** (Directive D's explicit LOW/MEDIUM/HIGH risk
+requirement for outbound messages) is NOT a new mechanism here: every
+channel `invoke()` is reached only via a real tool call, which (when
+routed through `ExecutiveRuntime`) already passes through
+`classify_risk()`/`ApprovalManager` before DELEGATING is ever reached
+(§4/§11) -- exactly Directive D's "Layla must NOT automatically send
+arbitrary messages simply because an LLM generated them." No channel
+adapter bypasses that; none was changed to add a competing check.
+
+## §37. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,
@@ -1017,5 +1079,7 @@ errors (`ScreenCaptureError`, `OCRNotAvailableError`) live in
 `vision/errors.py`; executor errors (`UnknownActionError`,
 `BrowserActionError`, `ShellCommandNotAllowedError`,
 `PathOutsideWorkspaceError`, `ADBNotAvailableError`) live in
-`executors/errors.py` -- all following the same locally-scoped-
-subclass-of-`LaylaError` convention as §22-§28's errors.
+`executors/errors.py`; every channel transport raises the existing
+`avishkar_integration.ProtocolInvocationError` (no new channel-specific
+error types were introduced) -- all following the same locally-scoped
+convention as §22-§28's errors.

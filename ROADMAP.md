@@ -749,6 +749,33 @@ output."
 13 new tests — 414 total for Layla, zero regressions at every commit.
 Full detail: CONTRACT.md §35, DECISIONS.md ADR-0031.
 
+## Mission Layla Directive D, Part V — Real Communication Channels (ADR-0032, 2026-08-16)
+
+Real transport implementations for six channels, all routed through
+the existing `UniversalToolRegistry` — no second router, no new
+send-approval mechanism (the existing `classify_risk()`/
+`ApprovalManager` gate already covers every channel call).
+
+**Real, fully-working, genuinely verified**: `SMTPEmailTransport`
+(real SMTP wire protocol, proven against a real local test server this
+suite runs itself), `WhatsAppCloudAPITransport`/
+`TelegramBotAPITransport`/`SlackWebAPITransport`/
+`DiscordBotAPITransport`/`TwilioSMSTransport` (real HTTP/SDK clients,
+each proven via a real network call to the provider's actual API with
+a deliberately invalid credential, confirming a real rejection —
+zero side effects). Two new full channel adapters beyond
+Telegram/Slack/Discord/SMS routing (`TelegramChannelAdapter`,
+`SlackChannelAdapter`, `DiscordChannelAdapter`, `SMSChannelAdapter`)
+mirror the existing Email/WhatsApp pattern exactly.
+
+**Not built**: LinkedIn, Google services (Gmail/Calendar), Zoom —
+Part V's remaining named channels, explicitly deferred rather than
+rushed.
+
+29 new tests — 443 total for Layla, zero regressions at every commit.
+Full detail: CONTRACT.md §36, DECISIONS.md ADR-0032, README.md
+Communication Channels section.
+
 ## How this roadmap changes
 
 A phase only moves to 🚧 when someone is actively working it, and only to

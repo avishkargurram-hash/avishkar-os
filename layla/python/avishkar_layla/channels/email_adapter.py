@@ -1,18 +1,27 @@
 """EmailChannelAdapter -- a real avishkar_integration.ProtocolAdapter
-implementation for email. See CONTRACT.md SS12.
+implementation for email. See CONTRACT.md SS12/SS37.
 
 STATUS: ADAPTER READY / REQUIRES EXTERNAL CREDENTIALS. The adapter
 itself, its contract, and its tests are real and exercised end to end
 against a fake transport (the same DI seam RESTAdapter already uses
-instead of a live network call, Phase 4). Actually sending an email
-requires a real transport function backed by SMTP/an email API and
-real credentials -- neither is provided or faked here. See README.md
-Deployment for what production activation requires.
+instead of a live network call, Phase 4). `SMTPEmailTransport` (added
+Directive D Part V, ADR-0032) is a REAL transport implementation --
+genuine `smtplib` SMTP/STARTTLS, a real MIME message, real credentials
+read from environment variables (never hardcoded) -- exercised end to
+end in tests against a real local SMTP server this test suite starts
+itself (no external mail provider or live credential needed to prove
+the transport genuinely speaks SMTP correctly). See README.md
+Deployment for what production activation (a real external SMTP
+account) requires beyond that.
 """
 
 from __future__ import annotations
 
+import os
+import smtplib
 import time
+import uuid
+from email.mime.text import MIMEText
 from typing import Callable, Dict, Sequence, Tuple
 
 from avishkar_integration import ProtocolInvocationError, ToolContract, ToolExecutionRequest, ToolExecutionResult
@@ -67,3 +76,65 @@ class EmailChannelAdapter(ProtocolAdapter):
             tool_identity=contract.identity, protocol=self.protocol_name, status="success",
             output={"message_id": message_id}, latency_ms=elapsed_ms,
         )
+
+
+class SMTPEmailTransport:
+    """REAL SMTP transport -- genuine `smtplib` connection, STARTTLS by
+    default, a real MIME message. Credentials are read from environment
+    variables at call time (never hardcoded, never logged); missing
+    credentials raise `ProtocolInvocationError` immediately rather than
+    attempting an anonymous send. Use as
+    `EmailChannelAdapter(transport=SMTPEmailTransport(host=..., sender=...))`.
+    """
+
+    def __init__(
+        self, *, host: str, port: int = 587, sender: str, use_tls: bool = True,
+        username_env: str = "SMTP_USERNAME", password_env: str = "SMTP_PASSWORD", timeout_seconds: float = 30.0,
+    ) -> None:
+        self._host = host
+        self._port = port
+        self._sender = sender
+        self._use_tls = use_tls
+        self._username_env = username_env
+        self._password_env = password_env
+        self._timeout_seconds = timeout_seconds
+
+    def __call__(self, to: str, subject: str, body: str) -> str:
+        username = os.environ.get(self._username_env)
+        password = os.environ.get(self._password_env)
+        if not username or not password:
+            raise ProtocolInvocationError(
+                f"SMTPEmailTransport requires the {self._username_env}/{self._password_env} environment "
+                f"variables -- this is the documented ADAPTER READY / REQUIRES EXTERNAL CREDENTIALS "
+                f"boundary (CONTRACT.md SS37); no credential is configured in this environment"
+            )
+
+        message = MIMEText(body)
+        message["Subject"] = subject
+        message["From"] = self._sender
+        message["To"] = to
+        message_id = f"<{uuid.uuid4()}@{self._host}>"
+        message["Message-ID"] = message_id
+
+        try:
+            with smtplib.SMTP(self._host, self._port, timeout=self._timeout_seconds) as smtp:
+                smtp.ehlo()
+                if self._use_tls and smtp.has_extn("starttls"):
+                    smtp.starttls()
+                    smtp.ehlo()
+                # Real smtplib best practice (documented in the stdlib
+                # docs): only attempt AUTH if the server actually
+                # advertised support for it. Credentials are still
+                # REQUIRED above (fail closed if missing) -- this only
+                # controls whether login() is called against a server
+                # that doesn't support AUTH at all (e.g. an internal
+                # relay), not whether a credential must be present.
+                if smtp.has_extn("auth"):
+                    smtp.login(username, password)
+                smtp.sendmail(self._sender, [to], message.as_string())
+        except ProtocolInvocationError:
+            raise
+        except Exception as exc:
+            raise ProtocolInvocationError(f"SMTP send to {to!r} via {self._host}:{self._port} failed: {exc}") from exc
+
+        return message_id

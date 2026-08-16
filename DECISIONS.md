@@ -2213,3 +2213,102 @@ boundary, not a fabricated live integration.
 total for Layla, up from 401, zero regressions. `executors/__init__.py`
 and `executors/errors.py` (already introduced in ADR-0030) extended
 with `ADBExecutor`/`is_adb_available`/`ADBNotAvailableError`.
+
+## ADR-0032: Mission Layla Directive D, Part V (Real Communication Channels) — real transport implementations for six channels, verified via a real local SMTP fixture and real network-rejection tests against actual provider APIs; LinkedIn/Google/Zoom explicitly deferred
+
+**Context:** Directive D Part V asks for real, credentialed
+communication-channel adapters in priority order (Email, WhatsApp,
+Telegram, Slack, Discord, LinkedIn, SMS, Google services, Zoom,
+other), reusing the existing `UniversalToolRegistry`/`ProtocolAdapter`/
+`ApprovalManager`/`AuditLogger` architecture ("do not create competing
+channel frameworks"), with a hard requirement: "Layla must NOT
+automatically send arbitrary messages simply because an LLM generated
+them." `EmailChannelAdapter`/`WhatsAppChannelAdapter` already existed
+(ADR-0027) as real `ProtocolAdapter`s with an injectable but
+UNCONFIGURED transport (`_unconfigured_transport`, ADAPTER READY).
+This ADR's job: add REAL transport implementations, not new adapter
+architecture, and extend channel coverage to the next four
+priority-ordered channels.
+
+**Decision:**
+1. `SMTPEmailTransport` (email_adapter.py) is REAL: genuine `smtplib`
+   SMTP/STARTTLS, a real MIME message, credentials read from
+   environment variables at call time. Verified via a real,
+   minimal, in-repo SMTP server fixture (`test_smtp_email_transport.py`
+   -- plain sockets implementing just enough of the SMTP protocol for
+   `smtplib` to have a genuine conversation with it) rather than
+   mocking `smtplib` itself -- the transport's actual wire-protocol
+   behavior is proven, not merely its Python call shape. Only attempts
+   `AUTH` if the server advertises it (`smtp.has_extn("auth")`,
+   standard `smtplib` practice) so the minimal test fixture doesn't
+   need to implement a full auth exchange; credentials are still
+   required up front regardless.
+2. `WhatsAppCloudAPITransport` (whatsapp_adapter.py), plus four NEW
+   channel adapters + real transports (`TelegramChannelAdapter`+
+   `TelegramBotAPITransport`, `SlackChannelAdapter`+
+   `SlackWebAPITransport`, `DiscordChannelAdapter`+
+   `DiscordBotAPITransport`, `SMSChannelAdapter`+`TwilioSMSTransport`)
+   are all REAL HTTP (or, for SMS, real-SDK) clients against each
+   provider's actual API. None has a live external account configured
+   in this environment. Each is verified via a "real-rejection" test:
+   supply a well-formed but definitely-invalid credential, make one
+   genuine network call to the provider's real endpoint, assert the
+   real error response was correctly parsed into a
+   `ProtocolInvocationError`. Zero side effects (an invalid credential
+   can never deliver a message); every such test skips gracefully
+   (not fails) if this environment loses outbound network access.
+   Confirmed real network egress works before writing any of this
+   (a plain `requests.get` to a real public endpoint) and confirmed
+   real rejections from Meta, Telegram, Slack, Discord, and Twilio's
+   actual APIs during test development.
+3. Slack's API always returns HTTP 200 even on failure --
+   `SlackWebAPITransport` reads the real `ok` field in the response
+   body rather than calling `raise_for_status()`, a real API-shape
+   detail discovered while writing the transport, not assumed.
+4. No new risk/approval mechanism was added for "send-approval
+   policy" -- Directive D's LOW/MEDIUM/HIGH risk-based send-gating
+   requirement is already satisfied structurally: every channel
+   `invoke()` is reached only via a real tool call, and when routed
+   through `ExecutiveRuntime`, `classify_risk()`/`ApprovalManager`
+   already gate DELEGATING (§4/§11) before any channel adapter is ever
+   called. Building a parallel "should this message be sent"
+   mechanism inside the channels themselves would have duplicated that
+   existing gate — exactly the kind of divergent-gate risk this
+   mission's Part-1 forensic audit flagged in the external codebase it
+   studied.
+5. LinkedIn, Google services (Gmail/Calendar), and Zoom -- the
+   remainder of Part V's named priority order -- are explicitly NOT
+   built this pass. Reported as a real gap in README.md's Communication
+   Channels table, not silently omitted or implied to exist alongside
+   the six real channels.
+6. New `channels` optional-dependency extra (`requests`/`twilio`) in
+   `layla/python/pyproject.toml`; `SMTPEmailTransport` needs no extra
+   package (stdlib `smtplib`/`email`).
+
+**Alternatives considered:**
+- *Build a new "channel risk policy" layer inside `channels/`* --
+  rejected: `ExecutiveRuntime`'s existing risk/approval gate already
+  covers every tool call, channels included; a second policy layer
+  would be exactly the "two independent gates that can drift apart"
+  bug class Mission Layla's own forensic audit exists to prevent.
+- *Mock `smtplib`/`requests` instead of making real network calls or
+  running a real local server* -- rejected: mocking would only prove
+  "the code calls the library the way I wrote it," not "the code
+  correctly speaks the real protocol/API shape." The real local SMTP
+  server and the real (side-effect-free) rejected API calls prove
+  materially more, at acceptable cost (a few seconds of real network
+  I/O per test run, gracefully skipped if unavailable).
+- *Rush LinkedIn/Google/Zoom to claim full Part V coverage* -- rejected:
+  each has a meaningfully different auth model (OAuth2 flows, not a
+  static bot token) that deserves the same care the six shipped
+  channels got, not a rushed, lower-quality implementation just to
+  check a box. Honest gap reporting over false completeness, per
+  Directive D's own "No Fake Completion" rule.
+
+**Consequences:** `channels/telegram_adapter.py`,
+`channels/slack_adapter.py`, `channels/discord_adapter.py`,
+`channels/sms_adapter.py` (all new), plus real transports added to
+the existing `email_adapter.py`/`whatsapp_adapter.py`. 29 new tests
+(3 real SMTP round-trip + 2 real WhatsApp rejection + 6 each for
+Telegram/Slack/Discord/SMS), 443 total for Layla, up from 414, zero
+regressions. LinkedIn/Google/Zoom remain explicit remaining scope.

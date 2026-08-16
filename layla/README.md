@@ -49,7 +49,7 @@ layla/
 ├── CONTRACT.md              language-agnostic contract
 ├── README.md                  this file
 ├── python/avishkar_layla/       reference implementation (40 modules)
-│   ├── channels/                   communication channel adapters
+│   ├── channels/                   communication channel adapters (6 real transports, Directive D Part V, ADR-0032)
 │   ├── voice/                      voice subsystem (Directive D Part I, ADR-0028)
 │   ├── vision/                     vision/OCR/spatial subsystem (Directive D Part II, ADR-0029)
 │   └── executors/                  real EmbodimentController executors (Directive D Parts III-IV, ADR-0030/0031)
@@ -57,7 +57,7 @@ layla/
 │   ├── end_to_end_scenario.py       Part IX's real, narrated demonstration
 │   ├── crash_recovery_scenario.py   resume-in-place demonstration (Priority 17.3)
 │   └── personal_model_and_proactive_scenario.py  Mission Layla Parts 1/2/11
-└── python/tests/                   414 tests (as of Directive D Part IV; 1 live-gated, skipped by default)
+└── python/tests/                   443 tests (as of Directive D Part V; 1 live-gated, skipped by default)
 ```
 
 ## Naming Standards
@@ -719,6 +719,43 @@ Registered for `EMBODIMENT_ADB`, already in embodiment.py's
 regardless of wording. `shell` has its own fail-closed allowlist, same
 as `ComputerControlExecutor.run_shell`.
 
+# Communication Channels (Directive D, Part V, ADR-0032)
+
+Every channel is a real `avishkar_integration.ProtocolAdapter` routed
+through the existing `UniversalToolRegistry`/`ToolRuntime` — no second
+router. See CONTRACT.md §36.
+
+| Channel | Adapter status | Transport status | Notes |
+|---|---|---|---|
+| Email | 🟢 GREEN | 🟢 GREEN | `SMTPEmailTransport` — real `smtplib`/STARTTLS/MIME, genuinely speaks SMTP to a real local test server this suite runs itself (its own fixture, not a mock). |
+| WhatsApp | 🟢 GREEN | 🟡 YELLOW | `WhatsAppCloudAPITransport` — real HTTP client, real network call against Meta's actual Graph API confirmed correctly rejecting an invalid token; no live Business account configured here. |
+| Telegram | 🟢 GREEN (NEW) | 🟡 YELLOW | `TelegramBotAPITransport` — real HTTP client, real-rejection-tested against Telegram's actual Bot API. |
+| Slack | 🟢 GREEN (NEW) | 🟡 YELLOW | `SlackWebAPITransport` — real HTTP client; correctly reads Slack's real `ok:false` body (Slack always returns HTTP 200), real-rejection-tested. |
+| Discord | 🟢 GREEN (NEW) | 🟡 YELLOW | `DiscordBotAPITransport` — real HTTP client, real-rejection-tested against Discord's actual Bot REST API. |
+| SMS | 🟢 GREEN (NEW) | 🟡 YELLOW | `TwilioSMSTransport` — real, installed `twilio` SDK, real-rejection-tested against Twilio's actual API. |
+| LinkedIn, Google (Gmail/Calendar), Zoom | 🔴 NOT BUILT | 🔴 NOT BUILT | Explicitly not built this pass — reported as a real gap, not silently skipped. |
+
+"Adapter status" GREEN means the `ProtocolAdapter`/registry-routing/
+approval-gating machinery is real and tested (it was already GREEN for
+Email/WhatsApp from ADR-0027; Telegram/Slack/Discord/SMS are new this
+pass). "Transport status" reflects whether an actual external account
+is live-verified — all six are real, credentialed-at-call-time code;
+none has a live account configured in *this* environment, so YELLOW is
+honest even where the transport code itself is proven correct via a
+real network rejection test.
+
+**Send-approval policy**: not a new mechanism. Every channel `invoke()`
+is reached only via a real tool call; when routed through
+`ExecutiveRuntime`, `classify_risk()`/`ApprovalManager` already gate
+DELEGATING before any channel is called (§4/§11) — Directive D's "Layla
+must NOT automatically send arbitrary messages simply because an LLM
+generated them" is satisfied by the existing pipeline, unmodified.
+
+Install the optional extra:
+```bash
+pip install -e "layla/python[channels]"
+```
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
@@ -804,9 +841,9 @@ already covers it — extending that list requires an ADR.
 
 # Testing Guide
 
-414 tests as of Directive D Part IV (Android/ADB) (119 Phase 16 +
-30 Priority 17.1 + 21 Priority 17.2 + 8 Priority 17.3 + 11 Priority
-17.4 + 1 Priority 17.5 + 30 Mission Layla 1 [PersonalModel/
+443 tests as of Directive D Part V (Communication Channels) (119 Phase
+16 + 30 Priority 17.1 + 21 Priority 17.2 + 8 Priority 17.3 + 11
+Priority 17.4 + 1 Priority 17.5 + 30 Mission Layla 1 [PersonalModel/
 ProactiveEngine] + 82 Mission Layla continuation [Prediction/Skills/
 LearningLoop/LifeOS/KnowledgeGraph/WhatsAppChannelAdapter/Perception/
 Embodiment/BusinessIntelligence/ExecutiveDashboard] + 40 Directive D
@@ -817,9 +854,13 @@ Directive D Part III [real headless-browser automation/real shell
 execution/real confined file operations/GUI dispatch via injected
 fake/end-to-end EmbodimentController+executor integration] + 13
 Directive D Part IV [real ADB availability check/ADB command dispatch
-via injected fake/real ADAPTER READY error on this adb-less machine]),
-412 running offline and passing, 2 live/environment-gated and skipped
-by default (`test_live_anthropic_integration.py` — see
+via injected fake/real ADAPTER READY error on this adb-less machine] +
+29 Directive D Part V [real SMTP wire-protocol round trip against a
+real local test server/real network-rejection tests against WhatsApp,
+Telegram, Slack, Discord, and Twilio's actual APIs with deliberately
+invalid credentials/adapter+registry routing for 4 new channels]), 441
+running offline and passing, 2 live/environment-gated and skipped by
+default (`test_live_anthropic_integration.py` — see
 `docs/live-integration-guide.md` to actually run it; plus one OCR
 availability test that only runs on a machine WITHOUT tesseract
 installed, correctly skipped on this one), via:
