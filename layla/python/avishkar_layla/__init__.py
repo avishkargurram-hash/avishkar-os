@@ -67,11 +67,19 @@ from .identity import (
 )
 from .intent import Intent, IntentInterpreter
 from .learning import LearningLoop, SkillCandidateSuggestion
+from .life_os import LifeOS
 from .memory_policy import LaylaMemoryPolicy
 from .monitoring import HealthMonitor
 from .notifications import NotificationManager
 from .personal_model import (
     CATEGORIES,
+    CATEGORY_APPOINTMENTS,
+    CATEGORY_FINANCE,
+    CATEGORY_HEALTH,
+    CATEGORY_REMINDERS,
+    CATEGORY_SCHEDULE,
+    CATEGORY_TASKS,
+    CATEGORY_TRAVEL,
     SENSITIVE_CATEGORIES,
     PersonalFact,
     PersonalModel,
@@ -240,5 +248,13 @@ __all__ = [
     "SKILL_RETIRED",
     "LearningLoop",
     "SkillCandidateSuggestion",
+    "LifeOS",
+    "CATEGORY_SCHEDULE",
+    "CATEGORY_TASKS",
+    "CATEGORY_FINANCE",
+    "CATEGORY_HEALTH",
+    "CATEGORY_TRAVEL",
+    "CATEGORY_APPOINTMENTS",
+    "CATEGORY_REMINDERS",
     "__version__",
 ]

@@ -63,12 +63,27 @@ CATEGORY_LIFE_EVENTS = "life_events"
 CATEGORY_HABITS = "habits"
 CATEGORY_LONG_TERM_OBJECTIVES = "long_term_objectives"
 
+# Mission Layla Part 4 (Life OS) categories -- deliberately added here,
+# not as a competing structure: Life OS is a thin domain-specific
+# wrapper (life_os.py) over this same PersonalModel, reusing its
+# confirmation-gate/contradiction-handling machinery rather than
+# duplicating it. See life_os.py.
+CATEGORY_SCHEDULE = "schedule"
+CATEGORY_TASKS = "tasks"
+CATEGORY_FINANCE = "finance"
+CATEGORY_HEALTH = "health"
+CATEGORY_TRAVEL = "travel"
+CATEGORY_APPOINTMENTS = "appointments"
+CATEGORY_REMINDERS = "reminders"
+
 CATEGORIES = (
     CATEGORY_IDENTITY, CATEGORY_PREFERENCES, CATEGORY_GOALS,
     CATEGORY_DECISION_PATTERNS, CATEGORY_WORK_PATTERNS, CATEGORY_COMMUNICATION_STYLE,
     CATEGORY_PROJECT_CONTEXT, CATEGORY_RELATIONSHIPS, CATEGORY_BEHAVIORAL_PATTERNS,
     CATEGORY_PERSONAL_KNOWLEDGE, CATEGORY_LIFE_EVENTS, CATEGORY_HABITS,
     CATEGORY_LONG_TERM_OBJECTIVES,
+    CATEGORY_SCHEDULE, CATEGORY_TASKS, CATEGORY_FINANCE, CATEGORY_HEALTH,
+    CATEGORY_TRAVEL, CATEGORY_APPOINTMENTS, CATEGORY_REMINDERS,
 )
 
 # Categories where a contradiction can never be silently resolved even
@@ -77,7 +92,13 @@ CATEGORIES = (
 # showed exactly these two categories (relationships, behavior) are
 # where hardcoded, unauthorized, unconfirmed personal data caused real
 # harm. Reused here as a *policy*, not as data or code.
-SENSITIVE_CATEGORIES = frozenset({CATEGORY_RELATIONSHIPS, CATEGORY_BEHAVIORAL_PATTERNS})
+SENSITIVE_CATEGORIES = frozenset({
+    CATEGORY_RELATIONSHIPS, CATEGORY_BEHAVIORAL_PATTERNS,
+    # Mission Layla Part 4 explicitly requires "all sensitive categories
+    # must use explicit authorization and privacy controls" for
+    # finance/health data specifically.
+    CATEGORY_FINANCE, CATEGORY_HEALTH,
+})
 
 RESOLVE_OVERWRITE = "overwrite"
 RESOLVE_IGNORE = "ignore"
