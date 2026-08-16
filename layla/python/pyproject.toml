@@ -28,6 +28,10 @@ dev = ["pytest>=8"]
 voice = [
     "numpy", "scipy", "sounddevice", "soundfile", "faster-whisper", "pyttsx3", "requests",
 ]
+# Mission Layla Directive D, Part II (Vision/OCR/Spatial Intelligence).
+# `pytesseract` wraps the real Tesseract OCR binary -- installed
+# separately (not a pip package); see README.md Vision section.
+vision = ["pillow", "pytesseract", "opencv-python", "numpy"]
 
 [tool.setuptools.packages.find]
 where = ["."]

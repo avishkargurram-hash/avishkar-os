@@ -1931,3 +1931,108 @@ Layla, up from 299, zero regressions. Live-hardware code
 providers are real but not live-verified in this environment — see
 README.md Voice section for the explicit GREEN/YELLOW breakdown
 Directive D's Definition of Done requires.
+
+## ADR-0029: Mission Layla Directive D, Part II (Vision/OCR/Spatial Intelligence) — real Tesseract OCR installed and wired for real, template-based detection real, general visual classification honestly not built
+
+**Context:** Directive D Part II asks for screen capture, image
+ingestion, OCR, object/element detection, visual classification,
+spatial relationships, confidence scores, and privacy controls, with
+an explicit structural requirement: "Do not allow raw perception
+outputs to directly execute dangerous actions. Perception must produce
+structured evidence that passes through Layla's decision/risk
+architecture." `avishkar_layla.perception.PerceptionEngine` (ADR-0027)
+already provides exactly that boundary, contract-only with zero
+capture sources registered; this ADR fills in real capture/analysis
+functions behind it rather than building a second perception
+framework.
+
+Environment recon found `Pillow` (real screen capture, confirmed
+against this machine's actual 1366×768 display), `opencv-python`
+(real classical computer vision), and `pytesseract` (a Python wrapper,
+NOT an OCR engine — it shells out to a real `tesseract` binary) all
+already installed, but no `tesseract` binary on PATH. `winget install
+UB-Mannheim.TesseractOCR` succeeded during this pass, installing the
+real binary to `C:\Program Files\Tesseract-OCR\tesseract.exe` — not
+on PATH in this already-running shell, so `ocr.py` includes a real,
+documented fallback binary-discovery step (PATH first, then this
+distribution's well-known Windows install locations) rather than
+requiring a shell restart to become usable.
+
+**Decision:**
+1. `capture_screen()` (screen_capture.py) is REAL and hardware-backed
+   (`PIL.ImageGrab.grab()`), with the same discipline as voice's
+   `MicrophoneFrameSource`: never invoked against the LIVE screen by
+   the automated test suite (capturing a real desktop's actual screen
+   contents non-interactively risks exposing whatever is genuinely
+   displayed — documents, messages, credentials — with no specific
+   consent). An injectable `_grab_fn` seam (defaults to the real grab)
+   makes error-handling fully testable without opening the live
+   screen.
+2. `extract_text()` (ocr.py) is REAL: genuine Tesseract inference,
+   real per-word bounding boxes and confidence from `image_to_data`,
+   verified end-to-end against a synthetically PIL-rendered test image
+   (`test_vision_ocr.py` — the words "AVISHKAR"/"HELLO"/"WORLD"
+   genuinely recognized). This is GREEN, not YELLOW, specifically
+   because installing the real OCR engine was safe and possible in
+   this environment — Directive D's own bar for when a contract-only
+   fallback is no longer good enough.
+3. `detect_template()` (detection.py) is REAL classical CV
+   (`cv2.matchTemplate`), answering "does this known reference image
+   appear in a larger one, and where" with a genuine similarity score
+   — explicitly NOT a trained object/scene classifier, which this pass
+   does not bundle or fabricate. Writing its test suite surfaced a
+   real numerical caveat (`TM_CCOEFF_NORMED` degenerates to a spurious
+   1.0 match on flat/solid-color regions); the fix was using textured
+   synthetic test images, and the caveat is documented in the module
+   itself, not silently worked around.
+4. `relative_position()`/`distance()`/`nearest()`/`overlaps()`/`iou()`
+   (spatial.py) are real, dependency-free geometry over real
+   `BoundingBox` coordinates — no model, no external service.
+5. `screen_capture_source()`/`screen_ocr_source()`
+   (perception_adapters.py) wire the above as
+   `PerceptionEngine.register_capture()`-shaped callables — the only
+   integration point with the existing contract; no second perception
+   framework.
+6. General-purpose visual/scene classification and true multi-
+   observation perception fusion are explicitly NOT built this pass —
+   reported as RED in README.md's status table, not silently omitted
+   or implied to exist via `detect_template()`'s narrower real
+   capability.
+7. New `vision` optional-dependency extra
+   (`pillow`/`pytesseract`/`opencv-python`/`numpy`) in
+   `layla/python/pyproject.toml`, same optional pattern as `voice`
+   (ADR-0028) — the cognitive core has zero dependency on it.
+
+**Alternatives considered:**
+- *Ship Vision as contract-only, like Perception/Embodiment in
+  ADR-0027* — rejected: OCR, screen capture, template detection, and
+  spatial geometry were all confirmed genuinely buildable in this
+  environment before writing any code (the same recon-first discipline
+  as ADR-0028), and installing the real Tesseract binary specifically
+  to close the OCR gap is exactly what Directive D asks for over the
+  weaker contract-only fallback.
+- *Fabricate an object/scene classifier via a hardcoded label set or a
+  lookup table keyed on image hashes* — rejected outright: this is
+  precisely the "fake perception output" Directive D's "No Fake
+  Completion" rule (and Mission Layla's own forensic audit of
+  GENESIS's hardcoded `core/prediction/*.py`) exists to prevent. Not
+  built is reported as not built.
+- *Call `capture_screen()` for real in the automated test suite (a
+  single screenshot, not a recording)* — rejected for consistency with
+  the microphone boundary (ADR-0028): a screenshot of this real
+  machine's actual desktop, taken non-interactively during an
+  unattended run, is still capturing whatever is genuinely on screen
+  without a specific, momentary trigger. The `_grab_fn` injection seam
+  gives equivalent real coverage of the error-handling code path
+  without that concern.
+
+**Consequences:** New `vision/` subpackage (`__init__.py`, `errors.py`,
+`screen_capture.py`, `ocr.py`, `detection.py`, `spatial.py`,
+`perception_adapters.py`), 28 new tests (13 spatial geometry + 4 real
+OCR round-trip + 4 real template detection + 4 screen-capture DI + 3
+perception-adapter wiring), 367 total for Layla, up from 339, zero
+regressions. A real, functioning Tesseract OCR install now exists on
+this development machine as a side effect of this pass — a real
+environment change, not merely a documentation change; noted here for
+anyone auditing what this session actually did versus what it wrote
+about.

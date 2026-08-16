@@ -668,6 +668,35 @@ Layla is speaking); only explicit stop-phrase / external
 Full detail: CONTRACT.md §31, DECISIONS.md ADR-0028, README.md Voice
 section.
 
+## Mission Layla Directive D, Part II — Vision/OCR/Spatial Intelligence (ADR-0029, 2026-08-16)
+
+Recon found `Pillow`/`opencv-python`/`pytesseract` already installed
+but no real `tesseract` binary — `winget install
+UB-Mannheim.TesseractOCR` succeeded during this pass, so OCR could be
+built genuinely GREEN instead of settling for ADAPTER READY.
+
+**Real, fully-working**: `extract_text()` (real Tesseract inference,
+real per-word boxes/confidence, verified against a synthetically
+rendered test image), `detect_template()` (real `cv2.matchTemplate`
+classical CV — found and documented a real flat-region false-positive
+caveat via its own test suite), `relative_position`/`distance`/
+`nearest`/`overlaps`/`iou` (real, dependency-free geometry),
+`screen_capture_source`/`screen_ocr_source` (real wiring into the
+existing `PerceptionEngine` contract).
+
+**Real code, hardware-backed, not exercised live automatically**:
+`capture_screen()` — confirmed working against this machine's real
+1366×768 display, but never called against the live screen by the
+automated suite (same consent boundary as the microphone).
+
+**Not built**: general-purpose visual/scene classification (no model
+bundled or fabricated) and multi-observation perception fusion beyond
+the structured fields `PerceptionObservation` already carries.
+
+28 new tests — 367 total for Layla, zero regressions at every commit.
+Full detail: CONTRACT.md §32, DECISIONS.md ADR-0029, README.md Vision
+section.
+
 ## How this roadmap changes
 
 A phase only moves to 🚧 when someone is actively working it, and only to

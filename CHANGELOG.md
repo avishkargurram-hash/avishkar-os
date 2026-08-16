@@ -629,5 +629,25 @@ its first consumer.
   dependency on it. 40 new tests -- 339 total for Layla, up from 299,
   zero regressions. CONTRACT.md SS31, README.md updated; ADR-0028
   recorded in DECISIONS.md.
+- Mission Layla Directive D, Part II -- real Vision/OCR/Spatial
+  Intelligence subsystem (`avishkar_layla.vision`, ADR-0029):
+  Camera/Screen -> Capture -> Vision Pipeline (OCR/Detection/Spatial
+  Analysis) -> structured `PerceptionObservation` -> Layla Context ->
+  Decision. Real Tesseract OCR (the binary was installed on this
+  machine during this pass specifically to make this GREEN, not
+  ADAPTER READY) with real per-word bounding boxes/confidence, real
+  `cv2.matchTemplate`-based template detection (found and documented a
+  real flat-region false-positive caveat), real dependency-free
+  spatial geometry (distance/overlap/IoU/relative-position/nearest),
+  real `PIL.ImageGrab`-backed screen capture (hardware-confirmed
+  working, never called against the live screen non-interactively by
+  the automated suite -- same consent boundary as the microphone).
+  General-purpose visual/scene classification and multi-observation
+  perception fusion are explicitly not built this pass. Wires into the
+  existing `PerceptionEngine` contract (ADR-0027); no second perception
+  framework. New optional `vision` extra in
+  `layla/python/pyproject.toml`. 28 new tests -- 367 total for Layla,
+  up from 339, zero regressions. CONTRACT.md SS32, README.md updated;
+  ADR-0029 recorded in DECISIONS.md.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

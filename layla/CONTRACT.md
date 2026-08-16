@@ -863,7 +863,56 @@ every other component in this contract) precisely so importing
 `avishkar_layla` itself never requires `numpy`/`sounddevice`/etc. --
 callers opt in explicitly via `from avishkar_layla.voice import ...`.
 
-## §32. Errors
+## §32. Vision / OCR / Spatial Intelligence (Mission Layla Directive D, Part II)
+
+`avishkar_layla.vision` -- Camera/Screen -> Capture -> Vision Pipeline
+(OCR/Detection/Spatial Analysis) -> structured `PerceptionObservation`
+-> Layla Context -> Decision. Every function produces DATA; nothing in
+this package calls a tool, executor, or `ExecutiveRuntime.handle_event()`
+-- Directive D Part II's explicit requirement that "perception must
+produce structured evidence that passes through Layla's decision/risk
+architecture," never act directly.
+
+- `capture_screen()` (screen_capture.py) -- REAL, LOCAL, HARDWARE-
+  BACKED (`PIL.ImageGrab`). Like voice's `MicrophoneFrameSource`, never
+  invoked against the LIVE screen by the automated test suite (opening
+  a real desktop's screen non-interactively risks capturing whatever
+  is genuinely on screen -- documents, messages, credentials -- with
+  no specific consent); error-handling is instead tested for real via
+  an injectable `_grab_fn` seam.
+- `extract_text()` (ocr.py) -- REAL if the `tesseract` binary is
+  installed and discoverable (`is_tesseract_available()`); real
+  word-level bounding boxes and per-word confidence from Tesseract's
+  own `image_to_data`, never fabricated. Raises `OCRNotAvailableError`
+  (ADAPTER READY) otherwise. Tested for real against a synthetically
+  PIL-rendered test image (no live screen/camera involved) -- a
+  genuine, non-mocked OCR round trip.
+- `detect_template()` (detection.py) -- REAL, classical CV
+  (`cv2.matchTemplate`, normalized cross-correlation): finds a known
+  reference image inside a larger one with a real similarity score.
+  NOT a trained object/scene classifier -- see README.md Vision
+  section for the explicit boundary. Tested for real against
+  synthetically generated, deliberately textured (not flat --
+  `TM_CCOEFF_NORMED` degenerates on flat regions, a real caveat this
+  module's own tests found) numpy images.
+- `relative_position()`/`distance()`/`nearest()`/`overlaps()`/`iou()`
+  (spatial.py) -- REAL, dependency-free geometry over real
+  `BoundingBox` coordinates.
+- `screen_capture_source()`/`screen_ocr_source()`
+  (perception_adapters.py) -- wire the above as
+  `PerceptionEngine.register_capture()`-shaped callables; not a second
+  perception framework.
+
+Deliberately NOT built this pass (see README.md Vision section):
+general-purpose visual/scene classification (no trained model bundled
+or fabricated) and true perception fusion beyond the raw structured
+observations `PerceptionObservation` already carries.
+
+`layla/python/pyproject.toml`'s new `vision` extra
+(`pillow`/`pytesseract`/`opencv-python`/`numpy`) is optional, same
+pattern as `voice`.
+
+## §33. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,
@@ -878,6 +927,7 @@ callers opt in explicitly via `from avishkar_layla.voice import ...`.
 `EmbodimentNotApprovedError`. Voice-subsystem errors
 (`AudioDeviceError`, `NoSpeechDetectedError`, `TranscriptionError`,
 `STTProviderNotConfiguredError`, `TTSProviderError`,
-`VoiceSessionClosedError`) live in `voice/errors.py`, following the
-same locally-scoped-subclass-of-`LaylaError` convention as §22-§28's
-errors.
+`VoiceSessionClosedError`) live in `voice/errors.py`; vision-subsystem
+errors (`ScreenCaptureError`, `OCRNotAvailableError`) live in
+`vision/errors.py` -- both following the same locally-scoped-
+subclass-of-`LaylaError` convention as §22-§28's errors.

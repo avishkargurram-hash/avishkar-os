@@ -48,14 +48,15 @@ ExecutiveRuntime (event loop: IDLE -> EVENT -> INGEST -> UNDERSTAND ->
 layla/
 ├── CONTRACT.md              language-agnostic contract
 ├── README.md                  this file
-├── python/avishkar_layla/       reference implementation (38 modules)
+├── python/avishkar_layla/       reference implementation (39 modules)
 │   ├── channels/                   communication channel adapters
-│   └── voice/                      voice subsystem (Directive D Part I, ADR-0028)
+│   ├── voice/                      voice subsystem (Directive D Part I, ADR-0028)
+│   └── vision/                     vision/OCR/spatial subsystem (Directive D Part II, ADR-0029)
 ├── examples/
 │   ├── end_to_end_scenario.py       Part IX's real, narrated demonstration
 │   ├── crash_recovery_scenario.py   resume-in-place demonstration (Priority 17.3)
 │   └── personal_model_and_proactive_scenario.py  Mission Layla Parts 1/2/11
-└── python/tests/                   339 tests (as of Directive D Part I; 1 live-gated, skipped by default)
+└── python/tests/                   367 tests (as of Directive D Part II; 1 live-gated, skipped by default)
 ```
 
 ## Naming Standards
@@ -638,6 +639,34 @@ The cognitive core has zero dependency on any voice package; only
 constructing a concrete `FasterWhisperSTT`/`Pyttsx3TTS`/
 `MicrophoneFrameSource`/etc. pulls one in.
 
+# Vision / OCR / Spatial Intelligence (Directive D, Part II, ADR-0029)
+
+Camera/Screen → Capture → Vision Pipeline (OCR/Detection/Spatial
+Analysis) → structured `PerceptionObservation` → Layla Context →
+Decision. See CONTRACT.md §32. Nothing in `avishkar_layla.vision`
+calls a tool/executor/`handle_event()` — every function returns data
+that must pass through Layla's existing decision/risk architecture,
+per Directive D's explicit requirement.
+
+| Component | Status | Notes |
+|---|---|---|
+| `distance`/`overlaps`/`iou`/`relative_position`/`nearest` (spatial.py) | 🟢 GREEN | Real, dependency-free geometry; 13/13 tests real and passing. |
+| `extract_text` (ocr.py) | 🟢 GREEN | Real Tesseract OCR — the binary was installed on this machine during this pass (`winget install UB-Mannheim.TesseractOCR`) specifically so this could be genuinely GREEN rather than ADAPTER READY. Real word-level boxes/confidence from `image_to_data`, verified against a synthetically-rendered (not live-captured) test image. |
+| `detect_template` (detection.py) | 🟢 GREEN | Real `cv2.matchTemplate`; 4/4 tests real and passing against synthetic textured images. Found and documented a real caveat: flat/solid-color regions can produce spurious matches with `TM_CCOEFF_NORMED` — the tests use textured images specifically because of this. |
+| `capture_screen` (screen_capture.py) | 🟡 YELLOW | Real, `PIL.ImageGrab`-backed, confirmed working against this machine's actual 1366×768 display during development — but never called against the live screen by the automated suite (same non-interactive-capture consent boundary as the microphone); error-handling tested via an injectable `_grab_fn` seam instead. |
+| `screen_capture_source`/`screen_ocr_source` (perception_adapters.py) | 🟢 GREEN | Real wiring into `PerceptionEngine`'s existing contract; 3/3 tests real and passing against a monkeypatched capture layer. |
+| General-purpose visual/scene classification ("what is this") | 🔴 NOT BUILT | No trained object/scene classifier is bundled or fabricated this pass — `detect_template()` answers "does this known image appear, and where," not open-vocabulary recognition. |
+| Perception fusion beyond structured observations | 🔴 NOT BUILT | `PerceptionObservation` already carries source/confidence/timestamp/permissions/retention per observation; a dedicated multi-observation fusion/reasoning layer is real future work. |
+
+Install the optional extra to use real OCR/detection:
+```bash
+pip install -e "layla/python[vision]"
+```
+`pytesseract` is a wrapper around the real `tesseract` binary, which is
+a separate OS-level install (not a pip package) — see
+`vision/ocr.py`'s `OCRNotAvailableError` message for install links per
+platform.
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
@@ -723,16 +752,20 @@ already covers it — extending that list requires an ADR.
 
 # Testing Guide
 
-339 tests as of Directive D Part I (Voice) (119 Phase 16 + 30
+367 tests as of Directive D Part II (Vision) (119 Phase 16 + 30
 Priority 17.1 + 21 Priority 17.2 + 8 Priority 17.3 + 11 Priority 17.4 +
 1 Priority 17.5 + 30 Mission Layla 1 [PersonalModel/ProactiveEngine] +
 82 Mission Layla continuation [Prediction/Skills/LearningLoop/LifeOS/
 KnowledgeGraph/WhatsAppChannelAdapter/Perception/Embodiment/
 BusinessIntelligence/ExecutiveDashboard] + 40 Directive D Part I
 [EnergyVAD/device enumeration/Pyttsx3TTS/FasterWhisperSTT/
-VoiceSession]), 338 running offline and passing, 1 live-gated and
-skipped by default (`test_live_anthropic_integration.py` — see
-`docs/live-integration-guide.md` to actually run it), via:
+VoiceSession] + 28 Directive D Part II [spatial geometry/real OCR/
+real template detection/screen capture DI/perception adapter wiring]),
+365 running offline and passing, 2 live/environment-gated and skipped
+by default (`test_live_anthropic_integration.py` — see
+`docs/live-integration-guide.md` to actually run it; plus one OCR
+availability test that only runs on a machine WITHOUT tesseract
+installed, correctly skipped on this one), via:
 ```bash
 PYTHONPATH="core/python;router/python;factories/agent-factory/python;factories/knowledge-factory/python;factories/mcp-factory/python;factories/memory-factory/python;factories/security-factory/python;factories/evaluation-factory/python;factories/prompt-factory/python;factories/workflow-factory/python;layla/python" \
   python -m unittest discover -s layla/python/tests
