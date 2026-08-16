@@ -697,6 +697,40 @@ the structured fields `PerceptionObservation` already carries.
 Full detail: CONTRACT.md §32, DECISIONS.md ADR-0029, README.md Vision
 section.
 
+## Mission Layla Directive D, Part III — Computer Control (ADR-0030, 2026-08-16)
+
+Real executors registered into the existing, unmodified
+`EmbodimentController` gate (ADR-0027) — capability resolution → risk
+classification → approval → execution → observation, with no
+weakening of that chain.
+
+**Real, fully-working**: `BrowserExecutor` (real headless Chromium via
+Playwright — genuinely drives a persistent browser session across
+navigate/click/type/get_text/screenshot calls; tested end to end
+through the real `EmbodimentController` approval gate), shell execution
+and file operations in `ComputerControlExecutor` (real
+`subprocess.run` with a fail-closed allowlist; real, path-traversal-
+guarded file I/O confined to a workspace root).
+
+**Real code, hardware-backed, not exercised live automatically**: GUI
+control (mouse/keyboard/clipboard/screenshot) in
+`ComputerControlExecutor` — real `pyautogui`/`pyperclip`, never
+invoked against this machine's actual cursor/keyboard by the
+automated suite (same consent boundary as the microphone/screen).
+
+**Security finding**: `EMBODIMENT_BROWSER` isn't in
+`_DEFAULT_HIGH_RISK_CAPABILITIES`, so plain navigation is LOW risk and
+auto-completes — confirmed by a real test both ways, documented as a
+deployment-time choice rather than a bug.
+
+**Not built**: application launching, window management (Part III's
+remaining named scope) — `psutil`/`pygetwindow` confirmed available
+but not wired to `EmbodimentController` this pass.
+
+34 new tests — 401 total for Layla, zero regressions at every commit.
+Full detail: CONTRACT.md §34, DECISIONS.md ADR-0030, README.md
+Computer Control section.
+
 ## How this roadmap changes
 
 A phase only moves to 🚧 when someone is actively working it, and only to

@@ -912,7 +912,70 @@ observations `PerceptionObservation` already carries.
 (`pillow`/`pytesseract`/`opencv-python`/`numpy`) is optional, same
 pattern as `voice`.
 
-## §33. Errors
+## §34. Computer Control (Mission Layla Directive D, Part III)
+
+`avishkar_layla.executors` -- real `EmbodimentExecutor` callables
+(`(action, parameters) -> output`) for `EmbodimentController.register_executor()`
+(§28/ADR-0027). Registering one does not weaken that controller's
+gate: `EmbodimentController.request()` still computes risk and
+enforces `ApprovalManager` BEFORE any executor here is looked up or
+called (embodiment.py, unchanged). This package is what runs only
+AFTER that gate has already been cleared -- Directive D Part III,
+verbatim: "Never give arbitrary unrestricted computer control to an
+LLM."
+
+- `BrowserExecutor` (browser_executor.py) -- REAL, `playwright.sync_api`-
+  backed (headless Chromium by default). `navigate`/`click`/`type`/
+  `get_text`/`get_url`/`screenshot`/`close`. One instance is one
+  persistent real browser session across calls (navigate then click
+  operate on the same real page -- Directive D's required
+  Observation -> Verification chain). Headless browsing never touches
+  the real visible desktop, so it's exercised for real, automatically,
+  in the test suite against `data:` URLs (no network dependency).
+  **Security note**: EMBODIMENT_BROWSER is NOT in embodiment.py's
+  `_DEFAULT_HIGH_RISK_CAPABILITIES` -- plain navigation classifies LOW
+  via the real text classifier and completes without approval
+  (existing ADR-0027 behavior, confirmed by this pass's own
+  integration test); only text that itself reads as dangerous (e.g.
+  mentioning a payment/transfer) is gated. A deployment that wants
+  ALL browser actions gated regardless of wording should add
+  `EMBODIMENT_BROWSER` to that frozenset -- a one-line, documented
+  choice for whoever deploys this, not decided unilaterally here.
+- `ComputerControlExecutor` (computer_control_executor.py) -- REAL,
+  three sub-capabilities:
+  - Shell (`run_shell`): real `subprocess.run`, gated by a caller-
+    supplied allowlist (empty allowlist = nothing runs). Exercised for
+    real in tests with harmless commands.
+  - File operations (`read_file`/`write_file`/`list_dir`/
+    `delete_file`/`move_file`): real, confined to a `workspace_root`
+    via a real path-containment check (resolves symlinks/`..`, refuses
+    anything outside) -- tested for real including real path-traversal
+    attack strings.
+  - GUI control (`move_mouse`/`click`/`type_text`/`hotkey`/
+    `screenshot`/clipboard): real `pyautogui`/`pyperclip` code behind
+    an injectable `_gui` seam (default: the real hardware
+    implementation). Like voice's `MicrophoneFrameSource` and vision's
+    `capture_screen`, never invoked against the real mouse/keyboard by
+    the automated test suite -- moving this machine's actual cursor or
+    typing on its actual keyboard non-interactively during an
+    unattended run would hijack a real desktop session. Tested via an
+    injected fake asserting the real dispatch logic.
+  - EMBODIMENT_COMPUTER_CONTROL IS in `_DEFAULT_HIGH_RISK_CAPABILITIES`
+    -- every action through this executor always requires approval
+    regardless of wording (confirmed by
+    `test_computer_control_is_always_high_risk_even_for_an_innocuous_looking_action`).
+
+Application launching, window management, and Android/ADB (Directive D
+Parts III/IV's remaining scope) are tracked separately -- see §35 for
+what has landed so far and README.md Computer Control section for
+current status.
+
+`layla/python/pyproject.toml`'s new `computer_control` extra
+(`playwright`/`pyautogui`/`pyperclip`) is optional, same pattern as
+`voice`/`vision`. `playwright install chromium` is a required
+one-time step after `pip install` (not a pip package itself).
+
+## §35. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,
@@ -929,5 +992,8 @@ pattern as `voice`.
 `STTProviderNotConfiguredError`, `TTSProviderError`,
 `VoiceSessionClosedError`) live in `voice/errors.py`; vision-subsystem
 errors (`ScreenCaptureError`, `OCRNotAvailableError`) live in
-`vision/errors.py` -- both following the same locally-scoped-
+`vision/errors.py`; executor errors (`UnknownActionError`,
+`BrowserActionError`, `ShellCommandNotAllowedError`,
+`PathOutsideWorkspaceError`, `ADBNotAvailableError`) live in
+`executors/errors.py` -- all following the same locally-scoped-
 subclass-of-`LaylaError` convention as §22-§28's errors.

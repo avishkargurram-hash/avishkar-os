@@ -2036,3 +2036,119 @@ this development machine as a side effect of this pass — a real
 environment change, not merely a documentation change; noted here for
 anyone auditing what this session actually did versus what it wrote
 about.
+
+## ADR-0030: Mission Layla Directive D, Part III (Computer Control) — real executors registered into the existing EmbodimentController; headless browser and confined shell/file operations exercised for real, GUI hardware control real but never live-invoked automatically
+
+**Context:** Directive D Part III explicitly escalates past the
+contract-only `EmbodimentController` (ADR-0027): "Do not merely create
+interfaces or placeholder contracts... implement the REAL executors
+and adapters." It also restates the safety bar unchanged: "Never give
+arbitrary unrestricted computer control to an LLM," with a required
+chain of capability resolution → risk classification → approval policy
+→ execution → observation → verification. `EmbodimentController.request()`
+(ADR-0027) already implements exactly that chain, structurally (risk
+computed and approval enforced before any executor is even looked up).
+This ADR's job is narrower and safer than it might sound: write real
+executors that plug into an already-correct gate, without touching the
+gate itself.
+
+Environment recon (already used for ADR-0028/0029) found `playwright`
+(with Chromium/Firefox/WebKit binaries already installed),
+`pyautogui`, `pyperclip`, `pygetwindow`, and `psutil` all already
+present. A quick real headless-Chromium smoke test (`data:` URL
+navigate/fill/read) confirmed real browser automation works end to end
+in this environment before any executor code was written.
+
+**Decision:**
+1. New `avishkar_layla.executors` package provides plain callables
+   matching `embodiment.EmbodimentExecutor`'s exact shape
+   (`(action, parameters) -> output`) — registered via the existing
+   `EmbodimentController.register_executor()`, not a new registration
+   mechanism.
+2. `BrowserExecutor` (browser_executor.py) is REAL: genuine
+   `playwright.sync_api`, headless Chromium by default, one instance =
+   one persistent real session across calls. Headless browsing never
+   touches the real visible desktop (no window is drawn), so unlike
+   voice/vision hardware capture it IS exercised for real,
+   automatically, in the test suite — against `data:` URLs
+   specifically so tests have zero network dependency and never touch
+   a live third-party site. 8 unit tests plus 3 end-to-end tests
+   through the real `EmbodimentController` gate (approved request
+   drives a real page; denied request never creates a page at all —
+   verified structurally via `_page is None`).
+3. `ComputerControlExecutor` (computer_control_executor.py) covers
+   three sub-capabilities with three different real-testing postures:
+   - Shell execution (`run_shell`): real `subprocess.run`, gated by a
+     caller-supplied allowlist with NO default allowlist (empty =
+     refuse everything) — genuinely run in tests with harmless
+     commands (`python -c "..."`), confined to a temp `workspace_root`
+     as cwd.
+   - File operations: real, confined to `workspace_root` via a real
+     path-containment check (`os.path.realpath` + prefix check,
+     resolving `..`/symlinks) — tested with real path-traversal attack
+     strings (`../../etc/passwd`, an absolute path outside the
+     workspace), both correctly refused.
+   - GUI control (mouse/keyboard/clipboard/screenshot): real
+     `pyautogui`/`pyperclip` code exists (`_RealGUI`), but — same
+     discipline as `MicrophoneFrameSource` (ADR-0028) and
+     `capture_screen` (ADR-0029) — never invoked against this
+     machine's actual cursor/keyboard by the automated suite: moving
+     the real mouse or typing on the real keyboard non-interactively
+     during an unattended run would hijack a real, currently-in-use
+     desktop session. An injectable `_gui` constructor parameter
+     (default: `_RealGUI`) lets the real DISPATCH logic (which action
+     maps to which call, with which arguments) be fully tested via a
+     fake, with zero real hardware effect — proven structurally in
+     `test_real_gui_is_never_touched_when_a_fake_is_injected`.
+4. A real end-to-end integration test suite
+   (`test_embodiment_real_executors_integration.py`) proves the full
+   chain works with BOTH real executors wired into a real
+   `EmbodimentController` with a real `ApprovalManager`: approved →
+   real action happens; denied → real executor never touched at all.
+   This surfaced a genuine, worth-documenting finding (not a bug): a
+   plain browser `navigate` classifies LOW risk via the real text
+   classifier (EMBODIMENT_BROWSER isn't in
+   `_DEFAULT_HIGH_RISK_CAPABILITIES`) and completes without approval —
+   existing, deliberate ADR-0027 behavior, now confirmed by a real
+   test rather than assumed, and documented in README.md as a
+   deployment-time choice (add `EMBODIMENT_BROWSER` to that frozenset
+   if a deployment wants every browser action gated regardless of
+   wording).
+5. Application launching and window management (the remainder of Part
+   III's named scope) are NOT wired to `EmbodimentController` this
+   pass, despite `psutil`/`pygetwindow` being confirmed available —
+   reported as a real, explicit gap (README.md Computer Control
+   table), not silently implied to exist alongside the browser/shell/
+   file/GUI executors that are real.
+6. New `computer_control` optional-dependency extra
+   (`playwright`/`pyautogui`/`pyperclip`) in
+   `layla/python/pyproject.toml`, same optional pattern as `voice`/
+   `vision` — the cognitive core has zero dependency on it.
+
+**Alternatives considered:**
+- *Weaken or bypass `EmbodimentController`'s existing gate for
+  "convenience" (e.g. a fast-path for LOW-risk-seeming browser
+  actions)* — rejected outright: Directive D's Critical Rule 9 ("do
+  not bypass Layla's risk/approval architecture") and the gate's own
+  ADR-0027 design already correctly handle this; this pass adds
+  nothing to that logic, deliberately.
+- *Run a real GUI action once, live, "just to prove it works"* —
+  rejected for the same reason live microphone/screen capture were
+  rejected in ADR-0028/0029: a real mouse click or keystroke on this
+  actual machine, fired non-interactively during an unattended agent
+  run, is a real physical action on a real desktop with no specific,
+  momentary human trigger. The injected-fake dispatch tests give
+  equivalent confidence in the code that WOULD run, without that risk.
+- *Add a second, executor-level risk check inside `ComputerControlExecutor`
+  itself* — rejected: this would duplicate `EmbodimentController.request()`'s
+  job and risks the two disagreeing over time (the exact "two
+  independent gates can drift apart" bug class this mission's Part-1
+  forensic audit found in the external codebase it studied). One gate,
+  computed once, upstream of every executor, remains correct.
+
+**Consequences:** New `executors/` subpackage (`__init__.py`,
+`errors.py`, `browser_executor.py`, `computer_control_executor.py`),
+34 new tests (8 browser + 20 computer-control unit + 6 end-to-end
+EmbodimentController integration), 401 total for Layla, up from 367,
+zero regressions. Application launching and window management remain
+explicit remaining scope for a future pass.

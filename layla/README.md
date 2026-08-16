@@ -48,15 +48,16 @@ ExecutiveRuntime (event loop: IDLE -> EVENT -> INGEST -> UNDERSTAND ->
 layla/
 ├── CONTRACT.md              language-agnostic contract
 ├── README.md                  this file
-├── python/avishkar_layla/       reference implementation (39 modules)
+├── python/avishkar_layla/       reference implementation (40 modules)
 │   ├── channels/                   communication channel adapters
 │   ├── voice/                      voice subsystem (Directive D Part I, ADR-0028)
-│   └── vision/                     vision/OCR/spatial subsystem (Directive D Part II, ADR-0029)
+│   ├── vision/                     vision/OCR/spatial subsystem (Directive D Part II, ADR-0029)
+│   └── executors/                  real EmbodimentController executors (Directive D Part III, ADR-0030)
 ├── examples/
 │   ├── end_to_end_scenario.py       Part IX's real, narrated demonstration
 │   ├── crash_recovery_scenario.py   resume-in-place demonstration (Priority 17.3)
 │   └── personal_model_and_proactive_scenario.py  Mission Layla Parts 1/2/11
-└── python/tests/                   367 tests (as of Directive D Part II; 1 live-gated, skipped by default)
+└── python/tests/                   401 tests (as of Directive D Part III; 1 live-gated, skipped by default)
 ```
 
 ## Naming Standards
@@ -667,6 +668,41 @@ a separate OS-level install (not a pip package) — see
 `vision/ocr.py`'s `OCRNotAvailableError` message for install links per
 platform.
 
+# Computer Control (Directive D, Part III, ADR-0030)
+
+Real `EmbodimentExecutor`s registered into the existing
+`EmbodimentController` (§28/ADR-0027) — the risk/approval gate is
+unchanged and unweakened: every executor here only ever runs after
+`request()` has already computed risk and secured approval. See
+CONTRACT.md §34.
+
+| Component | Status | Notes |
+|---|---|---|
+| `BrowserExecutor` — navigate/click/type/get_text/screenshot | 🟢 GREEN | Real Playwright, headless Chromium. Genuinely drives a real browser session; 8/8 unit tests + 3/3 integration tests (through the real `EmbodimentController` gate) real and passing, exercised against `data:` URLs (no network dependency, no live site). |
+| `ComputerControlExecutor` — shell execution | 🟢 GREEN | Real `subprocess.run`, allowlist-gated (empty allowlist = nothing runs). Real commands genuinely executed and verified in tests. |
+| `ComputerControlExecutor` — file operations | 🟢 GREEN | Real, confined to a `workspace_root` via a real path-containment check; tested with real path-traversal attack strings. |
+| `ComputerControlExecutor` — GUI control (mouse/keyboard/clipboard/screenshot) | 🟡 YELLOW | Real `pyautogui`/`pyperclip` code behind an injectable `_gui` seam — never invoked against this machine's real cursor/keyboard by the automated suite (would hijack a real desktop session non-interactively); dispatch logic tested via an injected fake. Requires a real deployment (and a human aware a session is running) to exercise live. |
+| Application launching / window management | 🔴 NOT BUILT (this pass) | `psutil`/`pygetwindow` are available in this environment and were confirmed working for read-only enumeration, but a real launch/window-management executor wasn't wired to `EmbodimentController` yet — tracked as remaining Part III scope. |
+
+**Security finding from this pass's own tests** (not merely asserted —
+`test_embodiment_real_executors_integration.py` proved it both ways):
+`EMBODIMENT_BROWSER` is not in embodiment.py's
+`_DEFAULT_HIGH_RISK_CAPABILITIES`, so plain navigation classifies LOW
+via the real text classifier and completes without approval; only
+action text that itself reads as dangerous is gated. This is existing,
+deliberate ADR-0027 behavior (browser risk is genuinely
+content-dependent — visiting a URL is not inherently as dangerous as
+running a shell command), but a deployment wanting every browser
+action gated regardless of wording should explicitly add
+`EMBODIMENT_BROWSER` to that frozenset. Documented here rather than
+silently assumed either way.
+
+Install the optional extra and browser binary:
+```bash
+pip install -e "layla/python[computer_control]"
+playwright install chromium
+```
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
@@ -752,17 +788,20 @@ already covers it — extending that list requires an ADR.
 
 # Testing Guide
 
-367 tests as of Directive D Part II (Vision) (119 Phase 16 + 30
-Priority 17.1 + 21 Priority 17.2 + 8 Priority 17.3 + 11 Priority 17.4 +
-1 Priority 17.5 + 30 Mission Layla 1 [PersonalModel/ProactiveEngine] +
-82 Mission Layla continuation [Prediction/Skills/LearningLoop/LifeOS/
-KnowledgeGraph/WhatsAppChannelAdapter/Perception/Embodiment/
-BusinessIntelligence/ExecutiveDashboard] + 40 Directive D Part I
-[EnergyVAD/device enumeration/Pyttsx3TTS/FasterWhisperSTT/
-VoiceSession] + 28 Directive D Part II [spatial geometry/real OCR/
-real template detection/screen capture DI/perception adapter wiring]),
-365 running offline and passing, 2 live/environment-gated and skipped
-by default (`test_live_anthropic_integration.py` — see
+401 tests as of Directive D Part III (Computer Control) (119 Phase 16 +
+30 Priority 17.1 + 21 Priority 17.2 + 8 Priority 17.3 + 11 Priority
+17.4 + 1 Priority 17.5 + 30 Mission Layla 1 [PersonalModel/
+ProactiveEngine] + 82 Mission Layla continuation [Prediction/Skills/
+LearningLoop/LifeOS/KnowledgeGraph/WhatsAppChannelAdapter/Perception/
+Embodiment/BusinessIntelligence/ExecutiveDashboard] + 40 Directive D
+Part I [EnergyVAD/device enumeration/Pyttsx3TTS/FasterWhisperSTT/
+VoiceSession] + 28 Directive D Part II [spatial geometry/real OCR/real
+template detection/screen capture DI/perception adapter wiring] + 34
+Directive D Part III [real headless-browser automation/real shell
+execution/real confined file operations/GUI dispatch via injected
+fake/end-to-end EmbodimentController+executor integration]), 399
+running offline and passing, 2 live/environment-gated and skipped by
+default (`test_live_anthropic_integration.py` — see
 `docs/live-integration-guide.md` to actually run it; plus one OCR
 availability test that only runs on a machine WITHOUT tesseract
 installed, correctly skipped on this one), via:

@@ -32,6 +32,12 @@ voice = [
 # `pytesseract` wraps the real Tesseract OCR binary -- installed
 # separately (not a pip package); see README.md Vision section.
 vision = ["pillow", "pytesseract", "opencv-python", "numpy"]
+# Mission Layla Directive D, Part III (Computer Control): browser
+# automation (playwright) and GUI/clipboard control (pyautogui,
+# pyperclip). Shell execution and file operations need no extra
+# package beyond the stdlib. `playwright install chromium` is a
+# separate one-time step after `pip install`.
+computer_control = ["playwright", "pyautogui", "pyperclip"]
 
 [tool.setuptools.packages.find]
 where = ["."]

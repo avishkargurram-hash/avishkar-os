@@ -649,5 +649,28 @@ its first consumer.
   `layla/python/pyproject.toml`. 28 new tests -- 367 total for Layla,
   up from 339, zero regressions. CONTRACT.md SS32, README.md updated;
   ADR-0029 recorded in DECISIONS.md.
+- Mission Layla Directive D, Part III -- real Computer Control
+  executors (`avishkar_layla.executors`, ADR-0030), registered into
+  the existing, unmodified `EmbodimentController` gate (ADR-0027):
+  capability resolution -> risk classification -> approval ->
+  execution, unweakened. `BrowserExecutor`: real headless Chromium via
+  Playwright, a persistent session across navigate/click/type/
+  get_text/screenshot calls, tested end to end through the real
+  approval gate (approved -> a real page loads; denied -> no page is
+  ever created). `ComputerControlExecutor`: real allowlist-gated
+  `subprocess.run` shell execution and real path-traversal-guarded
+  file operations confined to a workspace root, plus real
+  `pyautogui`/`pyperclip` GUI control behind an injectable `_gui` seam
+  (never invoked against this machine's actual cursor/keyboard by the
+  automated suite -- same consent boundary already applied to the
+  microphone/screen). Found and documented a real security-relevant
+  fact via a real test: plain browser navigation is LOW risk by
+  default and completes without approval (existing ADR-0027 behavior,
+  confirmed rather than assumed). Application launching and window
+  management are explicitly not built this pass. New optional
+  `computer_control` extra in `layla/python/pyproject.toml`. 34 new
+  tests -- 401 total for Layla, up from 367, zero regressions.
+  CONTRACT.md SS34, README.md updated; ADR-0030 recorded in
+  DECISIONS.md.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD
