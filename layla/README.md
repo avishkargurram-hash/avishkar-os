@@ -48,13 +48,13 @@ ExecutiveRuntime (event loop: IDLE -> EVENT -> INGEST -> UNDERSTAND ->
 layla/
 ├── CONTRACT.md              language-agnostic contract
 ├── README.md                  this file
-├── python/avishkar_layla/       reference implementation (27 modules)
+├── python/avishkar_layla/       reference implementation (37 modules)
 │   └── channels/                   communication channel adapters
 ├── examples/
 │   ├── end_to_end_scenario.py       Part IX's real, narrated demonstration
 │   ├── crash_recovery_scenario.py   resume-in-place demonstration (Priority 17.3)
 │   └── personal_model_and_proactive_scenario.py  Mission Layla Parts 1/2/11
-└── python/tests/                   220 tests (as of Mission Layla 1; 1 live-gated, skipped by default)
+└── python/tests/                   299 tests (as of Mission Layla continuation; 1 live-gated, skipped by default)
 ```
 
 ## Naming Standards
@@ -531,6 +531,85 @@ callback delays the next scheduler tick until it returns, a known
 limitation of this runtime's synchronous, thread-based (not
 async-based) design.
 
+# Mission Layla Continuation — Parts 3–27 (ADR-0027)
+
+Following the Foundation-tier work above, Mission Layla continued
+autonomously through the full remaining dependency order. Full detail
+in CONTRACT.md §21–30 and ADR-0027; summary here.
+
+**Real, fully-working components** (Prediction, Skills, Learning Loop,
+Life OS, Knowledge Graph, a second Channel adapter, Business
+Intelligence, an Executive Dashboard aggregator):
+- **`PredictionEngine`** (`prediction.py`, Part 3) — every `Prediction`
+  carries evidence and a genuinely computed confidence (a real ratio
+  over `SessionManager`/`AuditLogger` history), never a hardcoded
+  literal.
+- **`SkillRegistry`** (`skills.py`, Part 12) — `CANDIDATE ->
+  EVALUATING -> APPROVED|REJECTED -> RETIRED`, evaluated via
+  `avishkar_evaluation`'s real `run_suite()`/`passes_threshold()` —
+  `status` only ever becomes `APPROVED` as the observable result of a
+  real evaluation, directly avoiding the exact bug this mission's
+  forensic audit found in the external codebase it studied (a
+  `learned` flag never actually set anywhere).
+- **`LearningLoop`** (`learning.py`, Part 13) — real pattern extraction
+  over completed-task history proposes `SkillRegistry` candidates;
+  never self-approves, never touches source code.
+- **`LifeOS`** (`life_os.py`, Part 4) — a thin domain layer over
+  `PersonalModel`, extending its categories with `schedule`/`tasks`/
+  `finance`/`health`/`travel`/`appointments`/`reminders` (`finance`/
+  `health` are `SENSITIVE_CATEGORIES`); real filtering/sorting for
+  upcoming appointments and due reminders.
+- **`LaylaKnowledgeGraph`** (`knowledge_graph.py`, Part 5) — a real,
+  minimal, from-scratch graph engine (typed nodes/edges, real BFS/
+  shortest-path, referential integrity enforced), zero seed data —
+  additive alongside Avishkar's existing vector-search Knowledge
+  Framework, not a duplicate.
+- **`WhatsAppChannelAdapter`** (`channels/whatsapp_adapter.py`, Part 9)
+  — a second real `ProtocolAdapter`, the exact `EmailChannelAdapter`
+  ADAPTER READY pattern. Routing across channels remains
+  `UniversalToolRegistry`'s job (Phase 4) — no second router built.
+- **`BusinessIntelligenceEngine`** (`business_intelligence.py`, Part
+  26) — real task/cost/success-rate aggregation over `AuditLogger`
+  history; surfaced and fixed a real gap where delegation audit
+  records never carried `cost_usd`.
+- **`ExecutiveDashboard`** (`executive_dashboard.py`, Parts 23/27) — a
+  thin real aggregator over every Foundation-tier component's own
+  `summary()`, not a new cognitive layer (`ExecutiveRuntime` already is
+  that). Parts 24 (Multi-Agent Supervision) and 25 (Project Management)
+  are already satisfied by `Orchestrator`/`DelegationEngine`/`Planner`
+  and `ProjectStore` — not rebuilt.
+
+**Contract/integration-boundary-only components** (Voice, Vision, OCR,
+Spatial Intelligence, Environmental Awareness, Browser/Computer
+Control, Application Control, Android/ADB, IoT, Sensors, Robotics,
+Home Assistant, MQTT — Parts 6–8, 15–17, 21):
+- **`PerceptionEngine`** (`perception.py`) — zero registered capture
+  sources by default; `observe(source)` on an unconfigured source
+  raises `PerceptionSourceNotConfiguredError` (the same ADAPTER READY
+  pattern). Never a background capture daemon.
+- **`EmbodimentController`** (`embodiment.py`) — `request()` computes
+  risk via Layla's own real `risk.classify_risk()` and enforces
+  `ApprovalManager` *before* any executor is looked up — structural,
+  not name-matched, closing the exact bug class (a tool-naming
+  mismatch silently disabling a safety gate) this mission's forensic
+  audit found in the external codebase it studied. Zero executors
+  registered by default.
+
+**Why contract-only for this second group, explicitly**: this
+mission's own Part-1 forensic audit (`docs/mission-layla-1-plan.md`)
+found real, working code for every one of these capabilities in the
+external codebase it studied — and found that same codebase's safety
+gates for exactly these capabilities comprehensively non-functional
+(shell exec, filesystem delete, browser automation, and ADB were all
+either ungated or explicitly allowed by its own `permissions.json`,
+due to a tool-naming mismatch that silently disabled its governor).
+Building an equally-capable but *actually* safe backend for any of
+these is dedicated, multi-day security-engineering work, not
+compressible into this pass — per the mission directive's own explicit
+fallback instruction, a real, tested, structurally-gated contract was
+built instead of either skipping these capabilities or faking a
+backend.
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
@@ -616,16 +695,24 @@ already covers it — extending that list requires an ADR.
 
 # Testing Guide
 
-220 tests as of Mission Layla 1 (119 Phase 16 + 30 Priority 17.1 + 21
-Priority 17.2 + 8 Priority 17.3 + 11 Priority 17.4 + 1 Priority 17.5 +
-30 Mission Layla 1 -- PersonalModel/ProactiveEngine), 219 running
-offline and passing, 1 live-gated and skipped by default
+299 tests as of the Mission Layla continuation (119 Phase 16 + 30
+Priority 17.1 + 21 Priority 17.2 + 8 Priority 17.3 + 11 Priority 17.4 +
+1 Priority 17.5 + 30 Mission Layla 1 [PersonalModel/ProactiveEngine] +
+82 Mission Layla continuation [Prediction/Skills/LearningLoop/LifeOS/
+KnowledgeGraph/WhatsAppChannelAdapter/Perception/Embodiment/
+BusinessIntelligence/ExecutiveDashboard]), 298 running offline and
+passing, 1 live-gated and skipped by default
 (`test_live_anthropic_integration.py` — see
 `docs/live-integration-guide.md` to actually run it), via:
 ```bash
-PYTHONPATH="core/python;router/python;factories/agent-factory/python;factories/knowledge-factory/python;factories/mcp-factory/python;factories/memory-factory/python;factories/security-factory/python;layla/python" \
+PYTHONPATH="core/python;router/python;factories/agent-factory/python;factories/knowledge-factory/python;factories/mcp-factory/python;factories/memory-factory/python;factories/security-factory/python;factories/evaluation-factory/python;factories/prompt-factory/python;factories/workflow-factory/python;layla/python" \
   python -m unittest discover -s layla/python/tests
 ```
+(`evaluation-factory`/`prompt-factory`/`workflow-factory` are new to
+this PYTHONPATH string as of `SkillRegistry`'s real
+`avishkar_evaluation` integration — already a declared
+`layla/python/pyproject.toml` dependency, just not previously imported
+at package-init time.)
 Categories: unit (state machine, memory policy, risk, scheduler,
 execution/idempotency classification), contract (every component's own
 dataclass/error shape), integration (delegation through a real

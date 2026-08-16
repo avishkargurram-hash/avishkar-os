@@ -593,6 +593,48 @@ informed only by the *patterns* worth reusing:
   is explicitly deferred with a stated reason in
   `docs/mission-layla-1-plan.md` §22, not silently dropped.
 
+## Mission Layla continuation — Parts 3–27 (ADR-0027, 2026-08-16)
+
+Continued autonomously through the full remaining dependency order per
+explicit direction, same discipline: implement → test → verify →
+integrate → regression → commit, per component, never batched into an
+unverified pile.
+
+**Real, fully-working** (zero fabricated output, zero duplicated
+abstractions): `PredictionEngine` (Part 3 — real evidence-based
+confidence, never hardcoded), `SkillRegistry` (Part 12 — real
+`avishkar_evaluation`-gated approval lifecycle), `LearningLoop` (Part
+13 — real pattern extraction, never self-approves), `LifeOS` (Part 4 —
+extends `PersonalModel`'s own categories/gates, not a competing
+structure), `LaylaKnowledgeGraph` (Part 5 — real BFS/shortest-path
+graph engine, zero seed data), `WhatsAppChannelAdapter` (Part 9 — a
+second real `ProtocolAdapter`, `UniversalToolRegistry` remains the one
+router), `BusinessIntelligenceEngine` (Part 26 — real cost/success-rate
+aggregation; found and fixed a real gap where delegation audit records
+never carried `cost_usd`), `ExecutiveDashboard` (Parts 23/27 — a real
+aggregator, not a new cognitive layer). Parts 24/25 (Multi-Agent
+Supervision/Project Management) already satisfied by existing
+`Orchestrator`/`DelegationEngine`/`Planner`/`ProjectStore` — not
+rebuilt.
+
+**Contract/integration-boundary only** (Parts 6–8, 15–17, 21 — Voice,
+Vision, OCR, Spatial Intelligence, Environmental Awareness, Browser/
+Computer Control, Application Control, Android/ADB, IoT, Sensors,
+Robotics, Home Assistant, MQTT): `PerceptionEngine` and
+`EmbodimentController` — real, tested contracts with zero hardware/
+network/OS-level backend wired, per the mission directive's own
+explicit fallback for capabilities that cannot be safely fully
+implemented in this pass. `EmbodimentController.request()`'s risk/
+approval gate is structural (computed from real text, enforced before
+any executor lookup), not name-matched — deliberately closing the
+exact bug class (a tool-naming mismatch silently disabling a safety
+gate) this mission's own forensic audit found in the external codebase
+it studied.
+
+82 new tests — 299 total for Layla, zero regressions at every commit.
+Full detail: CONTRACT.md §21–30, DECISIONS.md ADR-0027,
+`docs/mission-layla-1-plan.md`.
+
 ## How this roadmap changes
 
 A phase only moves to 🚧 when someone is actively working it, and only to

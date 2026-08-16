@@ -688,7 +688,132 @@ Mission Layla Part 22 ("fail closed, no silent bypass") applies to
 Layla's own self-triggered actions exactly as much as to a human's
 request.
 
-## §21. Errors
+## §21. Prediction (Mission Layla Part 3, ADR-0027)
+
+`PredictionEngine(session_manager, audit_logger)` — every `Prediction`
+carries `prediction, evidence, confidence, provenance, reason,
+recommended_action, timestamp` (Part 3's exact required shape) and a
+genuinely computed confidence (a real ratio/frequency over
+`SessionManager`/`AuditLogger` history), never a hardcoded literal.
+`predict_task_completion_risk(task_id)` (real delegation-failure
+ratio, confidence scaled by real sample size),
+`predict_next_capability()` (real frequency across completed task
+plans), `predict_stuck_task_risk()` (real incomplete/total ratio
+across `SessionManager.list_all()`, an additive enumeration method
+alongside `list_incomplete()`). Read-only; no new persistence.
+
+## §22. Skills (Mission Layla Part 12, ADR-0027)
+
+`SkillRegistry(memory)` — a named, versioned, reusable request
+template with a real lifecycle: `CANDIDATE -> EVALUATING ->
+APPROVED|REJECTED -> RETIRED`. `evaluate()` reuses
+`avishkar_evaluation`'s real `EvalSuite`/`run_suite()`/
+`passes_threshold()` — the caller supplies a real `subject_fn`/
+`Scorer`; `status` only ever becomes `APPROVED` as the direct,
+observable result of a real evaluation clearing a real threshold, not
+a flag flipped for its own sake. Persisted via `LaylaMemoryPolicy`
+(`skill:{id}`, `skill:__index__`).
+
+## §23. Learning Loop (Mission Layla Part 13, ADR-0027)
+
+`LearningLoop(session_manager, audit_logger, skill_registry)` —
+Experience → Reflection → Pattern extraction → Candidate, built
+entirely from real `SessionManager`/`AuditLogger` state feeding the
+real `SkillRegistry` (§23). `extract_candidate_skills()` proposes a
+`CANDIDATE` skill for any capability used successfully in
+`>= min_occurrences` completed tasks — real evidence, real threshold,
+never auto-approved. No self-modifying source code anywhere: never
+writes a `.py` file, never calls `exec`/`eval`. Evaluation and
+"security validation" remain genuinely separate, explicit,
+human/deployment-driven steps (`SkillRegistry.evaluate()`) —
+`LearningLoop` can never approve its own suggestions.
+
+## §24. Life OS (Mission Layla Part 4, ADR-0027)
+
+`LifeOS(personal_model)` — a thin, domain-organized convenience layer
+over `PersonalModel` (§19), not a competing structure. Extends
+`PersonalModel.CATEGORIES` with `schedule`/`tasks`/`finance`/`health`/
+`travel`/`appointments`/`reminders`; `finance` and `health` join
+`SENSITIVE_CATEGORIES` (every write requires `confirmed=True`).
+`list_upcoming_appointments()`/`list_due_reminders()` do real
+filtering/sorting by each fact's own real ISO `when` field.
+
+## §25. Knowledge Graph (Mission Layla Part 5, ADR-0027)
+
+`LaylaKnowledgeGraph(memory)` — a real, minimal, from-scratch graph
+engine: typed `GraphNode`/`GraphEdge` with confidence/provenance, real
+BFS-based `neighbors()`/`bfs()`/`shortest_path()`, zero seed data.
+Additive alongside Avishkar's existing Knowledge Framework (Phase 6,
+vector search over documents — a structurally different concern), not
+a duplicate. `add_edge()` enforces referential integrity
+(`NodeNotFoundError` for a missing source/target).
+
+## §26. Channels, extended (Mission Layla Part 9, ADR-0027)
+
+`channels/whatsapp_adapter.py`'s `WhatsAppChannelAdapter` — a second
+real `avishkar_integration.ProtocolAdapter` implementation, the exact
+`EmailChannelAdapter` (§12) pattern: ADAPTER READY / REQUIRES EXTERNAL
+CREDENTIALS, an injectable transport defaulting to an "unconfigured"
+function that raises a documented `ProtocolInvocationError`. Routing
+across multiple channels remains `avishkar_integration.
+UniversalToolRegistry`'s job (Phase 4, locked) — one registry, many
+registered adapters; no second router is built.
+
+## §27. Perception (Mission Layla Parts 6/7/8/16, ADR-0027)
+
+`PerceptionEngine` — STATUS: CONTRACT/INTEGRATION BOUNDARY ONLY, no
+microphone/camera/screen-capture/OCR backend wired (this mission's own
+forensic audit found real hardware-access code in the external
+codebase it studied; a genuinely safe equivalent is dedicated,
+multi-day security-engineering work). Zero registered capture sources
+by default. `observe(source)` on an unconfigured source raises
+`PerceptionSourceNotConfiguredError` (the `email_adapter.py` ADAPTER
+READY pattern). Every `PerceptionObservation` carries
+`permissions_required`/`retention_policy` explicitly; `observe()` is
+call-and-return, never a background capture daemon.
+
+## §28. Embodiment (Mission Layla Parts 8/15/17/21, ADR-0027)
+
+`EmbodimentController(approval_manager=None)` — STATUS: CONTRACT/
+INTEGRATION BOUNDARY ONLY, covering `browser`/`computer_control`/
+`application_control`/`adb`/`iot`/`sensors`/`robotics`/
+`home_assistant`/`mqtt`. No backend wired for any capability. `request()`
+computes risk via Layla's own real `risk.classify_risk()` — never a
+caller-asserted value — and enforces `ApprovalManager` for any non-LOW
+risk *before* any executor is looked up or called: structural, not
+name-matched, closing the exact bug class (a tool-naming mismatch
+silently disabling a safety gate) this mission's forensic audit found
+in the external codebase it studied. Physical/host-affecting
+capabilities are escalated to `HIGH` risk explicitly, fail-closed by
+construction. Zero executors registered by default;
+`EmbodimentCapabilityNotConfiguredError` is raised only *after*
+clearing risk/approval, so discovering "is this configured" itself
+requires authorization.
+
+## §29. Business Intelligence (Mission Layla Part 26, ADR-0027)
+
+`BusinessIntelligenceEngine(session_manager, audit_logger)` — a real
+reporting layer over already-recorded state: task counts by state,
+real delegation success rate per capability, real total cost
+(`DelegationRecord.cost_usd`, summed from audit history — `runtime.py`
+now includes `cost_usd` in every `layla.delegation.*` audit payload,
+closing a gap where this number would otherwise always compute zero).
+Every figure is a direct count/sum/ratio over real records.
+
+## §30. Executive Dashboard (Mission Layla Parts 23/27, ADR-0027)
+
+`ExecutiveDashboard(personal_model=None, life_os=None,
+prediction_engine=None, skill_registry=None, business_intelligence=None)`
+— not a new cognitive layer (`ExecutiveRuntime`, §11, already is
+Layla's executive intelligence); a thin, real aggregator tying every
+Foundation-tier component's own `summary()`/report method into one
+`brief()`. Every section is a direct call into a real component; an
+unwired component's section is omitted, never fabricated. Parts 24
+(Multi-Agent Supervision) and 25 (Project Management) are already
+satisfied by existing components (`Orchestrator`/`DelegationEngine`/
+`Planner`; `ProjectStore`, §3) and are not rebuilt here.
+
+## §31. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,
@@ -696,4 +821,8 @@ request.
 `ApprovalExpiredError`, `ApprovalDeniedError`, `SessionNotFoundError`,
 `UnauthenticatedError`, `PermissionDeniedError`, `EscalationDeniedError`,
 `IdempotencyConflictError`, `UnknownExecutionOutcomeError`,
-`PersonalFactContradictionError`, `SensitiveCategoryNotConfirmedError`.
+`PersonalFactContradictionError`, `SensitiveCategoryNotConfirmedError`,
+`SkillNotFoundError`, `NodeNotFoundError`,
+`PerceptionSourceNotConfiguredError`, `UnknownPerceptionSourceError`,
+`UnknownEmbodimentCapabilityError`, `EmbodimentCapabilityNotConfiguredError`,
+`EmbodimentNotApprovedError`.

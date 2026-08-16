@@ -1706,3 +1706,117 @@ built-ins; a UI/onboarding flow for populating `PersonalModel` facts;
 everything in Voice/Vision/Computer Control/IoT/Knowledge Graph/
 Skills/Channels. `docs/mission-layla-1-plan.md` and this ADR are the
 record of what was deliberately deferred and why, not a silent gap.
+
+## ADR-0027: Mission Layla continuation (Parts 3–27) — real components where genuinely buildable without fabrication or duplicated abstraction; contract-only integration boundaries, gated structurally not by naming convention, where a full safe implementation is not
+
+**Status:** Accepted · **Date:** 2026-08-16
+
+**Context:** Following ADR-0026's Foundation-tier work (PersonalModel,
+ProactiveEngine), the user directed continuation through the full
+remaining Mission Layla dependency order (Parts 3–27) autonomously,
+with an explicit standing instruction: "if a capability cannot safely
+be fully implemented, create the correct production-grade contract and
+integration boundary, document the limitation, test everything that
+can genuinely be tested, and continue" — and an equally explicit
+prohibition on fake implementations or placeholders merely to claim
+completion.
+
+**Decision, by tier:**
+1. **Prediction (Part 3), Skills (Part 12), Learning Loop (Part 13),
+   Life OS (Part 4), Knowledge Graph (Part 5), a second Channel
+   adapter (Part 9), Business Intelligence (Part 26), and an Executive
+   Dashboard aggregator (Parts 23/27) were built as real, working,
+   fully-tested components** — each computes or persists genuine data
+   (real ratios/frequencies for predictions, real evaluation-gated
+   skill approval via `avishkar_evaluation`, a real minimal graph
+   engine with BFS/shortest-path, real cost/success-rate aggregation
+   over `AuditLogger` history) with zero fabricated output anywhere.
+   `LifeOS` and `SkillRegistry`/`LearningLoop` deliberately extend and
+   reuse `PersonalModel`/`avishkar_evaluation` rather than inventing
+   parallel category systems or scoring mechanisms — per this
+   platform's standing "no duplicate abstractions" rule.
+2. **Voice, Vision, OCR, Spatial Intelligence, Environmental Awareness
+   (Parts 6/7/8/16) and Browser/Computer Control/Application Control/
+   ADB/IoT/Sensors/Robotics/Home Assistant/MQTT (Parts 8/15/17/21) were
+   built as real, tested contract/integration boundaries only** —
+   `PerceptionEngine` and `EmbodimentController` — with zero hardware,
+   network, or OS-level backend wired to either. This is the
+   directive's own sanctioned fallback, exercised deliberately: this
+   mission's Part-1 forensic audit (ADR-0026, `docs/mission-layla-1-
+   plan.md`) found real, working code for every one of these
+   capabilities in the external codebase it studied, and found that
+   codebase's safety gates for exactly these capabilities
+   comprehensively non-functional (a tool-naming mismatch silently
+   disabled its "existential sovereignty lock" for every dangerous
+   real tool call; its own `permissions.json` explicitly allowed
+   filesystem delete/mouse-keyboard takeover/browser automation by
+   their real IDs). Building an equally-capable but *actually* safe
+   version of any of these is dedicated, multi-day security-engineering
+   work — compressing it into this pass would have meant either
+   fabricating a fake-but-working-looking backend (explicitly
+   forbidden) or shipping a real backend with an equally naive gate
+   (irresponsible given what the audit already found). Neither was
+   acceptable, so neither was done.
+3. **`EmbodimentController`'s gate is deliberately structural, not
+   name-matched, closing the exact bug class found in Decision 2's
+   audit.** `request()` computes risk itself, from the real action/
+   parameter text, via Layla's own already-real `risk.classify_risk()`
+   — it is never a value the caller can assert — and checks
+   `ApprovalManager` for any non-LOW risk *before* looking up whether
+   an executor even exists for the capability. There is no tool-ID
+   allowlist/denylist table to fall out of sync with the real
+   capability set, because there is no such table: the same function
+   that would eventually call a real executor is the function that
+   computed the risk and required approval, with no code path that
+   skips from one to the other.
+4. **Parts 24 (Multi-Agent Supervision) and 25 (Project Management)
+   were not rebuilt** — `Orchestrator`/`DelegationEngine`/`Planner`
+   (Phase 3/16) already are real multi-agent supervision, and
+   `ProjectStore` (Phase 16) already is real project management.
+   Rebuilding either would have duplicated existing, working
+   abstractions, which every phase of this platform's build has
+   explicitly avoided.
+5. **A real gap was found and fixed along the way, not worked
+   around**: `BusinessIntelligenceEngine`'s cost aggregation surfaced
+   that `runtime.py`'s delegation audit payload never included
+   `DelegationRecord.cost_usd` (real since Priority 17.5) — cost
+   reporting would have silently always computed zero. Fixed with one
+   additive key in an existing `audit.record()` call, not a new
+   tracking mechanism.
+
+**Alternatives considered:**
+1. *Build real backends for Perception/Embodiment now, gated only by
+   documentation ("do not use without wiring real auth")* — rejected:
+   this is close to the exact framing the audited external codebase
+   itself used for its own governor, and that framing did not prevent
+   its gate from being silently disabled by an implementation bug. A
+   contract that cannot be bypassed because there is nothing behind it
+   to bypass is a stronger guarantee than a contract that trusts every
+   future caller to wire it up correctly.
+2. *Skip Perception/Embodiment/Voice/Vision/IoT entirely rather than
+   build even a contract* — rejected: the directive explicitly asks
+   for "the correct production-grade contract and integration
+   boundary" as the fallback, not silence; a future phase implementing
+   a real capability now has a tested, structurally-gated seam to plug
+   into rather than starting from nothing.
+3. *One shared `capability.py` module for both Perception and
+   Embodiment* — rejected: perception (observation, lower risk by
+   construction — it produces data, it doesn't act) and embodiment
+   (actuation, real risk) have genuinely different safety
+   requirements (retention/consent vs. risk/approval); merging them
+   would have blurred a distinction worth keeping sharp.
+
+**Consequences:** Ten new files (`prediction.py`, `skills.py`,
+`learning.py`, `life_os.py`, `knowledge_graph.py`,
+`channels/whatsapp_adapter.py`, `perception.py`, `embodiment.py`,
+`business_intelligence.py`, `executive_dashboard.py`), plus
+`SessionManager.list_all()` (additive) and one small `runtime.py` fix
+(delegation audit payload gains `cost_usd`). 82 new tests — 299 total
+for Layla, up from 217 at the start of this continuation, zero
+regressions at every commit. `docs/mission-layla-1-plan.md` and this
+ADR remain the record of what is real, what is contract-only, and why
+— `docs/production-readiness.md` (Phase 17) must be read alongside
+both before any of this session's new capabilities are considered for
+production use; nothing in Decision 2's contract-only tier is
+production-ready by construction, because nothing is implemented
+behind it yet.

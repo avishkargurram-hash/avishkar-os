@@ -545,4 +545,65 @@ its first consumer.
   is explicitly deferred with a stated reason in
   `docs/mission-layla-1-plan.md` SS22, not silently dropped.
 
+- **Mission Layla continuation, Parts 3-27 (ADR-0027)**: continued
+  autonomously through the full remaining dependency order, per
+  explicit direction, same discipline as every prior priority
+  (implement -> test -> verify -> integrate -> regression -> commit,
+  per component).
+
+  Real, fully-working: `PredictionEngine` (prediction.py, Part 3 --
+  every Prediction carries evidence and a genuinely computed confidence,
+  a real ratio/frequency over SessionManager/AuditLogger history, never
+  a hardcoded literal); `SkillRegistry` (skills.py, Part 12 -- a real
+  CANDIDATE -> EVALUATING -> APPROVED|REJECTED -> RETIRED lifecycle
+  gated by avishkar_evaluation's real run_suite()/passes_threshold(),
+  directly avoiding the exact bug this mission's forensic audit found
+  in the external codebase it studied: a `learned` flag never actually
+  set anywhere); `LearningLoop` (learning.py, Part 13 -- real pattern
+  extraction over completed-task history proposes SkillRegistry
+  candidates, never self-approves, never touches source code);
+  `LifeOS` (life_os.py, Part 4 -- a thin layer extending PersonalModel's
+  own categories with schedule/tasks/finance/health/travel/
+  appointments/reminders, finance/health joining SENSITIVE_CATEGORIES,
+  not a competing structure); `LaylaKnowledgeGraph` (knowledge_graph.py,
+  Part 5 -- a real, minimal, from-scratch graph engine: typed nodes/
+  edges, real BFS/shortest-path, referential integrity enforced, zero
+  seed data, additive alongside Avishkar's existing vector-search
+  Knowledge Framework); `WhatsAppChannelAdapter` (channels/
+  whatsapp_adapter.py, Part 9 -- a second real ProtocolAdapter, the
+  exact EmailChannelAdapter ADAPTER READY pattern; UniversalToolRegistry
+  remains the one router, no second router built);
+  `BusinessIntelligenceEngine` (business_intelligence.py, Part 26 --
+  real task/cost/success-rate aggregation over AuditLogger history;
+  found and fixed a real gap where delegation audit records never
+  carried cost_usd despite DelegationRecord having it since Priority
+  17.5); `ExecutiveDashboard` (executive_dashboard.py, Parts 23/27 --
+  a thin real aggregator over every Foundation-tier component's own
+  summary(), not a new cognitive layer -- ExecutiveRuntime already is
+  that). Parts 24 (Multi-Agent Supervision) and 25 (Project Management)
+  already satisfied by existing Orchestrator/DelegationEngine/Planner
+  and ProjectStore -- not rebuilt, avoiding duplicated abstractions.
+
+  Contract/integration-boundary only (Parts 6-8, 15-17, 21 -- Voice,
+  Vision, OCR, Spatial Intelligence, Environmental Awareness, Browser/
+  Computer Control, Application Control, Android/ADB, IoT, Sensors,
+  Robotics, Home Assistant, MQTT): `PerceptionEngine` (perception.py --
+  zero registered capture sources by default, observe() on an
+  unconfigured source raises PerceptionSourceNotConfiguredError, the
+  same ADAPTER READY pattern email_adapter.py established; never a
+  background capture daemon) and `EmbodimentController`
+  (embodiment.py -- request() computes risk via Layla's own real
+  risk.classify_risk() and enforces ApprovalManager before any
+  executor is looked up or called: structural, not name-matched,
+  deliberately closing the exact bug class -- a tool-naming mismatch
+  silently disabling a safety gate -- this mission's forensic audit
+  found in the external codebase it studied; zero executors registered
+  by default). Per the mission directive's own explicit fallback
+  instruction for capabilities that cannot be safely fully implemented
+  in this pass: neither module fabricates a working backend.
+
+  82 new tests -- 299 total for Layla, up from 217, zero regressions
+  at every commit. CONTRACT.md SS21-30, README.md, ROADMAP.md updated;
+  ADR-0027 recorded in DECISIONS.md.
+
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD
