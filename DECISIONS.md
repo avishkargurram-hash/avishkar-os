@@ -2152,3 +2152,64 @@ in this environment before any executor code was written.
 EmbodimentController integration), 401 total for Layla, up from 367,
 zero regressions. Application launching and window management remain
 explicit remaining scope for a future pass.
+
+## ADR-0031: Mission Layla Directive D, Part IV (Android/ADB) — real ADB command dispatch, genuinely ADAPTER READY (no binary, no device in this environment), gated by both the existing EmbodimentController AND a dedicated shell allowlist
+
+**Context:** Directive D Part IV asks for ADB connection, device
+discovery, screenshots, app launch, input, shell commands, file
+transfer, and device info, "controlled automation," with all dangerous
+operations through Layla's existing security/approval architecture,
+and an explicit warning: "Never expose unrestricted ADB execution
+directly to model output." Environment recon found no `adb` binary
+installed and, necessarily, no connected Android device (this is a
+desktop development machine) — the honest, Directive-D-sanctioned
+outcome here is real code with a genuinely reported ADAPTER READY
+boundary, not a fabricated live integration.
+
+**Decision:**
+1. `ADBExecutor` (adb_executor.py) is real: every action
+   (`list_devices`/`device_info`/`screenshot`/`shell`/`tap`/
+   `install_app`/`launch_app`/`push_file`/`pull_file`) builds a real
+   `adb` command-line invocation and runs it via `subprocess.run` when
+   a real binary is present. `is_adb_available()` is a real, honest
+   `shutil.which()` check — verified by a real test to report `False`
+   on this machine, not asserted either way without checking.
+2. Dispatch logic (which action builds which command line, with which
+   arguments) is fully tested via an injectable `_run` seam — the same
+   DI pattern `ComputerControlExecutor`'s `_gui` uses (ADR-0030) — so
+   13/13 tests are real and pass regardless of whether a physical
+   device is attached. One additional real test confirms
+   `ADBExecutor()` constructed WITHOUT an injected `_run` (i.e. using
+   its genuine `subprocess`-backed path) raises `ADBNotAvailableError`
+   with an "ADAPTER READY" message on this actual machine — proving
+   the fallback behavior is real, not merely written.
+3. Registered for `EMBODIMENT_ADB`, already in embodiment.py's
+   `_DEFAULT_HIGH_RISK_CAPABILITIES` (ADR-0027) — every action already
+   requires `EmbodimentController` approval before this executor is
+   even looked up. `shell` additionally carries its OWN fail-closed
+   allowlist (mirroring `ComputerControlExecutor.run_shell`,
+   ADR-0030): an arbitrary shell command on a real phone is exactly as
+   dangerous as one on the host machine, and an attacker who somehow
+   cleared the capability-level gate should still not get unrestricted
+   command execution on the device. Two independent, non-redundant
+   checks (capability-level risk/approval, then action-level
+   allowlist) rather than trusting either alone — directly answering
+   Directive D's "never expose unrestricted ADB execution directly to
+   model output."
+
+**Alternatives considered:**
+- *Skip Part IV entirely since no device is available* — rejected:
+  Directive D's own fallback explicitly sanctions building real code
+  with a documented ADAPTER READY boundary when a hardware dependency
+  is genuinely unavailable; this is exactly that case, not a reason to
+  produce nothing.
+- *Simulate a fake connected device to "demonstrate" the pipeline
+  end-to-end* — rejected outright: this is precisely the fabricated-
+  integration pattern Directive D's "No Fake Completion" rule
+  prohibits. The injected-`_run` tests already give real confidence in
+  the dispatch logic without pretending a device exists.
+
+**Consequences:** New `executors/adb_executor.py`, 13 new tests, 414
+total for Layla, up from 401, zero regressions. `executors/__init__.py`
+and `executors/errors.py` (already introduced in ADR-0030) extended
+with `ADBExecutor`/`is_adb_available`/`ADBNotAvailableError`.

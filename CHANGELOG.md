@@ -672,5 +672,21 @@ its first consumer.
   tests -- 401 total for Layla, up from 367, zero regressions.
   CONTRACT.md SS34, README.md updated; ADR-0030 recorded in
   DECISIONS.md.
+- Mission Layla Directive D, Part IV -- real Android/ADB executor
+  (`avishkar_layla.executors.adb_executor`, ADR-0031). `ADBExecutor`
+  builds real `adb` command-line invocations for `list_devices`/
+  `device_info`/`screenshot`/`shell`/`tap`/`install_app`/`launch_app`/
+  `push_file`/`pull_file`; real `is_adb_available()` (`shutil.which()`)
+  confirmed `False` on this development machine (no binary, no
+  device) -- genuinely ADAPTER READY, not fabricated. Dispatch logic
+  fully tested via an injected `_run` seam; a real
+  `ADBNotAvailableError` ("ADAPTER READY") is confirmed on this
+  machine's actual `subprocess`-backed path. Registered for
+  `EMBODIMENT_ADB` (already HIGH-risk by default), plus its own
+  dedicated `shell` allowlist -- two independent gates, answering
+  Directive D's "never expose unrestricted ADB execution directly to
+  model output." 13 new tests -- 414 total for Layla, up from 401,
+  zero regressions. CONTRACT.md SS35, README.md updated; ADR-0031
+  recorded in DECISIONS.md.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

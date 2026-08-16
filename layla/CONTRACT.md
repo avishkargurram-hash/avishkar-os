@@ -975,7 +975,29 @@ current status.
 `voice`/`vision`. `playwright install chromium` is a required
 one-time step after `pip install` (not a pip package itself).
 
-## §35. Errors
+## §35. Android / ADB (Mission Layla Directive D, Part IV)
+
+`ADBExecutor` (adb_executor.py) -- REAL CODE / ADAPTER READY. Genuinely
+shells out to a real `adb` binary via `subprocess.run` for
+`list_devices`/`device_info`/`screenshot`/`shell`/`tap`/`install_app`/
+`launch_app`/`push_file`/`pull_file`. No `adb` binary and no connected
+Android device exist in this environment (`is_adb_available()` -- a
+real `shutil.which()` check, not fabricated -- correctly reports
+`False` here); dispatch logic (which action builds which real `adb`
+command line, with which arguments) is fully tested via an injectable
+`_run` seam, the same DI pattern `ComputerControlExecutor`'s `_gui`
+uses. Registered for `EMBODIMENT_ADB`, which is already in
+embodiment.py's `_DEFAULT_HIGH_RISK_CAPABILITIES` -- every action
+always requires approval before `EmbodimentController` even looks up
+this executor. `shell` additionally has its own fail-closed allowlist
+(mirroring `ComputerControlExecutor.run_shell`) -- an arbitrary
+command on a real phone is exactly as dangerous as one on the host.
+Directive D Part IV, verbatim: "Never expose unrestricted ADB
+execution directly to model output" -- there is no path from a model's
+output to this executor that skips both the `EmbodimentController`
+gate and this module's own shell allowlist.
+
+## §36. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,

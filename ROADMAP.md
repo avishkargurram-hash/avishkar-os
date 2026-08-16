@@ -731,6 +731,24 @@ but not wired to `EmbodimentController` this pass.
 Full detail: CONTRACT.md §34, DECISIONS.md ADR-0030, README.md
 Computer Control section.
 
+## Mission Layla Directive D, Part IV — Android/ADB (ADR-0031, 2026-08-16)
+
+No `adb` binary or Android device exists on this development machine
+— the honest, Directive-D-sanctioned outcome: real `ADBExecutor` code
+(every action builds a real `adb` command line), a real
+`is_adb_available()` check (confirmed `False` here, not asserted
+either way without checking), dispatch logic fully tested via an
+injected `_run` seam, and a real confirmed `ADBNotAvailableError`
+("ADAPTER READY") when the genuine `subprocess`-backed path runs on
+this machine. Registered for `EMBODIMENT_ADB` (already forced
+HIGH-risk by embodiment.py), plus its own dedicated `shell` allowlist
+— two independent, non-redundant gates, directly answering Directive
+D's "never expose unrestricted ADB execution directly to model
+output."
+
+13 new tests — 414 total for Layla, zero regressions at every commit.
+Full detail: CONTRACT.md §35, DECISIONS.md ADR-0031.
+
 ## How this roadmap changes
 
 A phase only moves to 🚧 when someone is actively working it, and only to

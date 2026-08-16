@@ -52,12 +52,12 @@ layla/
 │   ├── channels/                   communication channel adapters
 │   ├── voice/                      voice subsystem (Directive D Part I, ADR-0028)
 │   ├── vision/                     vision/OCR/spatial subsystem (Directive D Part II, ADR-0029)
-│   └── executors/                  real EmbodimentController executors (Directive D Part III, ADR-0030)
+│   └── executors/                  real EmbodimentController executors (Directive D Parts III-IV, ADR-0030/0031)
 ├── examples/
 │   ├── end_to_end_scenario.py       Part IX's real, narrated demonstration
 │   ├── crash_recovery_scenario.py   resume-in-place demonstration (Priority 17.3)
 │   └── personal_model_and_proactive_scenario.py  Mission Layla Parts 1/2/11
-└── python/tests/                   401 tests (as of Directive D Part III; 1 live-gated, skipped by default)
+└── python/tests/                   414 tests (as of Directive D Part IV; 1 live-gated, skipped by default)
 ```
 
 ## Naming Standards
@@ -703,6 +703,22 @@ pip install -e "layla/python[computer_control]"
 playwright install chromium
 ```
 
+# Android / ADB (Directive D, Part IV)
+
+`ADBExecutor` (executors/adb_executor.py) — REAL CODE / ADAPTER READY.
+See CONTRACT.md §35.
+
+| Component | Status | Notes |
+|---|---|---|
+| `is_adb_available()` | 🟢 GREEN | Real `shutil.which()` check — reports `False` on this machine (no `adb` binary installed), verified by a real (not fabricated) test. |
+| `ADBExecutor` dispatch logic | 🟢 GREEN | 13/13 tests real and passing via an injected `_run` seam — every action's real `adb` command line construction is verified. |
+| Live device interaction | 🟡 YELLOW | No `adb` binary and no connected Android device exist in this environment — genuinely untested live. `ADBExecutor()` with no injected `_run` raises `ADBNotAvailableError` ("ADAPTER READY") rather than fabricating a result, confirmed by a real test on this machine. |
+
+Registered for `EMBODIMENT_ADB`, already in embodiment.py's
+`_DEFAULT_HIGH_RISK_CAPABILITIES` — every action requires approval
+regardless of wording. `shell` has its own fail-closed allowlist, same
+as `ComputerControlExecutor.run_shell`.
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
@@ -788,7 +804,7 @@ already covers it — extending that list requires an ADR.
 
 # Testing Guide
 
-401 tests as of Directive D Part III (Computer Control) (119 Phase 16 +
+414 tests as of Directive D Part IV (Android/ADB) (119 Phase 16 +
 30 Priority 17.1 + 21 Priority 17.2 + 8 Priority 17.3 + 11 Priority
 17.4 + 1 Priority 17.5 + 30 Mission Layla 1 [PersonalModel/
 ProactiveEngine] + 82 Mission Layla continuation [Prediction/Skills/
@@ -799,9 +815,11 @@ VoiceSession] + 28 Directive D Part II [spatial geometry/real OCR/real
 template detection/screen capture DI/perception adapter wiring] + 34
 Directive D Part III [real headless-browser automation/real shell
 execution/real confined file operations/GUI dispatch via injected
-fake/end-to-end EmbodimentController+executor integration]), 399
-running offline and passing, 2 live/environment-gated and skipped by
-default (`test_live_anthropic_integration.py` — see
+fake/end-to-end EmbodimentController+executor integration] + 13
+Directive D Part IV [real ADB availability check/ADB command dispatch
+via injected fake/real ADAPTER READY error on this adb-less machine]),
+412 running offline and passing, 2 live/environment-gated and skipped
+by default (`test_live_anthropic_integration.py` — see
 `docs/live-integration-guide.md` to actually run it; plus one OCR
 availability test that only runs on a machine WITHOUT tesseract
 installed, correctly skipped on this one), via:

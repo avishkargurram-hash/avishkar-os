@@ -18,9 +18,11 @@ cleared.
 
 from __future__ import annotations
 
+from .adb_executor import ADBExecutor, is_adb_available
 from .browser_executor import BrowserExecutor
 from .computer_control_executor import ComputerControlExecutor
 from .errors import (
+    ADBNotAvailableError,
     BrowserActionError,
     PathOutsideWorkspaceError,
     ShellCommandNotAllowedError,
@@ -28,10 +30,13 @@ from .errors import (
 )
 
 __all__ = [
+    "ADBExecutor",
+    "ADBNotAvailableError",
     "BrowserActionError",
     "BrowserExecutor",
     "ComputerControlExecutor",
     "PathOutsideWorkspaceError",
     "ShellCommandNotAllowedError",
     "UnknownActionError",
+    "is_adb_available",
 ]
