@@ -50,6 +50,7 @@ layla/
 ├── README.md                  this file
 ├── python/avishkar_layla/       reference implementation (40 modules)
 │   ├── channels/                   communication channel adapters (6 real transports, Directive D Part V, ADR-0032)
+│   ├── environment/                 environmental awareness (Directive D Part VI, ADR-0033)
 │   ├── voice/                      voice subsystem (Directive D Part I, ADR-0028)
 │   ├── vision/                     vision/OCR/spatial subsystem (Directive D Part II, ADR-0029)
 │   └── executors/                  real EmbodimentController executors (Directive D Parts III-IV, ADR-0030/0031)
@@ -57,7 +58,7 @@ layla/
 │   ├── end_to_end_scenario.py       Part IX's real, narrated demonstration
 │   ├── crash_recovery_scenario.py   resume-in-place demonstration (Priority 17.3)
 │   └── personal_model_and_proactive_scenario.py  Mission Layla Parts 1/2/11
-└── python/tests/                   443 tests (as of Directive D Part V; 1 live-gated, skipped by default)
+└── python/tests/                   463 tests (as of Directive D Part VI; 1 live-gated, skipped by default)
 ```
 
 ## Naming Standards
@@ -756,6 +757,27 @@ Install the optional extra:
 pip install -e "layla/python[channels]"
 ```
 
+# Environmental Awareness (Directive D, Part VI, ADR-0033)
+
+Sensor → Event → EventBus → Perception/Context → Layla → Decision →
+Action, built entirely on existing components (`avishkar_core.EventBus`,
+`Scheduler`, `ProactiveEngine`) — no new event system. See CONTRACT.md
+§38.
+
+| Component | Status | Notes |
+|---|---|---|
+| `IdleTimeSensor`/`BatterySensor`/`SystemLoadSensor` | 🟢 GREEN | Real local OS/process state (Win32 `GetLastInputInfo`, `psutil`) — this machine genuinely has a battery, so `BatterySensor` was verified for real, not merely code-reviewed. |
+| `NetworkConnectivitySensor` | 🟢 GREEN | A real socket-level TCP reachability probe (not just an interface-up flag) — verified against a real reachable host and a real, deliberately non-routable one. |
+| `SensorMonitor` | 🟢 GREEN | Real threshold/change-detection logic against a real `EventBus`; 6/6 tests real and passing — confirms the "no polling flood" behavior (unchanged readings never publish). |
+| `EnvironmentalEventBuffer`/`EnvironmentalChangeEvaluator` | 🟢 GREEN | Real `EventBus` subscription/filtering and a real, retry-storm-safe `ProactiveEngine` evaluator; 8/8 tests real and passing, including that the same event is never re-triggered. |
+| Full chain integration | 🟢 GREEN | `test_environment_end_to_end.py` proves a scripted sensor change flows through every real component to a real `ProactiveTrigger`, entirely without an LLM call. |
+| Camera/microphone-based environmental signals | — | Already covered by `voice`/`vision` (Directive D Parts I/II) — deliberately not duplicated here. |
+
+No wiring exists yet to automatically register `EnvironmentalChangeEvaluator`
+into a running `ExecutiveRuntime`'s `ProactiveEngine` by default — a
+deployment opts in explicitly via `ProactiveEngine(extra_evaluators=(evaluator,))`,
+matching every other evaluator's wiring (ADR-0026).
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
@@ -841,8 +863,8 @@ already covers it — extending that list requires an ADR.
 
 # Testing Guide
 
-443 tests as of Directive D Part V (Communication Channels) (119 Phase
-16 + 30 Priority 17.1 + 21 Priority 17.2 + 8 Priority 17.3 + 11
+463 tests as of Directive D Part VI (Environmental Awareness) (119
+Phase 16 + 30 Priority 17.1 + 21 Priority 17.2 + 8 Priority 17.3 + 11
 Priority 17.4 + 1 Priority 17.5 + 30 Mission Layla 1 [PersonalModel/
 ProactiveEngine] + 82 Mission Layla continuation [Prediction/Skills/
 LearningLoop/LifeOS/KnowledgeGraph/WhatsAppChannelAdapter/Perception/
@@ -858,7 +880,10 @@ via injected fake/real ADAPTER READY error on this adb-less machine] +
 29 Directive D Part V [real SMTP wire-protocol round trip against a
 real local test server/real network-rejection tests against WhatsApp,
 Telegram, Slack, Discord, and Twilio's actual APIs with deliberately
-invalid credentials/adapter+registry routing for 4 new channels]), 441
+invalid credentials/adapter+registry routing for 4 new channels] + 20
+Directive D Part VI [real local sensors/real EventBus threshold-based
+publishing/real retry-storm-safe ProactiveEngine evaluator/full real
+end-to-end chain integration]), 461
 running offline and passing, 2 live/environment-gated and skipped by
 default (`test_live_anthropic_integration.py` — see
 `docs/live-integration-guide.md` to actually run it; plus one OCR

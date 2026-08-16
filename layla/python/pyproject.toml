@@ -41,6 +41,9 @@ computer_control = ["playwright", "pyautogui", "pyperclip"]
 # Mission Layla Directive D, Part V (Real Communication Channels).
 # SMTPEmailTransport needs no extra package (stdlib smtplib/email).
 channels = ["requests", "twilio"]
+# Mission Layla Directive D, Part VI (Environmental Awareness).
+# IdleTimeSensor needs no extra package (stdlib ctypes, Windows-only).
+environment = ["psutil"]
 
 [tool.setuptools.packages.find]
 where = ["."]

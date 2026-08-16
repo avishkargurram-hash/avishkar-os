@@ -707,5 +707,24 @@ its first consumer.
   `layla/python/pyproject.toml`. 29 new tests -- 443 total for Layla,
   up from 414, zero regressions. CONTRACT.md SS36, README.md updated;
   ADR-0032 recorded in DECISIONS.md.
+- Mission Layla Directive D, Part VI -- real Environmental Awareness
+  (`avishkar_layla.environment`, ADR-0033): Sensor -> Event -> EventBus
+  -> Perception/Context -> Layla -> Decision, built entirely on
+  existing, unmodified `avishkar_core.EventBus` and `Scheduler` -- no
+  new event system. Real local sensors (`IdleTimeSensor`/
+  `BatterySensor`/`SystemLoadSensor` via Win32/`psutil`;
+  `NetworkConnectivitySensor`, a real socket-level reachability probe).
+  `SensorMonitor`: real threshold/change-detection publishing --
+  verified that unchanged readings never flood the EventBus, the
+  concrete answer to "do NOT poll an LLM continuously." 
+  `EnvironmentalEventBuffer`/`EnvironmentalChangeEvaluator`: real
+  EventBus filtering plus a real `ProactiveEngine` evaluator capped at
+  ACTION_OBSERVE, with real retry-storm prevention (never re-triggers
+  an already-surfaced event). A full end-to-end integration test
+  proves every piece composes, from a sensor change to a real
+  ProactiveTrigger, with zero LLM calls in the path. New optional
+  `environment` extra in `layla/python/pyproject.toml`. 20 new tests
+  -- 463 total for Layla, up from 443, zero regressions. CONTRACT.md
+  SS38, README.md updated; ADR-0033 recorded in DECISIONS.md.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

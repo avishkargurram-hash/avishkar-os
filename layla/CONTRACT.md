@@ -1059,7 +1059,50 @@ routed through `ExecutiveRuntime`) already passes through
 arbitrary messages simply because an LLM generated them." No channel
 adapter bypasses that; none was changed to add a competing check.
 
-## §37. Errors
+## §38. Environmental Awareness (Mission Layla Directive D, Part VI)
+
+`avishkar_layla.environment` -- Sensor -> Event -> EventBus ->
+Perception/Context -> Layla -> Decision -> Action, Directive D Part
+VI's exact required chain, built entirely on existing, unmodified
+components (`avishkar_core.EventBus`, `Scheduler`, `ProactiveEngine`)
+-- no new event system, no new scheduler.
+
+- `Sensor` / `SensorReading` (sensors.py) -- real, local, no camera/
+  microphone (already covered by `voice`/`vision`): `IdleTimeSensor`
+  (real Win32 `GetLastInputInfo`), `BatterySensor` (real `psutil`,
+  raises `SensorUnavailableError` with no fabricated reading if this
+  machine has none), `SystemLoadSensor` (real CPU/memory via
+  `psutil`), `NetworkConnectivitySensor` (a REAL socket-level
+  reachability probe -- a genuine TCP connection attempt, not merely
+  an interface-up flag).
+- `SensorMonitor` (event_translation.py) -- the anti-polling
+  mechanism Directive D explicitly requires: `.check()` is cheap,
+  non-LLM Python (one real sensor read + one comparison against the
+  last reading); it calls `EventBus.publish()` ONLY on a genuine
+  first-read or threshold-crossing change, never on every tick.
+  Intended to be driven by `Scheduler.schedule_recurring()` (already
+  real, already exists) -- not a new polling loop.
+- `EnvironmentalEventBuffer` (context.py) -- subscribes to
+  `EventBus`'s real `"*"` wildcard (core/'s locked implementation has
+  no prefix-matching, so this module filters by the
+  `layla.environment.` prefix itself rather than asking core/ to grow
+  a feature it doesn't have) and keeps a bounded recent-events window.
+- `EnvironmentalChangeEvaluator` (context.py) -- a real
+  `proactive.TriggerEvaluator` a deployment can pass into
+  `ProactiveEngine(extra_evaluators=(...))`. Capped at `ACTION_OBSERVE`
+  (same discipline as every other built-in evaluator, ADR-0026) --
+  never calls `ExecutiveRuntime.handle_event()` itself. Tracks
+  already-surfaced event ids so the same buffered event is never
+  re-triggered on a later `evaluate()` tick (Directive D Part XII's
+  retry-storm concern, addressed structurally here).
+
+`test_environment_end_to_end.py` proves the full real chain composes:
+a scripted sensor change -> real `EventBus.publish()` -> real buffer
+capture -> a real `ProactiveTrigger` from `ProactiveEngine.evaluate()`
+-- entirely without any LLM call, matching Directive D's "wake Layla
+intelligence only when required."
+
+## §39. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,
@@ -1079,7 +1122,8 @@ errors (`ScreenCaptureError`, `OCRNotAvailableError`) live in
 `vision/errors.py`; executor errors (`UnknownActionError`,
 `BrowserActionError`, `ShellCommandNotAllowedError`,
 `PathOutsideWorkspaceError`, `ADBNotAvailableError`) live in
-`executors/errors.py`; every channel transport raises the existing
+`executors/errors.py`; `SensorUnavailableError` lives in
+`environment/errors.py`; every channel transport raises the existing
 `avishkar_integration.ProtocolInvocationError` (no new channel-specific
 error types were introduced) -- all following the same locally-scoped
 convention as §22-§28's errors.

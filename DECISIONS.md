@@ -2312,3 +2312,97 @@ the existing `email_adapter.py`/`whatsapp_adapter.py`. 29 new tests
 (3 real SMTP round-trip + 2 real WhatsApp rejection + 6 each for
 Telegram/Slack/Discord/SMS), 443 total for Layla, up from 414, zero
 regressions. LinkedIn/Google/Zoom remain explicit remaining scope.
+
+## ADR-0033: Mission Layla Directive D, Part VI (Environmental Awareness) — real local sensors, threshold-based EventBus publishing, and a retry-storm-safe ProactiveEngine evaluator, all built on existing, unmodified core/EventBus and Scheduler
+
+**Context:** Directive D Part VI asks for sensors/cameras/microphones/
+device-state/environmental-signal awareness, event-driven ("Sensor ->
+Event -> EventBus -> Perception/Context -> Layla -> Decision -> Action"),
+with an explicit anti-pattern warning: "Do NOT poll an LLM
+continuously. Use events, schedules, thresholds and state changes to
+wake Layla intelligence only when required." Camera/microphone-based
+signals are already `avishkar_layla.voice`/`vision` (Directive D Parts
+I/II, ADR-0028/0029); this part's real scope is the remaining ambient
+signals: presence/idle state, power, load, and connectivity.
+
+**Decision:**
+1. Four real, local `Sensor` implementations (sensors.py):
+   `IdleTimeSensor` (real Win32 `GetLastInputInfo` -- reads only a
+   timestamp, never keystroke content, a genuinely non-invasive
+   presence proxy), `BatterySensor` (real `psutil.sensors_battery()`
+   -- this development machine genuinely has a battery, so this was
+   verified for real, not merely reviewed; raises
+   `SensorUnavailableError` rather than fabricating a percentage on a
+   machine with none), `SystemLoadSensor` (real CPU/memory via
+   `psutil`), `NetworkConnectivitySensor` (a REAL socket-level TCP
+   connection attempt against a stable public endpoint -- deliberately
+   stronger than an interface-up flag, which can be true with no
+   actual internet path; verified against both a real reachable host
+   and a real, deliberately non-routable RFC 5737 address).
+2. `SensorMonitor` (event_translation.py) is the concrete mechanism
+   answering Directive D's anti-polling requirement: `.check()` reads
+   a sensor once and compares it to the last reading, publishing a
+   real `avishkar_core.EventBus` event ONLY on a genuine first-read or
+   threshold-crossing change. Verified for real (6 tests) that an
+   unchanging value produces zero events across repeated checks, and
+   that a numeric `min_change` threshold suppresses small
+   fluctuations while still catching genuine crossings. Intended to be
+   driven by `Scheduler.schedule_recurring()` -- already real, already
+   exists; no new polling loop was built.
+3. `EnvironmentalEventBuffer` (context.py) subscribes to
+   `EventBus.subscribe("*", ...)` -- core/'s real, locked
+   implementation has no prefix-wildcard matching, only an exact
+   `event_type` or the literal `"*"` -- and filters by the
+   `layla.environment.` prefix itself, rather than asking core/ (§0:
+   authoritative, unmodified) to grow a feature it doesn't have.
+4. `EnvironmentalChangeEvaluator` (context.py) is a real
+   `proactive.TriggerEvaluator` (ADR-0026's existing extension point,
+   `ProactiveEngine(extra_evaluators=(...))`) -- capped at
+   `ACTION_OBSERVE`, same discipline as every other built-in
+   evaluator: a lost network connection is a reason to look, not
+   sufficient evidence for `handle_event()` to run autonomously. It
+   tracks which event ids it has already surfaced
+   (`_seen: Set[str]`), so a still-buffered event is never re-
+   triggered on a later `evaluate()` tick -- a genuine, deliberate
+   answer to Directive D Part XII's retry-storm concern, verified by a
+   real test that calls the evaluator three times against one
+   buffered event and confirms only the first call returns a trigger.
+5. `test_environment_end_to_end.py` composes every real piece above
+   (a scripted sensor -> real `SensorMonitor` -> real `Scheduler` ->
+   real `EventBus` -> real `EnvironmentalEventBuffer` -> real
+   `EnvironmentalChangeEvaluator` -> a real `ProactiveEngine.evaluate()`)
+   into one integration test, proving the full Directive D Part VI
+   chain genuinely composes end to end, with zero LLM calls anywhere
+   in the path -- the concrete, testable answer to "wake Layla
+   intelligence only when required."
+6. New `environment` optional-dependency extra (`psutil`) in
+   `layla/python/pyproject.toml`; `IdleTimeSensor` needs no extra
+   package (stdlib `ctypes`, Windows-only by design).
+
+**Alternatives considered:**
+- *Have `SensorMonitor` call `ExecutiveRuntime.handle_event()`
+  directly on every change* -- rejected outright: this would be
+  exactly the "perception directly executes an action" anti-pattern
+  Directive D Part II explicitly forbids (stated there for vision, but
+  the same principle applies here) and Part VI's own wording
+  reinforces ("wake Layla intelligence," not "act unilaterally").
+  Environmental signals become `ProactiveTrigger`s, capped at
+  `ACTION_OBSERVE`, exactly like every other evidence-only evaluator.
+- *Build camera/microphone-based environmental sensors here* --
+  rejected: already real and already shipped as `voice`/`vision`
+  (ADR-0028/0029), with their own deliberate consent discipline;
+  duplicating that scope here would fragment where "is this a
+  microphone/camera concern" lives.
+- *Ask core/ to add prefix-wildcard subscription to `EventBus`* --
+  rejected: core/ is locked (§0); `EnvironmentalEventBuffer` filtering
+  the real `"*"` stream itself is a strictly additive, zero-risk
+  alternative that needs no change to an authoritative framework.
+
+**Consequences:** New `environment/` subpackage (`__init__.py`,
+`errors.py`, `sensors.py`, `event_translation.py`, `context.py`), 20
+new tests (5 real sensors + 6 SensorMonitor threshold logic + 8 buffer/
+evaluator + 1 full end-to-end integration), 463 total for Layla, up
+from 443, zero regressions. No default wiring exists yet that
+registers `EnvironmentalChangeEvaluator` into a running deployment's
+`ProactiveEngine` automatically -- a deployment opts in explicitly,
+matching every other evaluator (ADR-0026).

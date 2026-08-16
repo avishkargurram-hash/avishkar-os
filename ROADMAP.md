@@ -776,6 +776,28 @@ rushed.
 Full detail: CONTRACT.md §36, DECISIONS.md ADR-0032, README.md
 Communication Channels section.
 
+## Mission Layla Directive D, Part VI — Environmental Awareness (ADR-0033, 2026-08-16)
+
+Sensor → Event → EventBus → Perception/Context → Layla → Decision,
+built entirely on existing, unmodified `avishkar_core.EventBus` and
+`Scheduler` — no new event system, no LLM polling loop.
+
+**Real, fully-working**: `IdleTimeSensor`/`BatterySensor`/
+`SystemLoadSensor` (real local OS/process state — this machine
+genuinely has a battery, verified for real), `NetworkConnectivitySensor`
+(a real socket-level reachability probe), `SensorMonitor` (real
+threshold/change-detection — verified that unchanged readings never
+flood the EventBus), `EnvironmentalEventBuffer`/
+`EnvironmentalChangeEvaluator` (real EventBus filtering + a real,
+retry-storm-safe `ProactiveEngine` evaluator, capped at
+`ACTION_OBSERVE`). A full end-to-end integration test proves every
+piece composes, from a sensor change to a real `ProactiveTrigger`,
+with zero LLM calls in the path.
+
+20 new tests — 463 total for Layla, zero regressions at every commit.
+Full detail: CONTRACT.md §38, DECISIONS.md ADR-0033, README.md
+Environmental Awareness section.
+
 ## How this roadmap changes
 
 A phase only moves to 🚧 when someone is actively working it, and only to
