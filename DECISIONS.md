@@ -1820,3 +1820,114 @@ both before any of this session's new capabilities are considered for
 production use; nothing in Decision 2's contract-only tier is
 production-ready by construction, because nothing is implemented
 behind it yet.
+
+## ADR-0028: Mission Layla Directive D, Part I (Voice) — real local providers wired behind provider ABCs, never fabricated; live hardware code exists but is deliberately never exercised by the automated test suite
+
+**Context:** Directive D explicitly escalates beyond Mission Layla's
+own "contract-only is an acceptable fallback" clause: "Do not merely
+create interfaces or placeholder contracts. Where safe and technically
+possible, implement the REAL executors and adapters." For Voice
+specifically it requires a full mic → VAD → STT → Layla Brain → TTS →
+speaker pipeline, provider-abstracted, with interruption/barge-in,
+device discovery, timeout handling, and "no hardcoded secrets."
+
+Environment recon on this machine found real local capability that
+GENESIS's equivalent voice pipeline (`core/genesis_voice.py`) also
+relied on, but without its confirmed command-injection backdoor
+(`text_injector`) or its broken identity gate: `sounddevice` (real
+input/output devices — five real microphones, five real speaker
+outputs, including a paired Bluetooth headset), `pyttsx3` (real local
+SAPI5 TTS), `faster-whisper`/`openai-whisper` (real local STT, no API
+key, CPU-only inference confirmed working), `numpy`/`scipy`/
+`soundfile` (real signal processing / resampling / WAV I/O). No
+`webrtcvad` package was installed and adding it wasn't worth a new
+dependency for this pass.
+
+**Decision:**
+1. Every voice component is a small ABC (`VoiceActivityDetector`,
+   `SpeechToTextProvider`, `TextToSpeechProvider`) with at least one
+   REAL, non-fabricated implementation: `EnergyVAD` (real numpy
+   RMS-threshold VAD with an adaptive noise floor and an explicit
+   `calibrate()` for rooms louder than the default guess — a real
+   limitation found and fixed by the test suite, not assumed away),
+   `FasterWhisperSTT` (real local CTranslate2 Whisper), `Pyttsx3TTS`
+   (real local SAPI5). `OpenAIWhisperAPISTT`/`OpenAITTSProvider` are
+   real HTTP clients against OpenAI's actual endpoints, marked ADAPTER
+   READY — no `OPENAI_API_KEY` is configured in this environment, so
+   they are real code, not real *tested* integrations; this is
+   reported honestly as YELLOW, not claimed GREEN.
+2. `MicrophoneFrameSource`/`SpeakerSink` (audio_io.py) are real,
+   `sounddevice`-backed hardware wrappers — genuinely capable of
+   opening this machine's real microphone/speakers. They are
+   deliberately never instantiated by the automated test suite.
+   Recording real ambient audio non-interactively during an autonomous
+   background run — on a real personal machine, with no explicit,
+   momentary "yes, listen now" trigger from a person in the room — is
+   treated as a real-world action requiring the same deliberate-
+   trigger discipline Directive D itself demands for embodiment/IoT
+   ("do NOT poll continuously"; here, do not open a live mic without
+   an explicit session). Device *enumeration* (`list_input_devices`/
+   `list_output_devices`) records nothing and is exercised for real
+   against this machine's actual hardware in
+   `test_voice_audio_io.py`.
+3. `VoiceSession`'s segmentation algorithm
+   (`listen_for_utterance`) is written against a `FrameSource`
+   Protocol (anything with `.read(timeout)`), not against
+   `sounddevice` directly — the exact same dependency-injection seam
+   already used throughout this codebase (`EmailChannelAdapter`'s
+   `transport`, `EmbodimentController`'s `executor`). This makes the
+   real VAD-driven trim/pre-roll/silence-timeout logic fully unit-
+   testable with a synthetic frame sequence, with zero hardware
+   involved and zero fabrication of what's being tested.
+4. A genuine, non-mocked, end-to-end round trip IS exercised
+   automatically: `Pyttsx3TTS` synthesizes real speech audio (no live
+   mic), and `FasterWhisperSTT` transcribes it for real
+   (`test_voice_stt.py::test_real_round_trip_transcription`) —
+   confirmed passing, transcript contains the real spoken words. This
+   is the strongest evidence available in this environment that the
+   STT/TTS half of the pipeline actually works, without ever opening a
+   live microphone.
+5. `VoiceSession` never calls a tool, executor, or capability
+   directly — every non-stop-phrase transcript goes through
+   `ExecutiveRuntime.handle_event()` unchanged
+   (`test_never_calls_any_capability_or_tool_directly`). The stop/
+   cancel phrase is the one deliberate local exception, handled as a
+   playback-interrupt signal, not routed through planning, because
+   canceling *this session's own current turn* is not itself a new
+   action request.
+6. New `voice` optional-dependency extra in
+   `layla/python/pyproject.toml` — the cognitive core (everything
+   through §31/ADR-0027) has zero dependency on any voice package;
+   only constructing a concrete voice provider pulls one in.
+
+**Alternatives considered:**
+- *Ship voice as contract-only, like Perception/Embodiment in
+  ADR-0027* — rejected for this pass specifically because Directive D
+  names real local STT/TTS/VAD as genuinely achievable here (verified
+  by recon before writing any code) and explicitly asks for real
+  executors wherever "safe and technically possible" — contract-only
+  would have been a strictly weaker, less honest answer than what the
+  environment actually supports.
+- *Record a real test utterance from the live microphone in the
+  automated suite* — rejected: the value (marginally higher confidence
+  in the mic-capture code path specifically) does not justify opening
+  a real microphone non-interactively on a real personal machine
+  during an unattended run. The segmentation algorithm this would have
+  tested is already covered via dependency injection (item 3 above);
+  what's left untested is literally "does `sounddevice.InputStream`
+  work on this machine," which is a PortAudio/OS integration question,
+  not Layla logic.
+- *webrtcvad instead of a hand-rolled energy VAD* — rejected for this
+  pass: not installed, and EnergyVAD is a real, if simpler, VAD tier
+  used as a fallback in production systems; `VoiceActivityDetector`
+  keeps it swappable later without touching `VoiceSession`.
+
+**Consequences:** New `voice/` subpackage (`__init__.py`, `errors.py`,
+`vad.py`, `audio_io.py`, `stt.py`, `tts.py`, `session.py`), 40 new
+tests (9 VAD + 6 audio device enumeration + 4 real local TTS + 3 real
+local STT round-trip + 18 VoiceSession orchestration), 339 total for
+Layla, up from 299, zero regressions. Live-hardware code
+(`MicrophoneFrameSource`/`SpeakerSink`) and both OpenAI-backed cloud
+providers are real but not live-verified in this environment — see
+README.md Voice section for the explicit GREEN/YELLOW breakdown
+Directive D's Definition of Done requires.

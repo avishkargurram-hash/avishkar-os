@@ -48,13 +48,14 @@ ExecutiveRuntime (event loop: IDLE -> EVENT -> INGEST -> UNDERSTAND ->
 layla/
 ├── CONTRACT.md              language-agnostic contract
 ├── README.md                  this file
-├── python/avishkar_layla/       reference implementation (37 modules)
-│   └── channels/                   communication channel adapters
+├── python/avishkar_layla/       reference implementation (38 modules)
+│   ├── channels/                   communication channel adapters
+│   └── voice/                      voice subsystem (Directive D Part I, ADR-0028)
 ├── examples/
 │   ├── end_to_end_scenario.py       Part IX's real, narrated demonstration
 │   ├── crash_recovery_scenario.py   resume-in-place demonstration (Priority 17.3)
 │   └── personal_model_and_proactive_scenario.py  Mission Layla Parts 1/2/11
-└── python/tests/                   299 tests (as of Mission Layla continuation; 1 live-gated, skipped by default)
+└── python/tests/                   339 tests (as of Directive D Part I; 1 live-gated, skipped by default)
 ```
 
 ## Naming Standards
@@ -610,6 +611,33 @@ fallback instruction, a real, tested, structurally-gated contract was
 built instead of either skipping these capabilities or faking a
 backend.
 
+# Voice Subsystem (Directive D, Part I, ADR-0028)
+
+Mic → `MicrophoneFrameSource` → `VoiceActivityDetector` →
+`SpeechToTextProvider` → **the unchanged `ExecutiveRuntime.handle_event()`
+pipeline** → `TextToSpeechProvider` → `SpeakerSink`. See CONTRACT.md §31
+for the full contract. Explicit status per component (Directive D's
+required GREEN/YELLOW/RED classification):
+
+| Component | Status | Notes |
+|---|---|---|
+| `EnergyVAD` | 🟢 GREEN | Real numpy RMS-threshold VAD, adaptive noise floor + `calibrate()`; 9/9 tests real and passing. |
+| `FasterWhisperSTT` | 🟢 GREEN | Real local CTranslate2 Whisper inference, no API key. Genuine synthesize→transcribe round trip verified (`test_voice_stt.py`). |
+| `Pyttsx3TTS` | 🟢 GREEN | Real local SAPI5 synthesis, no API key; 4/4 tests real and passing. |
+| Device enumeration (`list_input_devices`/`list_output_devices`) | 🟢 GREEN | Real `sounddevice`/PortAudio query against this machine's actual hardware. |
+| `VoiceSession` orchestration | 🟢 GREEN | Real segmentation/routing/response-synthesis/interruption logic, 18/18 tests real and passing against injected fakes. |
+| `MicrophoneFrameSource` / `SpeakerSink` live capture/playback | 🟡 YELLOW | Real, hardware-backed code, construction-validated against this machine's real devices — but never exercised end-to-end by the automated suite (opening a live mic non-interactively during an unattended run is treated as a real-world action requiring a deliberate trigger, same as embodiment/IoT). Requires a real deployment to actually run a live session. |
+| `OpenAIWhisperAPISTT` / `OpenAITTSProvider` | 🟡 YELLOW | Real HTTP clients against OpenAI's real endpoints — ADAPTER READY, no `OPENAI_API_KEY` configured in this environment, so not live-tested. |
+| Full-duplex acoustic barge-in (detecting speech *while* Layla is speaking) | 🔴 NOT BUILT | Only explicit stop-phrase / external `request_stop()` interruption is implemented; true overlapping-speech detection needs echo cancellation, out of scope for this pass. |
+
+Install the optional extra to use any real provider:
+```bash
+pip install -e "layla/python[voice]"
+```
+The cognitive core has zero dependency on any voice package; only
+constructing a concrete `FasterWhisperSTT`/`Pyttsx3TTS`/
+`MicrophoneFrameSource`/etc. pulls one in.
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
@@ -695,14 +723,15 @@ already covers it — extending that list requires an ADR.
 
 # Testing Guide
 
-299 tests as of the Mission Layla continuation (119 Phase 16 + 30
+339 tests as of Directive D Part I (Voice) (119 Phase 16 + 30
 Priority 17.1 + 21 Priority 17.2 + 8 Priority 17.3 + 11 Priority 17.4 +
 1 Priority 17.5 + 30 Mission Layla 1 [PersonalModel/ProactiveEngine] +
 82 Mission Layla continuation [Prediction/Skills/LearningLoop/LifeOS/
 KnowledgeGraph/WhatsAppChannelAdapter/Perception/Embodiment/
-BusinessIntelligence/ExecutiveDashboard]), 298 running offline and
-passing, 1 live-gated and skipped by default
-(`test_live_anthropic_integration.py` — see
+BusinessIntelligence/ExecutiveDashboard] + 40 Directive D Part I
+[EnergyVAD/device enumeration/Pyttsx3TTS/FasterWhisperSTT/
+VoiceSession]), 338 running offline and passing, 1 live-gated and
+skipped by default (`test_live_anthropic_integration.py` — see
 `docs/live-integration-guide.md` to actually run it), via:
 ```bash
 PYTHONPATH="core/python;router/python;factories/agent-factory/python;factories/knowledge-factory/python;factories/mcp-factory/python;factories/memory-factory/python;factories/security-factory/python;factories/evaluation-factory/python;factories/prompt-factory/python;factories/workflow-factory/python;layla/python" \
@@ -712,7 +741,12 @@ PYTHONPATH="core/python;router/python;factories/agent-factory/python;factories/k
 this PYTHONPATH string as of `SkillRegistry`'s real
 `avishkar_evaluation` integration — already a declared
 `layla/python/pyproject.toml` dependency, just not previously imported
-at package-init time.)
+at package-init time.) Voice tests need the optional `voice` extra
+(`pip install -e "layla/python[voice]"`) installed to run at all —
+`test_voice_stt.py` downloads the real `faster-whisper` "tiny.en"
+model from Hugging Face on first run (cached after) and skips with an
+explicit reason if that download is impossible in a given environment,
+rather than failing the whole suite or fabricating a pass.
 Categories: unit (state machine, memory policy, risk, scheduler,
 execution/idempotency classification), contract (every component's own
 dataclass/error shape), integration (delegation through a real

@@ -20,6 +20,14 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+# Mission Layla Directive D, Part I (Voice) -- real local capability
+# packages. Optional: the cognitive core (ExecutiveRuntime and every
+# component above) has zero dependency on any of these; only
+# avishkar_layla.voice imports them, and only when a caller actually
+# constructs a provider that needs them. See CONTRACT.md SS32.
+voice = [
+    "numpy", "scipy", "sounddevice", "soundfile", "faster-whisper", "pyttsx3", "requests",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]

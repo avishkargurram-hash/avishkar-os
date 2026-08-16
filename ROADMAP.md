@@ -635,6 +635,39 @@ it studied.
 Full detail: CONTRACT.md §21–30, DECISIONS.md ADR-0027,
 `docs/mission-layla-1-plan.md`.
 
+## Mission Layla Directive D, Part I — Voice (ADR-0028, 2026-08-16)
+
+Directive D escalates past Part 3–27's "contract-only is an acceptable
+fallback": real executors and adapters, wherever the environment
+genuinely supports them. Recon on this machine (real microphones,
+real speakers, a paired Bluetooth headset, working local STT/TTS
+packages) found Voice was genuinely buildable for real.
+
+**Real, fully-working**: `EnergyVAD` (adaptive-noise-floor RMS VAD,
+`calibrate()` for loud rooms), `FasterWhisperSTT` (real local
+CTranslate2 Whisper — a genuine synthesize-then-transcribe round trip
+runs automatically), `Pyttsx3TTS` (real local SAPI5 synthesis),
+`list_input_devices`/`list_output_devices` (real hardware enumeration,
+found this machine's five real input and output devices), `VoiceSession`
+(real segmentation/routing/response-synthesis/interruption logic — and
+never calls a tool/executor/capability directly; every non-stop-phrase
+transcript is routed through the unchanged `ExecutiveRuntime.handle_event()`).
+
+**Real code / ADAPTER READY**: `OpenAIWhisperAPISTT`,
+`OpenAITTSProvider` (real HTTP clients, no `OPENAI_API_KEY` configured
+in this environment). `MicrophoneFrameSource`/`SpeakerSink` (real,
+hardware-backed — construction-validated against this machine's actual
+devices, but a live session is never opened non-interactively by the
+automated test suite; requires a real deployment to run end to end).
+
+**Not built**: full-duplex acoustic barge-in (detecting speech while
+Layla is speaking); only explicit stop-phrase / external
+`request_stop()` interruption.
+
+40 new tests — 339 total for Layla, zero regressions at every commit.
+Full detail: CONTRACT.md §31, DECISIONS.md ADR-0028, README.md Voice
+section.
+
 ## How this roadmap changes
 
 A phase only moves to 🚧 when someone is actively working it, and only to

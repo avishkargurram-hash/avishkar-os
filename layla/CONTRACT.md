@@ -813,7 +813,57 @@ unwired component's section is omitted, never fabricated. Parts 24
 satisfied by existing components (`Orchestrator`/`DelegationEngine`/
 `Planner`; `ProjectStore`, §3) and are not rebuilt here.
 
-## §31. Errors
+## §31. Voice (Mission Layla Directive D, Part I)
+
+`avishkar_layla.voice` — mic → `MicrophoneFrameSource` → `VoiceActivityDetector`
+→ `SpeechToTextProvider` → **the unchanged `ExecutiveRuntime.handle_event()`
+pipeline** → `TextToSpeechProvider` → `SpeakerSink`. `VoiceSession`
+orchestrates the loop; it never calls a tool/executor/capability
+directly, only `runtime.handle_event()` — voice enters through
+exactly the same intent/risk/planning/approval architecture as any
+other input, per Directive D's explicit requirement. The one local
+exception is a stop/cancel phrase (`DEFAULT_STOP_PHRASES`), handled
+entirely inside the session as an interrupt signal over its own
+playback, not routed through planning, because it is not itself an
+action request.
+
+Every component is a real implementation behind a small ABC:
+- `VoiceActivityDetector` / `EnergyVAD` — real numpy RMS-threshold VAD
+  with an adaptive noise floor and an explicit `calibrate()` method for
+  rooms louder than the default initial threshold.
+- `SpeechToTextProvider` / `FasterWhisperSTT` (REAL, local, offline-
+  capable, no API key — CTranslate2 Whisper inference) and
+  `OpenAIWhisperAPISTT` (REAL HTTP client, ADAPTER READY — requires
+  `OPENAI_API_KEY`).
+- `TextToSpeechProvider` / `Pyttsx3TTS` (REAL, local, SAPI5/NSSpeech/
+  espeak, no API key) and `OpenAITTSProvider` (REAL HTTP client,
+  ADAPTER READY — requires `OPENAI_API_KEY`).
+- `MicrophoneFrameSource` / `SpeakerSink` (REAL, `sounddevice`/
+  PortAudio-backed hardware I/O) — the only files that open a real
+  device; never invoked by the automated test suite, which drives
+  `VoiceSession`'s orchestration logic through injected fakes and
+  exercises the real local STT/TTS round trip via a synthesized (not
+  live-recorded) utterance — see README.md Voice section and
+  `test_voice_stt.py::test_real_round_trip_transcription`.
+
+Interruption/barge-in: `SpeakerSink.play()` plays audio in chunks,
+polling a shared `threading.Event` between chunks so
+`VoiceSession.request_stop()` (or a detected stop phrase) halts
+playback immediately rather than only after the full utterance
+finishes. Full acoustic barge-in (detecting speech *while* Layla is
+speaking, via echo cancellation) is out of scope for this pass and
+documented as a limitation, not silently assumed.
+
+`layla/python/pyproject.toml`'s new `voice` extra
+(`numpy`/`scipy`/`sounddevice`/`soundfile`/`faster-whisper`/`pyttsx3`/
+`requests`) is optional: the cognitive core has zero dependency on any
+of it; only constructing a concrete voice provider pulls it in.
+Deliberately NOT imported from `avishkar_layla/__init__.py` (unlike
+every other component in this contract) precisely so importing
+`avishkar_layla` itself never requires `numpy`/`sounddevice`/etc. --
+callers opt in explicitly via `from avishkar_layla.voice import ...`.
+
+## §32. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,
@@ -825,4 +875,9 @@ satisfied by existing components (`Orchestrator`/`DelegationEngine`/
 `SkillNotFoundError`, `NodeNotFoundError`,
 `PerceptionSourceNotConfiguredError`, `UnknownPerceptionSourceError`,
 `UnknownEmbodimentCapabilityError`, `EmbodimentCapabilityNotConfiguredError`,
-`EmbodimentNotApprovedError`.
+`EmbodimentNotApprovedError`. Voice-subsystem errors
+(`AudioDeviceError`, `NoSpeechDetectedError`, `TranscriptionError`,
+`STTProviderNotConfiguredError`, `TTSProviderError`,
+`VoiceSessionClosedError`) live in `voice/errors.py`, following the
+same locally-scoped-subclass-of-`LaylaError` convention as §22-§28's
+errors.

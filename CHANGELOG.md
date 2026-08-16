@@ -605,5 +605,29 @@ its first consumer.
   82 new tests -- 299 total for Layla, up from 217, zero regressions
   at every commit. CONTRACT.md SS21-30, README.md, ROADMAP.md updated;
   ADR-0027 recorded in DECISIONS.md.
+- Mission Layla Directive D, Part I -- real Voice subsystem
+  (`avishkar_layla.voice`, ADR-0028): mic -> `MicrophoneFrameSource` ->
+  `VoiceActivityDetector` -> `SpeechToTextProvider` -> the unchanged
+  `ExecutiveRuntime.handle_event()` pipeline -> `TextToSpeechProvider`
+  -> `SpeakerSink`. Real, local, no-API-key providers: `EnergyVAD`
+  (adaptive-noise-floor RMS VAD with an explicit `calibrate()`),
+  `FasterWhisperSTT` (real CTranslate2 Whisper inference -- a genuine
+  synthesize-then-transcribe round trip is exercised automatically),
+  `Pyttsx3TTS` (real local SAPI5 synthesis). Real HTTP-client cloud
+  providers, ADAPTER READY (no credential configured in this
+  environment): `OpenAIWhisperAPISTT`, `OpenAITTSProvider`. Real,
+  hardware-backed device enumeration and stream I/O
+  (`list_input_devices`/`list_output_devices`/`SpeakerSink`), never
+  exercised end-to-end by the automated suite (opening a live
+  microphone non-interactively is treated as a real-world action
+  requiring a deliberate trigger). `VoiceSession` never calls a tool/
+  executor/capability directly -- every transcript other than a local
+  stop/cancel phrase is routed through `handle_event()` unchanged, so
+  voice enters through the exact same risk/approval architecture as
+  any other input. New optional `voice` extra in
+  `layla/python/pyproject.toml`; the cognitive core has zero
+  dependency on it. 40 new tests -- 339 total for Layla, up from 299,
+  zero regressions. CONTRACT.md SS31, README.md updated; ADR-0028
+  recorded in DECISIONS.md.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD
