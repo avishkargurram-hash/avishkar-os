@@ -26,7 +26,7 @@ import dataclasses
 import datetime
 import threading
 import time
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple
 
 from avishkar_evaluation import EvalSuite, Scorer, passes_threshold, run_suite
 

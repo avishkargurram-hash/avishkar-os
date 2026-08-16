@@ -7,7 +7,7 @@ from avishkar_layla.audit import AuditLogger
 from avishkar_layla.prediction import PredictionEngine
 from avishkar_layla.session import SessionManager
 from avishkar_layla.state_machine import StateMachine
-from avishkar_layla.types import COMPLETED, REQUIRES_HUMAN, LaylaTask, Plan, PlanStep
+from avishkar_layla.types import COMPLETED, LaylaTask, Plan, PlanStep
 
 
 def _engine():

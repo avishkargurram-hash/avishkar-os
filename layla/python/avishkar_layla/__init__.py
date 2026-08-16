@@ -66,6 +66,7 @@ from .identity import (
     Session,
 )
 from .intent import Intent, IntentInterpreter
+from .learning import LearningLoop, SkillCandidateSuggestion
 from .memory_policy import LaylaMemoryPolicy
 from .monitoring import HealthMonitor
 from .notifications import NotificationManager
@@ -92,6 +93,16 @@ from .risk import classify_risk
 from .runtime import ExecutiveRuntime
 from .scheduler import Scheduler
 from .session import SessionManager
+from .skills import (
+    SKILL_APPROVED,
+    SKILL_CANDIDATE,
+    SKILL_EVALUATING,
+    SKILL_REJECTED,
+    SKILL_RETIRED,
+    Skill,
+    SkillNotFoundError,
+    SkillRegistry,
+)
 from .state_machine import ALLOWED_TRANSITIONS, StateMachine
 from .synthesis import ConflictResolver, ExecutiveSynthesizer, ResultValidator
 from .types import (
@@ -219,5 +230,15 @@ __all__ = [
     "ACTION_URGENTLY_ALERT",
     "Prediction",
     "PredictionEngine",
+    "Skill",
+    "SkillRegistry",
+    "SkillNotFoundError",
+    "SKILL_CANDIDATE",
+    "SKILL_EVALUATING",
+    "SKILL_APPROVED",
+    "SKILL_REJECTED",
+    "SKILL_RETIRED",
+    "LearningLoop",
+    "SkillCandidateSuggestion",
     "__version__",
 ]
