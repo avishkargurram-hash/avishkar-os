@@ -66,6 +66,7 @@ from .identity import (
     Session,
 )
 from .intent import Intent, IntentInterpreter
+from .knowledge_graph import GraphEdge, GraphNode, LaylaKnowledgeGraph, NodeNotFoundError
 from .learning import LearningLoop, SkillCandidateSuggestion
 from .life_os import LifeOS
 from .memory_policy import LaylaMemoryPolicy
@@ -256,5 +257,9 @@ __all__ = [
     "CATEGORY_TRAVEL",
     "CATEGORY_APPOINTMENTS",
     "CATEGORY_REMINDERS",
+    "LaylaKnowledgeGraph",
+    "GraphNode",
+    "GraphEdge",
+    "NodeNotFoundError",
     "__version__",
 ]
