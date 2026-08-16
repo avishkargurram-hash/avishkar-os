@@ -14,6 +14,23 @@ from .auth import AuthorizationManager
 from .capability_resolver import CapabilityResolver
 from .context import ContextBuilder
 from .delegation import DelegationEngine
+from .embodiment import (
+    EMBODIMENT_ADB,
+    EMBODIMENT_APPLICATION_CONTROL,
+    EMBODIMENT_BROWSER,
+    EMBODIMENT_CAPABILITIES,
+    EMBODIMENT_COMPUTER_CONTROL,
+    EMBODIMENT_HOME_ASSISTANT,
+    EMBODIMENT_IOT,
+    EMBODIMENT_MQTT,
+    EMBODIMENT_ROBOTICS,
+    EMBODIMENT_SENSORS,
+    EmbodimentCapabilityNotConfiguredError,
+    EmbodimentController,
+    EmbodimentNotApprovedError,
+    EmbodimentResult,
+    UnknownEmbodimentCapabilityError,
+)
 from .errors import (
     ApprovalDeniedError,
     ApprovalExpiredError,
@@ -72,6 +89,18 @@ from .life_os import LifeOS
 from .memory_policy import LaylaMemoryPolicy
 from .monitoring import HealthMonitor
 from .notifications import NotificationManager
+from .perception import (
+    PERCEPTION_ENVIRONMENTAL,
+    PERCEPTION_OCR,
+    PERCEPTION_SOURCES,
+    PERCEPTION_SPATIAL,
+    PERCEPTION_VISION,
+    PERCEPTION_VOICE,
+    PerceptionEngine,
+    PerceptionObservation,
+    PerceptionSourceNotConfiguredError,
+    UnknownPerceptionSourceError,
+)
 from .personal_model import (
     CATEGORIES,
     CATEGORY_APPOINTMENTS,
@@ -261,5 +290,30 @@ __all__ = [
     "GraphNode",
     "GraphEdge",
     "NodeNotFoundError",
+    "PerceptionEngine",
+    "PerceptionObservation",
+    "PerceptionSourceNotConfiguredError",
+    "UnknownPerceptionSourceError",
+    "PERCEPTION_SOURCES",
+    "PERCEPTION_VOICE",
+    "PERCEPTION_VISION",
+    "PERCEPTION_OCR",
+    "PERCEPTION_SPATIAL",
+    "PERCEPTION_ENVIRONMENTAL",
+    "EmbodimentController",
+    "EmbodimentResult",
+    "EmbodimentCapabilityNotConfiguredError",
+    "EmbodimentNotApprovedError",
+    "UnknownEmbodimentCapabilityError",
+    "EMBODIMENT_CAPABILITIES",
+    "EMBODIMENT_BROWSER",
+    "EMBODIMENT_COMPUTER_CONTROL",
+    "EMBODIMENT_APPLICATION_CONTROL",
+    "EMBODIMENT_ADB",
+    "EMBODIMENT_IOT",
+    "EMBODIMENT_SENSORS",
+    "EMBODIMENT_ROBOTICS",
+    "EMBODIMENT_HOME_ASSISTANT",
+    "EMBODIMENT_MQTT",
     "__version__",
 ]
