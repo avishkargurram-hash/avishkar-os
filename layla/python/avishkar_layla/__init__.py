@@ -11,6 +11,7 @@ frameworks' public contracts.
 from .approval import ApprovalManager
 from .audit import AuditLogger
 from .auth import AuthorizationManager
+from .business_intelligence import BusinessIntelligenceEngine, BusinessIntelligenceReport
 from .capability_resolver import CapabilityResolver
 from .context import ContextBuilder
 from .delegation import DelegationEngine
@@ -68,6 +69,7 @@ from .execution import (
     ExecutionTracker,
     classify_operation,
 )
+from .executive_dashboard import ExecutiveDashboard
 from .identity import (
     ALL_PERMISSIONS,
     BUILTIN_ROLES,
@@ -315,5 +317,8 @@ __all__ = [
     "EMBODIMENT_ROBOTICS",
     "EMBODIMENT_HOME_ASSISTANT",
     "EMBODIMENT_MQTT",
+    "BusinessIntelligenceEngine",
+    "BusinessIntelligenceReport",
+    "ExecutiveDashboard",
     "__version__",
 ]

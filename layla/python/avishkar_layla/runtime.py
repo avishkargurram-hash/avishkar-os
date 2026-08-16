@@ -477,7 +477,8 @@ class ExecutiveRuntime:
                 records.append(record)
                 self._audit.record(
                     f"layla.delegation.{record.status}",
-                    {"step_id": record.step_id, "agent_name": record.agent_name, "attempts": record.attempts},
+                    {"step_id": record.step_id, "agent_name": record.agent_name, "attempts": record.attempts,
+                     "cost_usd": record.cost_usd},
                     task_id=task.id, principal_id=principal_id,
                 )
                 self._health.observe_delegation(record)
