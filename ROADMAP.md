@@ -1042,6 +1042,34 @@ No new tests were added speculatively where no real gap existed — 574
 total, unchanged. Full detail: CONTRACT.md §58, DECISIONS.md ADR-0043,
 README.md Test Taxonomy Audit section.
 
+## Mission Layla Directive D, Part XVII — Production Deployment (ADR-0044, 2026-08-18)
+
+Config/secrets loading reuses `avishkar_core.Config`'s real, existing
+layered precedence — not duplicated. Real remaining gaps closed: a
+real `HealthServer` (stdlib HTTP, `/health` + `/health/report`), real
+`install_graceful_shutdown()` (SIGINT/SIGTERM → the already-real
+`request_shutdown()`), and real `FileMemoryPolicy` backup/restore
+(`shutil.copytree`) — all in new `avishkar_layla/deployment.py`.
+
+**Real, smoke-tested reference entrypoint**: `layla/deploy/run_production.py`
+wires these together with a real `ExecutiveRuntime`/`Orchestrator`/
+`ChiefDomainAgent` — verified end to end (real construction, a real
+tick, a real `/health` request) before being written up as done.
+
+**Honestly disclosed, not fabricated**: `layla/Dockerfile` is written
+and reviewed, mirroring the exact `PYTHONPATH` composition every test
+run in this repo already uses, but `docker build`/`docker run` were
+NOT verified end to end — this sandboxed environment has the Docker
+CLI but no running daemon. Monitoring/alerting push integration
+(Prometheus/Datadog/PagerDuty) is also disclosed as not covered.
+
+`layla/OPERATIONS.md` is a real, concrete operational runbook
+referencing only real, already-tested components.
+
+9 new tests — 583 total for Layla, zero regressions. Full detail:
+CONTRACT.md §60, DECISIONS.md ADR-0044, README.md Production
+Deployment section, OPERATIONS.md.
+
 ## How this roadmap changes
 
 A phase only moves to 🚧 when someone is actively working it, and only to

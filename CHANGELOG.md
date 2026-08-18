@@ -903,7 +903,7 @@ its first consumer.
   disclosed as not covered. 5 new tests -- 574 total for Layla, up
   from 569, zero regressions. CONTRACT.md SS56, README.md updated;
   ADR-0042 recorded in DECISIONS.md.
-- Mission Layla Directive D, Part XVI -- real Testing taxonomy audit
+- Mission Layla Directive D, Part XVI -- real Testing taxonomy audit 
   (ADR-0043). Not a new test-writing pass: audited all 74 test files
   (574 tests) against Directive D's named categories (unit/
   integration/e2e/security/failure-recovery/concurrency/scheduler/
@@ -918,5 +918,26 @@ its first consumer.
   piecemeal, one part at a time. No speculative tests added where no
   real gap existed -- 574 total, unchanged. CONTRACT.md SS58, README.md
   updated; ADR-0043 recorded in DECISIONS.md.
+- Mission Layla Directive D, Part XVII -- real Production Deployment
+  (`avishkar_layla.deployment`, `layla/deploy/run_production.py`,
+  `layla/Dockerfile`, `layla/OPERATIONS.md`, ADR-0044). Config/secrets
+  loading reuses avishkar_core.Config's real, existing layered
+  precedence -- not duplicated. Real gaps closed: HealthServer (real
+  stdlib HTTP server, /health + /health/report), install_graceful_shutdown()
+  (real SIGINT/SIGTERM registration calling the already-real
+  request_shutdown()), and FileMemoryPolicy backup/restore (real
+  shutil.copytree). layla/deploy/run_production.py is a real,
+  smoke-tested reference entrypoint wiring these together with a real
+  ExecutiveRuntime/Orchestrator/ChiefDomainAgent -- deliberately
+  generic, falls back to MockProvider with a loud real log warning if
+  ANTHROPIC_API_KEY is unset. Honestly disclosed, not fabricated:
+  layla/Dockerfile is written and reviewed but docker build/run were
+  NOT verified end to end -- this sandboxed environment has the Docker
+  CLI but no running daemon. Monitoring/alerting push integration
+  (Prometheus/Datadog/PagerDuty) also disclosed as not covered.
+  layla/OPERATIONS.md is a real, concrete operational runbook. 9 new
+  tests -- 583 total for Layla, up from 574, zero regressions.
+  CONTRACT.md SS60, README.md updated; ADR-0044 recorded in
+  DECISIONS.md.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

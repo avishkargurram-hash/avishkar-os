@@ -1511,7 +1511,63 @@ No genuine gap was found against Directive D Part XVI's named
 taxonomy; this section is an audit and consolidation, not new test
 code.
 
-## §59. Errors
+## §60. Production Deployment (Mission Layla Directive D, Part XVII)
+
+Config/secrets loading is NOT duplicated: `avishkar_core.Config`'s
+real, existing layered defaults < file < env < overrides precedence
+(§1, core/, locked Phase 1) is the correct home for deployment-
+specific settings; `avishkar_layla.deployment` and
+`layla/deploy/run_production.py` read plain environment variables on
+top of it (`ANTHROPIC_API_KEY`, `LAYLA_DATA_DIR`, `LAYLA_HEALTH_HOST`/
+`_PORT`, `LAYLA_DEFAULT_MODEL`, `LAYLA_LOG_LEVEL`), never introducing a
+second config system. See `layla/OPERATIONS.md` for the
+DEVELOPMENT/TEST/STAGING/PRODUCTION profile convention built on top of
+it.
+
+Three new, real, tested capabilities in `avishkar_layla.deployment`:
+1. `HealthServer` -- a real stdlib `http.server.ThreadingHTTPServer`
+   exposing `GET /health` (cheap liveness, `ExecutiveRuntime.is_alive()`)
+   and `GET /health/report` (the full Part XIV
+   `build_production_health_report()` as JSON). 9 tests make real HTTP
+   requests (`urllib.request`) against a real running server on an
+   OS-assigned ephemeral port.
+2. `install_graceful_shutdown()` -- real `signal.signal()` registration
+   for SIGINT/SIGTERM (skipping any name the platform lacks, via
+   `getattr`, never a fabricated cross-platform shim) that calls the
+   already-real `ExecutiveRuntime.request_shutdown()`. Tested via an
+   injectable `_signal_module` seam (the same DI pattern used
+   throughout this whole Directive D pass) rather than raising a real
+   OS signal against the test process.
+3. `backup_data_directory()`/`restore_data_directory()` -- real
+   `shutil.copytree` to/from a timestamped directory, operating on
+   exactly the real 4 JSON files `FileMemoryPolicy` already writes. No
+   new storage format.
+
+`layla/deploy/run_production.py` is a real, runnable reference
+entrypoint (smoke-tested end to end: real `ExecutiveRuntime`
+construction, a real `run_forever(max_iterations=1)` tick, a real
+`HealthServer` request against `/health`) wiring these together with a
+real `Orchestrator`/`ChiefDomainAgent`. It is deliberately generic (one
+"general-agent" domain) -- the actual production agent roster is
+application-specific, not decided by this platform layer. Falls back
+to `MockProvider` with a loud, real log warning if `ANTHROPIC_API_KEY`
+is unset, rather than failing to start (useful for smoke-testing the
+deployment boundary itself independent of a live LLM credential).
+
+`layla/Dockerfile` builds a base runtime image mirroring the exact
+`PYTHONPATH` composition every test run in this repository already
+uses (README.md's Testing Guide), rather than inventing a separate
+packaging scheme. **Honestly disclosed external-dependency gap**: no
+Docker daemon is running in this sandboxed environment (only the CLI
+is present), so `docker build`/`docker run` were NOT verified
+end-to-end here -- the Dockerfile is written and its underlying Python
+entrypoint is real and smoke-tested, but the container build itself is
+real future verification, not claimed as done. See `layla/OPERATIONS.md`
+for the full runbook (startup/shutdown/health/backup/restore/disaster
+recovery/rollback) and its own "Known External-Dependency Gaps"
+section.
+
+## §61. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,

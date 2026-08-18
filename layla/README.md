@@ -48,7 +48,7 @@ ExecutiveRuntime (event loop: IDLE -> EVENT -> INGEST -> UNDERSTAND ->
 layla/
 ├── CONTRACT.md              language-agnostic contract
 ├── README.md                  this file
-├── python/avishkar_layla/       reference implementation (44 modules)
+├── python/avishkar_layla/       reference implementation (45 modules)
 │   ├── channels/                   communication channel adapters (6 real transports, Directive D Part V, ADR-0032)
 │   ├── environment/                 environmental awareness (Directive D Part VI, ADR-0033)
 │   ├── voice/                      voice subsystem (Directive D Part I, ADR-0028)
@@ -58,12 +58,17 @@ layla/
 │   ├── executive_communication.py   real stale-relationship follow-up chain (Directive D Part X, ADR-0037)
 │   ├── task_lease.py                real task ownership/stale-task recovery (Directive D Part XII, ADR-0039)
 │   ├── observability.py             real production health report (Directive D Part XIV, ADR-0041)
+│   ├── deployment.py                real health server/graceful shutdown/backup-restore (Directive D Part XVII, ADR-0044)
 │   └── executors/                  real EmbodimentController executors (Directive D Parts III-IV/VII-VIII, ADR-0030/0031/0034/0035)
+├── deploy/
+│   └── run_production.py           real, smoke-tested reference production entrypoint (Directive D Part XVII, ADR-0044)
+├── Dockerfile                      base production runtime image (Directive D Part XVII, ADR-0044)
+├── OPERATIONS.md                   operational runbook (Directive D Part XVII, ADR-0044)
 ├── examples/
 │   ├── end_to_end_scenario.py       Part IX's real, narrated demonstration
 │   ├── crash_recovery_scenario.py   resume-in-place demonstration (Priority 17.3)
 │   └── personal_model_and_proactive_scenario.py  Mission Layla Parts 1/2/11
-└── python/tests/                   574 tests (as of Directive D Part XV; 1 live-gated, skipped by default)
+└── python/tests/                   583 tests (as of Directive D Part XVII; 1 live-gated, skipped by default)
 ```
 
 ## Naming Standards
@@ -921,6 +926,23 @@ call) in a single tick. See CONTRACT.md §56.
 | Token/task cost budgets (hard spend ceilings) | 🔴 NOT COVERED | Honestly disclosed: `Router` already tracks real per-request `cost_usd` (Priority 17.5) and `BusinessIntelligenceEngine` already aggregates it, but no component enforces a hard budget ceiling that blocks further execution once crossed — future work, not built this pass. |
 | Concurrency limits (max simultaneous in-flight tasks) | 🔴 NOT COVERED | Honestly disclosed: `Scheduler`/`ExecutiveRuntime` place no explicit ceiling on concurrently EXECUTING tasks; not built this pass. |
 
+# Production Deployment (Directive D, Part XVII, ADR-0044)
+
+Config/secrets loading reuses `avishkar_core.Config`'s real, existing
+layered precedence (defaults < file < env < overrides) — not
+duplicated. See CONTRACT.md §60 and [OPERATIONS.md](./OPERATIONS.md)
+for the full runbook (startup/shutdown/health/backup/restore/disaster
+recovery/rollback/DEVELOPMENT→TEST→STAGING→PRODUCTION profiles).
+
+| Component | Status | Notes |
+|---|---|---|
+| `HealthServer` (`/health`, `/health/report`) | 🟢 GREEN | Real stdlib `http.server.ThreadingHTTPServer`. 9 tests make real HTTP requests against a real running server on an OS-assigned ephemeral port — not mocked. |
+| Graceful shutdown (`install_graceful_shutdown()`) | 🟢 GREEN | Real `signal.signal()` registration for SIGINT/SIGTERM, calling the already-real `ExecutiveRuntime.request_shutdown()`. Tested via an injectable `_signal_module` seam rather than raising a real OS signal at the test process. |
+| Backup/restore (`backup_data_directory()`/`restore_data_directory()`) | 🟢 GREEN | Real `shutil.copytree` to/from a timestamped directory, operating on `FileMemoryPolicy`'s real 4 JSON files. 3 tests prove a real round-trip (write → backup → corrupt → restore → verify) against real files, not a simulation. |
+| `layla/deploy/run_production.py` (reference entrypoint) | 🟢 GREEN, deliberately generic | Real, smoke-tested end to end: constructs a real `ExecutiveRuntime`/`Orchestrator`/`ChiefDomainAgent`, runs a real tick, serves a real `/health` request. One generic "general-agent" domain — actual production agent rosters are application-specific, not decided by this platform layer. Falls back to `MockProvider` with a loud real log warning if `ANTHROPIC_API_KEY` is unset (still a real, runnable process — useful for smoke-testing the deployment boundary independent of a live LLM credential). |
+| `layla/Dockerfile` (base runtime image) | 🟡 WRITTEN, NOT BUILD-VERIFIED | Mirrors the exact `PYTHONPATH` composition every test/example script in this repo already uses. Honestly disclosed external-dependency gap: no Docker daemon is running in this sandboxed environment (CLI present, daemon not started), so `docker build`/`docker run` were not verified end to end here — the underlying Python entrypoint IS real and smoke-tested independently. |
+| Monitoring/alerting push integration (Prometheus/Datadog/PagerDuty, etc.) | 🔴 NOT COVERED | `/health/report` is real, structured JSON meant to be polled/scraped by an external system — no push-based integration is built. Honestly disclosed future work. |
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
@@ -1006,7 +1028,7 @@ already covers it — extending that list requires an ADR.
 
 # Testing Guide
 
-574 tests as of Directive D Part XV (Cost/Resource Management) (119
+583 tests as of Directive D Part XVII (Production Deployment) (119
 Phase 16 + 30 Priority 17.1 + 21 Priority 17.2 + 8 Priority 17.3 + 11
 Priority 17.4 + 1 Priority 17.5 + 30 Mission Layla 1 [PersonalModel/
 ProactiveEngine] + 82 Mission Layla continuation [Prediction/Skills/
@@ -1051,7 +1073,13 @@ aggregation/real per-task delegation-history discovery bug found and
 fixed/real BusinessIntelligenceEngine integration] + 5 Directive D
 Part XV [real ProactiveEngine ACT-trigger dispatch throttle/real
 runaway-autonomous-loop resource-exhaustion gap found and fixed/real
-AuditLogger-recorded throttling, never silently dropped]), 572 running offline and
+AuditLogger-recorded throttling, never silently dropped] + 0 Directive
+D Part XVI [testing taxonomy audit against all 74 existing test files
+-- no new tests, no genuine gap found] + 9 Directive D Part XVII [real
+HealthServer HTTP liveness/report endpoints against a real running
+server/real injectable-signal-module graceful-shutdown wiring/real
+FileMemoryPolicy backup-corrupt-restore round trip against real
+files]), 581 running offline and
 passing, 2 live/environment-gated and skipped by
 default (`test_live_anthropic_integration.py` — see
 `docs/live-integration-guide.md` to actually run it; plus one OCR

@@ -15,6 +15,12 @@ from .business_intelligence import BusinessIntelligenceEngine, BusinessIntellige
 from .capability_resolver import CapabilityResolver
 from .context import ContextBuilder
 from .delegation import DelegationEngine
+from .deployment import (
+    HealthServer,
+    backup_data_directory,
+    install_graceful_shutdown,
+    restore_data_directory,
+)
 from .embodiment import (
     EMBODIMENT_ADB,
     EMBODIMENT_APPLICATION_CONTROL,
@@ -197,6 +203,10 @@ __all__ = [
     "CapabilityResolver",
     "DelegationEngine",
     "DelegationRecord",
+    "HealthServer",
+    "backup_data_directory",
+    "install_graceful_shutdown",
+    "restore_data_directory",
     "ValidationReport",
     "Conflict",
     "ResultValidator",
