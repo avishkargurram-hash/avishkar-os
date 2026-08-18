@@ -62,7 +62,7 @@ layla/
 │   ├── end_to_end_scenario.py       Part IX's real, narrated demonstration
 │   ├── crash_recovery_scenario.py   resume-in-place demonstration (Priority 17.3)
 │   └── personal_model_and_proactive_scenario.py  Mission Layla Parts 1/2/11
-└── python/tests/                   551 tests (as of Directive D Part XII; 1 live-gated, skipped by default)
+└── python/tests/                   562 tests (as of Directive D Part XIII; 1 live-gated, skipped by default)
 ```
 
 ## Naming Standards
@@ -872,6 +872,22 @@ ownership and stale-task recovery. See CONTRACT.md §50.
 | Stale-lease detection | 🟢 GREEN | `is_stale()`/`find_stale_leases()` — real expiry comparison against the manager's own injectable clock; intended real usage: `find_stale_leases(t.id for t in session_manager.list_incomplete())` on process startup. |
 | Multi-process distributed locking | 🔴 NOT CLAIMED | Explicitly documented scope limit, not a gap papered over: true atomicity across *multiple concurrent OS processes* depends on the underlying `LaylaMemoryPolicy` backend's own guarantees (`remember()` is an unconditional write, not a compare-and-swap), which this layer does not itself provide. Correctly scoped for the deployment model Directive D actually describes (one active process, restarted after a crash) — not oversold as a distributed lock service. |
 
+# Security Hardening (Directive D, Part XIII, ADR-0040)
+
+A fresh review across authentication/authorization/secrets/injection/
+exfiltration/SSRF. Most of Directive D's list is already real, existing
+coverage from earlier phases (`AuthorizationManager`, `ApprovalManager`,
+`PersonalModel`'s `SENSITIVE_CATEGORIES`, `test_adversarial.py`,
+repository-wide secret scanning after every commit this whole
+Directive D pass). See CONTRACT.md §52.
+
+| Finding | Status | Notes |
+|---|---|---|
+| Browser SSRF to cloud metadata endpoints | 🔴→🟢 FOUND AND FIXED | `EMBODIMENT_BROWSER` is LOW-risk-by-default for harmless-*sounding* text (ADR-0030) — a `navigate` to `http://169.254.169.254/latest/meta-data/iam/security-credentials/` previously reached Playwright with **zero approval gate**, since "navigate to a URL" isn't dangerous-sounding text. On a real cloud VM with an attached IAM role, this could have exfiltrated real, live credentials. Fixed with a real, hard block (`executors/ssrf_guard.py`) refusing navigation to private/loopback/link-local/reserved addresses and known metadata hostnames — verified end to end: a real `navigate` call to `169.254.169.254` is confirmed refused before Playwright opens a connection. |
+| Repository-wide secret scan | 🟢 CLEAN | `scan_repository_for_secrets("layla")` — 3 matches, all pre-existing, known, intentional test fixtures (AWS's own documented example key). Zero real secrets, zero new findings across this entire Directive D pass (Parts I–XIII). |
+| Prompt injection / hostile tool responses / unauthorized capability requests | 🟢 Already real | `test_adversarial.py`, unmodified this pass — continues passing. |
+| Sensitive memory / PII / health / financial data | 🟢 Already real | `PersonalModel.SENSITIVE_CATEGORIES` requires `confirmed=True` for `relationships`/`behavioral_patterns`/`finance`/`health` — unmodified, used correctly by every new component this pass that touches personal data (e.g. `executive_communication.py`'s relationship writes). |
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
@@ -957,7 +973,7 @@ already covers it — extending that list requires an ADR.
 
 # Testing Guide
 
-551 tests as of Directive D Part XII (Durable Execution) (119
+562 tests as of Directive D Part XIII (Security Hardening) (119
 Phase 16 + 30 Priority 17.1 + 21 Priority 17.2 + 8 Priority 17.3 + 11
 Priority 17.4 + 1 Priority 17.5 + 30 Mission Layla 1 [PersonalModel/
 ProactiveEngine] + 82 Mission Layla continuation [Prediction/Skills/
@@ -994,7 +1010,10 @@ outcome recording/full real ProactiveEngine end-to-end integration] +
 dead-letter escalation/real graceful shutdown/real heartbeat-liveness/
 real operational health aggregation] + 14 Directive D Part XII [real
 thread-safe task-lease acquire/renew/release/real 20-thread concurrency
-proof/real stale-lease detection]), 549 running offline and
+proof/real stale-lease detection] + 11 Directive D Part XIII [real
+SSRF guard for private/loopback/link-local/metadata addresses/real
+end-to-end refusal test against a live BrowserExecutor/repository-wide
+secret scan]), 560 running offline and
 passing, 2 live/environment-gated and skipped by
 default (`test_live_anthropic_integration.py` — see
 `docs/live-integration-guide.md` to actually run it; plus one OCR

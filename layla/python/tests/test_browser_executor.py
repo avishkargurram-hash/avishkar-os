@@ -59,6 +59,15 @@ class TestBrowserExecutorReal(unittest.TestCase):
         with self.assertRaises(BrowserActionError):
             self.executor("click", {"selector": "#does-not-exist", "timeout_ms": 500})
 
+    def test_navigate_to_a_cloud_metadata_address_is_refused(self):
+        """Real SSRF guard (Directive D Part XIII, ADR-0040) --
+        confirmed refused BEFORE any real network connection is
+        attempted, not merely documented.
+        """
+        with self.assertRaises(BrowserActionError) as ctx:
+            self.executor("navigate", {"url": "http://169.254.169.254/latest/meta-data/"})
+        self.assertIn("refused", str(ctx.exception))
+
     def test_close_is_idempotent(self):
         self.executor("navigate", {"url": _PAGE})
         self.executor("close", {})

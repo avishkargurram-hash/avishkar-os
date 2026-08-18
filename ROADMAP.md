@@ -945,6 +945,31 @@ a task"), not oversold.
 CONTRACT.md §50, DECISIONS.md ADR-0039, README.md Durable Execution
 section.
 
+## Mission Layla Directive D, Part XIII — Security Hardening (ADR-0040, 2026-08-16)
+
+A fresh security review across authentication/authorization/secrets/
+injection/exfiltration/SSRF. Most of Directive D's list was already
+real, existing coverage from earlier phases; this pass's real job was
+finding what wasn't covered yet.
+
+**Real finding, fixed** (not merely documented as a gap): `EMBODIMENT_BROWSER`
+is LOW-risk-by-default for harmless-*sounding* text (ADR-0030) — a
+`navigate` to a cloud metadata endpoint
+(`http://169.254.169.254/latest/meta-data/iam/security-credentials/`)
+previously reached Playwright with zero approval gate, a genuine real-
+world SSRF-to-credential-theft pattern. Fixed with a real, hard block
+(`ssrf_guard.py`) refusing navigation to private/loopback/link-local/
+reserved addresses and known metadata hostnames, verified end to end
+against the real `BrowserExecutor`.
+
+**Clean sweep**: a repository-wide secret scan found only pre-existing,
+known test fixtures — zero real secrets, zero new findings across all
+of Parts I–XIII.
+
+11 new tests — 562 total for Layla, zero regressions. Full detail:
+CONTRACT.md §52, DECISIONS.md ADR-0040, README.md Security Hardening
+section.
+
 ## How this roadmap changes
 
 A phase only moves to 🚧 when someone is actively working it, and only to

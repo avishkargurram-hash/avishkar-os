@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from .errors import BrowserActionError, UnknownActionError
+from .ssrf_guard import unsafe_navigation_reason
 
 _ACTIONS = ("navigate", "click", "type", "get_text", "get_url", "screenshot", "evaluate_text_content", "close")
 
@@ -60,6 +61,14 @@ class BrowserExecutor:
         page = self._ensure_page()
         try:
             if action == "navigate":
+                # Real SSRF guard (Directive D Part XIII, ADR-0040): a
+                # hard block, not merely a risk-classification nudge --
+                # see ssrf_guard.py for why "navigate to a URL" reads
+                # as harmless text even when the target is a cloud
+                # metadata endpoint.
+                unsafe_reason = unsafe_navigation_reason(parameters["url"])
+                if unsafe_reason is not None:
+                    raise BrowserActionError(f"navigation refused: {unsafe_reason}")
                 timeout_ms = parameters.get("timeout_ms", self._default_timeout_ms)
                 page.goto(parameters["url"], timeout=timeout_ms)
                 return {"url": page.url, "title": page.title()}

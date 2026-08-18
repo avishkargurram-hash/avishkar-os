@@ -1342,7 +1342,47 @@ process, restarted by a supervisor after a crash, calling
 on startup to distinguish tasks genuinely abandoned mid-processing
 from ones a still-live process may legitimately be working on.
 
-## §51. Errors
+## §52. Security Hardening (Mission Layla Directive D, Part XIII)
+
+A fresh security review across authentication, authorization, secrets,
+credential storage, prompt/tool injection, data exfiltration, SSRF,
+and sensitive-memory handling. Most of this list is already real,
+existing coverage from earlier phases: `AuthorizationManager`/
+`Principal`/`Role` (§14, Priority 17.1), `ApprovalManager`'s durable,
+never-self-approvable gate (§4), `PersonalModel`'s
+`SENSITIVE_CATEGORIES` (relationships/behavioral_patterns/finance/
+health, all requiring `confirmed=True`, §19), `test_adversarial.py`'s
+prompt-injection/hostile-tool-response/unauthorized-capability
+coverage, and `security-factory.scan_repository_for_secrets()` (used
+throughout this entire Directive D pass after every commit).
+
+**Real finding from this pass, fixed, not merely documented**:
+`avishkar_layla.executors.ssrf_guard` -- `EMBODIMENT_BROWSER` is
+LOW-risk-by-default for text that doesn't match `classify_risk()`'s
+dangerous-pattern list (a real, deliberate finding from ADR-0030), but
+"navigate to a URL" does not itself read as dangerous TEXT even when
+the URL is a cloud-metadata endpoint
+(`http://169.254.169.254/latest/meta-data/iam/security-credentials/`).
+On a real cloud VM with an attached IAM role, this was a genuine,
+unmitigated SSRF/credential-exfiltration path -- `BrowserExecutor`'s
+`navigate` action, reached with zero approval gate for a URL like that
+one, could have leaked real, live cloud credentials to whatever the
+browsing plan does with the resulting page. `unsafe_navigation_reason()`
+closes this with a real, hard block -- refusing navigation to a
+private/loopback/link-local/reserved IP address or a known metadata
+hostname BEFORE Playwright ever opens a real connection, verified end
+to end in `test_browser_executor.py` (a real `navigate` call to
+`169.254.169.254` is confirmed refused, not merely unit-tested in
+isolation).
+
+A repository-wide `scan_repository_for_secrets("layla")` sweep run as
+part of this pass found 3 matches, all pre-existing, known,
+intentional test fixtures (AWS's own documented
+`AKIAIOSFODNN7EXAMPLE` placeholder in `test_adversarial.py`/
+`test_memory_policy.py`) -- zero real secrets, zero new findings
+introduced across this entire Directive D pass (Parts I-XIII).
+
+## §53. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,

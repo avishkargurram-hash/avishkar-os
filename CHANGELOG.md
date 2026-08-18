@@ -845,5 +845,24 @@ its first consumer.
   than papered over. 14 new tests -- 551 total for Layla, up from 537,
   zero regressions. CONTRACT.md SS50, README.md updated; ADR-0039
   recorded in DECISIONS.md.
+- Mission Layla Directive D, Part XIII -- real Security Hardening
+  (ADR-0040). A fresh review found a real, previously-unmitigated SSRF
+  vulnerability: EMBODIMENT_BROWSER is LOW-risk-by-default for
+  harmless-sounding text (ADR-0030), so a navigate call to a cloud
+  metadata endpoint (http://169.254.169.254/latest/meta-data/iam/
+  security-credentials/) reached Playwright with zero approval gate --
+  a genuine real-world SSRF-to-credential-theft pattern that, on a real
+  cloud VM with an attached IAM role, could have exfiltrated live
+  credentials. Fixed with a real, hard block
+  (avishkar_layla.executors.ssrf_guard.unsafe_navigation_reason()),
+  refusing navigation to private/loopback/link-local/reserved addresses
+  and known metadata hostnames before any real connection is opened --
+  verified end to end against the real BrowserExecutor, not just the
+  guard function in isolation. A repository-wide
+  scan_repository_for_secrets("layla") sweep found only pre-existing,
+  known AWS example-key test fixtures -- zero real secrets, zero new
+  findings across all of Parts I-XIII. 11 new tests -- 562 total for
+  Layla, up from 551, zero regressions. CONTRACT.md SS52, README.md
+  updated; ADR-0040 recorded in DECISIONS.md.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

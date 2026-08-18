@@ -2997,3 +2997,97 @@ durability-layer functionality), 14 new tests (10 unit + 1 real
 20-thread concurrency proof, counted individually), 551 total for
 Layla, up from 537, zero regressions. No pyproject extra needed -- pure
 Python over the existing `LaylaMemoryPolicy`.
+
+## ADR-0040: Mission Layla Directive D, Part XIII (Security Hardening) — a real SSRF finding against cloud metadata endpoints, found and fixed, not merely documented as a gap
+
+**Context:** Directive D Part XIII asks for a fresh, complete security
+review across authentication, authorization, secrets, credential
+storage, token lifecycle, permissions, prompt/tool injection, data
+exfiltration, SSRF, privilege escalation, and sensitive-memory/PII/
+health/financial handling. Much of this is already real, existing
+coverage: `AuthorizationManager`/`Principal`/`Role` (§14, Priority
+17.1), `ApprovalManager`'s durable never-self-approvable gate (§4),
+`PersonalModel.SENSITIVE_CATEGORIES` (§19), `test_adversarial.py`'s
+prompt-injection/hostile-tool-response coverage, and
+`security-factory.scan_repository_for_secrets()` (run after every
+single commit across this entire Directive D pass, Parts I-XII).
+Part XIII's real job was to look freshly, specifically for what those
+existing controls do NOT cover -- and one genuine finding emerged.
+
+**Decision:**
+1. **Finding**: `EMBODIMENT_BROWSER` is LOW-risk-by-default for text
+   that doesn't match `classify_risk()`'s dangerous-pattern list -- a
+   real, deliberate design finding from ADR-0030 (Directive D Part
+   III), correctly documented at the time as a genuine ambiguity
+   (browsing isn't inherently as dangerous as a shell command).
+   Reviewing that decision specifically for SSRF exposure (Directive
+   D Part XIII names SSRF explicitly) surfaced a real, concrete,
+   exploitable case it did not cover: "navigate to a URL" is not
+   dangerous-sounding TEXT even when the URL is
+   `http://169.254.169.254/latest/meta-data/iam/security-credentials/`
+   -- the real AWS/GCP/Azure link-local cloud-metadata endpoint. On a
+   real cloud VM with an attached IAM role, `BrowserExecutor.navigate()`
+   reaching that address with NO approval gate at all could exfiltrate
+   real, live cloud credentials to whatever the browsing plan does
+   with the resulting page content. This is a genuine vulnerability
+   class (real SSRF-to-credential-theft, a well-known real-world cloud
+   attack pattern), not a theoretical concern invented for this
+   exercise.
+2. **Fix**: `executors/ssrf_guard.py`'s `unsafe_navigation_reason()` is
+   a real, hard block -- not merely a risk-classification nudge, and
+   deliberately not routed through `classify_risk()` at all. It
+   refuses navigation to any private/loopback/link-local/reserved IP
+   address or a known metadata hostname (`169.254.169.254`,
+   `metadata.google.internal`) BEFORE `BrowserExecutor` ever calls
+   `page.goto()`, on the reasoning that there is essentially no
+   legitimate reason for Layla's own browsing plans to target these --
+   unlike a genuinely risky-but-sometimes-legitimate action (a wire
+   transfer, say), asking a human to approve an SSRF probe has no real
+   upside over refusing it outright. Verified end to end in
+   `test_browser_executor.py`: a real `navigate` call to
+   `169.254.169.254` against the real `BrowserExecutor` (not just the
+   guard function in isolation) is confirmed refused.
+3. A repository-wide `scan_repository_for_secrets("layla")` sweep (the
+   whole package, not just this session's new files) found exactly 3
+   matches, all pre-existing, all the same known, intentional AWS
+   documented example key (`AKIAIOSFODNN7EXAMPLE`) already used as test
+   fixture data in `test_adversarial.py`/`test_memory_policy.py` from
+   earlier phases -- zero real secrets, zero new findings introduced
+   across the entirety of this Directive D pass (Parts I-XIII, ~30
+   new/modified files).
+4. No further code changes were made this pass -- authorization,
+   approval, sensitive-memory handling, and adversarial-input coverage
+   were all reviewed and confirmed to already correctly cover their
+   respective areas; only the SSRF gap was real and actionable.
+
+**Alternatives considered:**
+- *Add SSRF protection via `classify_risk()`'s text patterns instead
+  (e.g. matching "169.254" or "metadata" as dangerous substrings)* --
+  rejected: text-pattern matching on a URL string is trivially evaded
+  (e.g. an equivalent decimal/hex-encoded IP form, or a redirect
+  chain) and would conflate "is this dangerous" with "is this an SSRF
+  target," two different real questions; a real IP-address-based check
+  in `ssrf_guard.py` is both more correct and simpler to reason about.
+- *Route the SSRF check through `EmbodimentController`'s
+  approval flow (ask a human) rather than a hard refusal* --
+  rejected: there is essentially no legitimate reason for Layla's own
+  browsing to target a cloud metadata endpoint or a private/loopback
+  address; asking a human to approve what is, in the overwhelming
+  majority of real cases, either a misconfiguration or an attack has
+  no real benefit over refusing it outright, and a hard refusal is
+  simpler to reason about than "when would a human ever legitimately
+  say yes to this."
+- *Defer this finding to Part XVIII's final forensic audit instead of
+  fixing it immediately* -- rejected: Directive D's own Critical Rules
+  say "every major change must be tested before proceeding" and this
+  is exactly the kind of concrete, fixable security gap that shouldn't
+  wait once found, consistent with how the `EMBODIMENT_MQTT` risk-
+  classification gap (ADR-0035) was fixed immediately upon discovery
+  rather than merely noted.
+
+**Consequences:** New `executors/ssrf_guard.py`, `browser_executor.py`
+modified to call it before every real `navigate`, 11 new tests (10
+guard unit tests + 1 real end-to-end refusal test against the live
+`BrowserExecutor`), 562 total for Layla, up from 551, zero regressions.
+No pyproject extra needed -- pure stdlib (`ipaddress`/`socket`/
+`urllib.parse`).
