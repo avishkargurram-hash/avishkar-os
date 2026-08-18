@@ -3240,3 +3240,71 @@ throttling.
 parameter (default-safe, backward compatible) and audit-recorded
 throttling; 5 new tests in `test_proactive.py` (14 total in that file,
 up from 9), 574 tests total for Layla, up from 569, zero regressions.
+
+## ADR-0043: Mission Layla Directive D, Part XVI (Testing) — a test-taxonomy audit against Directive D's named categories, not a new test-writing pass
+
+**Context:** Directive D Part XVI asks for the full test taxonomy —
+unit, integration, e2e, security, failure-recovery, concurrency,
+scheduler, channel, tool-execution, memory, perception, computer-
+control, embodiment-safety — with deterministic fakes clearly
+distinguished from any real live tests. By this point in Directive D
+(Parts I–XV), 574 tests already exist across 74 files, each written
+and verified as its own part was implemented. The genuine open
+question was not "do we need to write more tests" but "does every
+named category already have real, non-trivial coverage, and is the
+fake/real distinction actually collected anywhere in one place" — the
+latter had only ever been disclosed piecemeal, one Directive D part's
+documentation at a time.
+
+**Decision:**
+1. Audited all 74 test files (`grep -c "^    def test_"` per file,
+   cross-checked against the real, passing full-suite run: `Ran 574
+   tests ... OK (skipped=2)`) and mapped each file to Directive D's
+   named categories in a table (CONTRACT.md §58, summarized in
+   README.md). A file may map to more than one category (e.g.
+   `test_task_lease.py` is both concurrency and failure-recovery).
+2. Found no genuine gap: every named category has multiple files and
+   a non-trivial test count. The one category disclosed as
+   comparatively thin, honestly, is e2e (2 unittest tests +  2
+   narrated runnable example scripts) — appropriate given e2e tests
+   are inherently slower and broader in scope, and every major
+   subsystem (durability/delegation, environment, personal model +
+   proactive dispatch) already has at least one real, full-pipeline
+   demonstration.
+3. Consolidated, in one place for the first time, which tests are
+   deterministic fakes vs. real: real live network tests against
+   actual cloud APIs with deliberately-invalid credentials (a subset
+   within the Slack/Discord/Telegram/Twilio/WhatsApp Cloud API
+   adapter test files), one real live LLM test (skipped by default,
+   `test_live_anthropic_integration.py`), real local-fixture wire-
+   protocol tests (SMTP, MQTT 3.1.1, Home Assistant REST — genuine
+   protocol implementations, not mocked call shapes), one real
+   hardware-adjacent DI-gated test (`test_adb_executor.py`), and
+   everything else as deterministic fakes (in-memory stores,
+   injectable clocks, injected fake seams) — this consolidation itself
+   is the real deliverable of this part, since each fact already
+   existed but nowhere in one place.
+4. Deliberately did NOT write speculative new tests "to be thorough"
+   for categories that already had genuine coverage — consistent with
+   this session's standing discipline against fabricated work; a
+   testing audit that invents busywork where none is needed is itself
+   a form of the "declare done without verifying" failure mode this
+   whole Directive D pass has guarded against.
+
+**Alternatives considered:**
+- *Skip Part XVI entirely since "the tests already exist"* — rejected:
+  Directive D explicitly asks for the taxonomy to be verified and the
+  fake/real distinction to be clearly documented, which had not
+  previously been consolidated in one place; an unaudited claim of
+  completeness is exactly the kind of unverified "production-ready"
+  claim the 20 Critical Rules forbid.
+- *Add new tests to every category regardless of existing coverage* --
+  rejected: no real gap was found: adding tests with no real defect to
+  catch and no real behavior to pin down would be exactly the kind of
+  fabricated work Directive D's "never fake" principle guards against,
+  just applied to tests instead of integrations.
+
+**Consequences:** No code changes -- documentation only. CONTRACT.md
+§58 added (Errors renumbered to §59), README.md Test Taxonomy Audit
+section added. Test count unchanged at 574 (documentation-only pass,
+confirmed via the same full-suite run already on record for Part XV).

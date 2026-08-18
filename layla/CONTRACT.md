@@ -1452,7 +1452,66 @@ evaluator, that no existing evaluator emits more than 1-2 ACT triggers
 per call -- so the default cap changes no existing behavior and only
 throttles pathological cases.
 
-## §57. Errors
+## §58. Testing (Mission Layla Directive D, Part XVI)
+
+An audit (not a new test-writing pass) confirming every taxonomy
+category Directive D Part XVI names already has genuine, non-trivial
+coverage across the 574 tests in `layla/python/tests/` (74 files),
+verified by a real, passing full-suite run (`Ran 574 tests ... OK
+(skipped=2)`). File counts below are test-method counts per file
+(`grep -c "^    def test_"`); a file may appear in more than one
+category.
+
+| Category | Representative files (test counts) |
+|---|---|
+| Unit | The majority of the 74 files — individual components in isolation (state machine, risk classifier, planning, intent, context, capability resolver, memory policy, session, audit, synthesis, execution, delegation, personal model, knowledge graph, prediction, skills, learning, LifeOS, proactive engine, executive communication/dashboard, business intelligence, environment context/sensors/event translation, vision detection/OCR/spatial, voice audio-io/session/STT/TTS/VAD, perception, auth). |
+| Integration | `test_runtime*.py` (20+2+9+2+3), `test_embodiment_real_executors_integration.py` (13), `test_environment_end_to_end.py` (1), `test_vision_perception_adapters.py` (3), `test_delegation_idempotency.py` (5). |
+| E2E | `test_end_to_end_scenario.py` (1), `test_environment_end_to_end.py` (1), plus 2 narrated runnable example scripts (`examples/crash_recovery_scenario.py`, `examples/personal_model_and_proactive_scenario.py`) — honestly the thinnest category by test-file count, appropriate given e2e tests are inherently slower/broader; every major subsystem (delegation/durability, environment, personal model + proactive dispatch) has at least one real, full-pipeline demonstration. |
+| Security | `test_adversarial.py` (13), `test_ssrf_guard.py` (10), `test_auth.py` (15), `test_approval_identity.py` (6), `test_risk_and_approval.py` (15). |
+| Failure-recovery | `test_resume.py` (6), `test_delegation_idempotency.py` (5), `test_runtime_idempotency.py` (2), `test_task_lease.py` (14, stale-lease recovery), `test_scheduler.py` (17, includes Part XI's failure isolation/dead-letter escalation). |
+| Concurrency | `test_concurrency.py` (11, includes a real 10-simultaneous-task proof), `test_task_lease.py` (14, includes a real 20-thread acquire/renew/release proof). |
+| Scheduler | `test_scheduler.py` (17). |
+| Channel | `test_email_adapter.py` (6), `test_smtp_email_transport.py` (3, real local SMTP fixture), `test_discord_adapter.py` (6), `test_slack_adapter.py` (6), `test_sms_adapter.py` (6), `test_telegram_adapter.py` (6), `test_whatsapp_adapter.py` (6), `test_whatsapp_cloud_api_transport.py` (2). |
+| Tool-execution | `test_computer_control_executor.py` (20), `test_browser_executor.py` (9), `test_adb_executor.py` (13), `test_home_assistant_executor.py` (9, real local HTTP fixture), `test_mqtt_bridge.py` (14, real local MQTT broker fixture). |
+| Memory | `test_memory_policy.py` (8), `test_personal_model.py` (16), `test_knowledge_graph.py` (15). |
+| Perception | `test_perception.py` (8), `test_vision_detection.py` (4), `test_vision_ocr.py` (4), `test_vision_perception_adapters.py` (3), `test_vision_screen_capture.py` (4), `test_vision_spatial.py` (13), `test_environment_sensors.py` (5). |
+| Computer-control | `test_computer_control_executor.py` (20), `test_browser_executor.py` (9). |
+| Embodiment-safety | `test_embodiment.py` (9), `test_embodiment_real_executors_integration.py` (13), `test_robot_safety_controller.py` (11), `test_ssrf_guard.py` (10). |
+
+**Deterministic fakes vs. real tests, explicitly distinguished** (not
+new information — each was disclosed in its own Directive D part, but
+not previously collected in one place):
+- **Real live network, deliberately-invalid credentials**: a subset of
+  tests within `test_slack_adapter.py`, `test_discord_adapter.py`,
+  `test_telegram_adapter.py`, `test_sms_adapter.py` (Twilio), and
+  `test_whatsapp_cloud_api_transport.py` make genuine outbound HTTPS
+  calls to the real cloud APIs and assert a real, correctly-parsed
+  rejection. These run by default (not skipped) — no live account is
+  needed to prove the real HTTP client code.
+- **Real live LLM API**: `test_live_anthropic_integration.py` (1 test)
+  — skipped by default, requires a real credential; see
+  `docs/live-integration-guide.md`.
+- **Real local-fixture wire protocol**: `test_smtp_email_transport.py`
+  (real SMTP server via raw sockets), `test_mqtt_bridge.py` (a real
+  MQTT 3.1.1 binary-protocol broker, `_minimal_mqtt_broker.py`),
+  `test_home_assistant_executor.py` (a real minimal HTTP server) —
+  proving real wire-protocol behavior against a genuine in-repo
+  protocol implementation, not a mocked call shape.
+- **Real hardware-adjacent, DI-gated**: `test_adb_executor.py` — real
+  ADB availability-check code path, confirmed to correctly report
+  `ADAPTER READY`-class errors on this actual adb-less machine; device
+  dispatch itself is exercised via an injected fake `_run`.
+- **Everything else**: deterministic fakes — in-memory stores,
+  injectable clocks (`clock=lambda: ...`), injected fake
+  `_grab_fn`/`_gui`/`client_factory` seams — by design, per the DI
+  pattern used throughout this whole Directive D pass (see the module
+  docstrings of `computer_control.py`, `mqtt/bridge.py`, etc.).
+
+No genuine gap was found against Directive D Part XVI's named
+taxonomy; this section is an audit and consolidation, not new test
+code.
+
+## §59. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,

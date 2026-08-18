@@ -903,5 +903,20 @@ its first consumer.
   disclosed as not covered. 5 new tests -- 574 total for Layla, up
   from 569, zero regressions. CONTRACT.md SS56, README.md updated;
   ADR-0042 recorded in DECISIONS.md.
+- Mission Layla Directive D, Part XVI -- real Testing taxonomy audit
+  (ADR-0043). Not a new test-writing pass: audited all 74 test files
+  (574 tests) against Directive D's named categories (unit/
+  integration/e2e/security/failure-recovery/concurrency/scheduler/
+  channel/tool-execution/memory/perception/computer-control/
+  embodiment-safety) -- every category already has genuine, non-
+  trivial coverage, verified against a real, passing full-suite run.
+  Honestly disclosed thinnest category: e2e (2 unittest tests + 2
+  narrated runnable example scripts). Real deliverable: consolidating,
+  in one place for the first time, which tests are deterministic
+  fakes vs. real (live network/live LLM/real local-fixture wire-
+  protocol/real hardware-adjacent DI-gated) -- previously disclosed
+  piecemeal, one part at a time. No speculative tests added where no
+  real gap existed -- 574 total, unchanged. CONTRACT.md SS58, README.md
+  updated; ADR-0043 recorded in DECISIONS.md.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

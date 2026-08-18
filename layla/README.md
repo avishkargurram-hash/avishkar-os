@@ -1118,6 +1118,35 @@ approval recovery across three separate `ExecutiveRuntime` instances;
 deterministic end-to-end fixture (`test_end_to_end_scenario.py`)
 matching Part IX.
 
+## Test Taxonomy Audit (Directive D, Part XVI, ADR-0043)
+
+An audit — not a new test-writing pass — confirming every category
+Directive D Part XVI names (unit/integration/e2e/security/failure-
+recovery/concurrency/scheduler/channel/tool-execution/memory/
+perception/computer-control/embodiment-safety) already has genuine,
+non-trivial coverage across all 574 tests. Full category-by-category
+file/test-count breakdown: CONTRACT.md §58. Summary:
+
+| Category | Status | Thinnest point (disclosed) |
+|---|---|---|
+| Unit / Integration / Security / Failure-recovery / Concurrency / Scheduler / Channel / Tool-execution / Memory / Perception / Computer-control / Embodiment-safety | 🟢 all covered | — |
+| E2E | 🟢 covered, honestly thinnest | Only 2 unittest e2e tests + 2 narrated runnable examples — appropriate given e2e tests are inherently slower/broader, but the smallest category by file count. |
+
+**Deterministic fakes vs. real tests** (consolidated in one place for
+the first time, not new information — each was already disclosed in
+its own Directive D part): real live network calls with deliberately-
+invalid credentials (Slack/Discord/Telegram/Twilio/WhatsApp Cloud API
+subsets), one real live LLM test (`test_live_anthropic_integration.py`,
+skipped by default), real local-fixture wire-protocol tests (SMTP,
+MQTT 3.1.1, Home Assistant REST — genuine protocol implementations,
+not mocks), one real hardware-adjacent DI-gated test (`test_adb_executor.py`,
+confirmed on this actual adb-less machine), and — for everything else —
+deterministic fakes (in-memory stores, injectable clocks, injected fake
+`_grab_fn`/`_gui`/`client_factory` seams). See CONTRACT.md §58 for the
+full breakdown.
+
+No genuine gap was found against Directive D's named taxonomy.
+
 # Troubleshooting Guide
 
 - **"UnknownCapabilityError: could not infer any capability"** — the

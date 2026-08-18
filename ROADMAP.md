@@ -1019,6 +1019,29 @@ max-concurrent-task limits — disclosed as real future work.
 CONTRACT.md §56, DECISIONS.md ADR-0042, README.md Cost/Resource
 Management section.
 
+## Mission Layla Directive D, Part XVI — Testing (ADR-0043, 2026-08-18)
+
+An audit, not a new test-writing pass: every category Directive D
+Part XVI names (unit/integration/e2e/security/failure-recovery/
+concurrency/scheduler/channel/tool-execution/memory/perception/
+computer-control/embodiment-safety) already has genuine, non-trivial
+coverage across all 574 tests in 74 files — verified against a real,
+passing full-suite run.
+
+**Honestly thinnest category**: e2e (2 unittest tests + 2 narrated
+runnable example scripts) — appropriate given e2e tests are inherently
+slower/broader, and every major subsystem already has at least one
+real, full-pipeline demonstration.
+
+**Real deliverable**: consolidating, in one place for the first time,
+which tests are deterministic fakes vs. real (live network/live LLM/
+real local-fixture wire-protocol/real hardware-adjacent DI-gated) —
+previously disclosed piecemeal, one Directive D part at a time.
+
+No new tests were added speculatively where no real gap existed — 574
+total, unchanged. Full detail: CONTRACT.md §58, DECISIONS.md ADR-0043,
+README.md Test Taxonomy Audit section.
+
 ## How this roadmap changes
 
 A phase only moves to 🚧 when someone is actively working it, and only to
