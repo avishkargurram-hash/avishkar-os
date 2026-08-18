@@ -29,6 +29,7 @@ from .errors import (
     UnknownActionError,
 )
 from .home_assistant_executor import HomeAssistantExecutor, HomeAssistantNotConfiguredError
+from .mqtt_executor import MQTTExecutor
 
 __all__ = [
     "ADBExecutor",
@@ -38,6 +39,7 @@ __all__ = [
     "ComputerControlExecutor",
     "HomeAssistantExecutor",
     "HomeAssistantNotConfiguredError",
+    "MQTTExecutor",
     "PathOutsideWorkspaceError",
     "ShellCommandNotAllowedError",
     "UnknownActionError",

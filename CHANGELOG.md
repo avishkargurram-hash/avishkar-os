@@ -746,5 +746,27 @@ its first consumer.
   11 new tests -- 474 total for Layla, up from 463, zero regressions.
   CONTRACT.md SS40, README.md updated; ADR-0034 recorded in
   DECISIONS.md.
+- Mission Layla Directive D, Part VIII -- real MQTT bridge
+  (`avishkar_layla.mqtt`, ADR-0035). `MQTTBridge` wraps the real
+  `paho-mqtt` client (connect/auth/TLS/publish/subscribe/reconnect);
+  every inbound message becomes a real `avishkar_core.EventBus` event
+  (no separate MQTT event system). Real fail-closed topic allowlists
+  with a real implementation of MQTT's own `+`/`#` wildcard matching.
+  Verified against a real, minimal, in-repo MQTT 3.1.1 broker
+  (`tests/_minimal_mqtt_broker.py`) built specifically to reach real
+  GREEN status -- no live external broker was reachable from this
+  sandboxed environment (confirmed: `test.mosquitto.org:1883` did not
+  connect, while Part V's specific allowlisted API hosts did). A real
+  bug was found and fixed by this pass's own first test run:
+  `paho-mqtt` 2.x's VERSION2 callback API passes `on_connect` a real
+  `ReasonCode` object, not a plain int -- fixed via the library's own
+  `is_failure` property. `MQTTExecutor` wires `EMBODIMENT_MQTT` into
+  the existing `EmbodimentController`; `EMBODIMENT_MQTT` was added to
+  embodiment.py's `_DEFAULT_HIGH_RISK_CAPABILITIES` this same pass (a
+  real, strictly-conservative security enhancement -- an MQTT publish
+  routinely commands real physical devices). New optional `mqtt`
+  extra in `layla/python/pyproject.toml`. 17 new tests -- 491 total
+  for Layla, up from 474, zero regressions. CONTRACT.md SS42,
+  README.md updated; ADR-0035 recorded in DECISIONS.md.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

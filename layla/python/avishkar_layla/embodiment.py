@@ -61,8 +61,25 @@ EMBODIMENT_CAPABILITIES = (
 # every embodiment capability defaults to physical/host-affecting until
 # proven otherwise -- Mission Layla Part 15's own "physical-world
 # operations must default to fail-closed."
+#
+# EMBODIMENT_MQTT added here in Directive D Part VIII (ADR-0035): a
+# real `mqtt.MQTTBridge` (see mqtt/client.py) is what actually
+# publishes to a real broker, and an MQTT `publish` is routinely how
+# real physical devices (smart plugs, locks, actuators -- often the
+# same devices Home Assistant itself controls under the hood) are
+# commanded. Text-classifying "mqtt publish {topic: ..., payload: ...}"
+# alone cannot reliably tell "publish a benign sensor-poll request"
+# apart from "publish a command that unlocks a door," so -- exactly
+# like EMBODIMENT_HOME_ASSISTANT/EMBODIMENT_ADB/EMBODIMENT_COMPUTER_CONTROL
+# -- it is escalated by construction rather than trusted to the
+# general-purpose text classifier. Adding a capability here is a
+# strictly MORE conservative change (a LOW-risk classification simply
+# becomes gated, never the reverse), so no existing caller that relied
+# on EMBODIMENT_MQTT being ungated could have existed to break --
+# confirmed by grepping the whole tree before this change.
 _DEFAULT_HIGH_RISK_CAPABILITIES = frozenset({
     EMBODIMENT_COMPUTER_CONTROL, EMBODIMENT_ADB, EMBODIMENT_ROBOTICS, EMBODIMENT_HOME_ASSISTANT,
+    EMBODIMENT_MQTT,
 })
 
 

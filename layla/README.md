@@ -48,17 +48,18 @@ ExecutiveRuntime (event loop: IDLE -> EVENT -> INGEST -> UNDERSTAND ->
 layla/
 ├── CONTRACT.md              language-agnostic contract
 ├── README.md                  this file
-├── python/avishkar_layla/       reference implementation (40 modules)
+├── python/avishkar_layla/       reference implementation (41 modules)
 │   ├── channels/                   communication channel adapters (6 real transports, Directive D Part V, ADR-0032)
 │   ├── environment/                 environmental awareness (Directive D Part VI, ADR-0033)
 │   ├── voice/                      voice subsystem (Directive D Part I, ADR-0028)
 │   ├── vision/                     vision/OCR/spatial subsystem (Directive D Part II, ADR-0029)
-│   └── executors/                  real EmbodimentController executors (Directive D Parts III-IV/VII, ADR-0030/0031/0034)
+│   ├── mqtt/                        real MQTT bridge (Directive D Part VIII, ADR-0035)
+│   └── executors/                  real EmbodimentController executors (Directive D Parts III-IV/VII-VIII, ADR-0030/0031/0034/0035)
 ├── examples/
 │   ├── end_to_end_scenario.py       Part IX's real, narrated demonstration
 │   ├── crash_recovery_scenario.py   resume-in-place demonstration (Priority 17.3)
 │   └── personal_model_and_proactive_scenario.py  Mission Layla Parts 1/2/11
-└── python/tests/                   474 tests (as of Directive D Part VII; 1 live-gated, skipped by default)
+└── python/tests/                   491 tests (as of Directive D Part VIII; 1 live-gated, skipped by default)
 ```
 
 ## Naming Standards
@@ -789,6 +790,24 @@ CODE / ADAPTER READY. See CONTRACT.md §40.
 | `EmbodimentController` gating | 🟢 GREEN | 2/2 real end-to-end tests: an approved `list_states` call reaches the real fixture server; a denied `call_service` call never does. `EMBODIMENT_HOME_ASSISTANT` is already in embodiment.py's `_DEFAULT_HIGH_RISK_CAPABILITIES` — every action requires approval regardless of wording. |
 | Live device/entity interaction | 🟡 YELLOW | No live Home Assistant instance exists in this environment — genuinely untested live. `HomeAssistantExecutor` raises `HomeAssistantNotConfiguredError` ("ADAPTER READY") rather than fabricating a result when no base URL/token is configured. |
 
+# MQTT (Directive D, Part VIII, ADR-0035)
+
+`MQTTBridge` (mqtt/client.py) + `MQTTExecutor` (executors/mqtt_executor.py)
+— REAL. See CONTRACT.md §42.
+
+| Component | Status | Notes |
+|---|---|---|
+| Connect/authenticate/TLS/publish/subscribe/reconnect | 🟢 GREEN | Real `paho-mqtt` client (VERSION2 callback API), genuinely verified against a real, minimal, in-repo MQTT 3.1.1 broker this suite runs itself — real CONNECT/CONNACK with real username/password auth, real PUBLISH, real SUBSCRIBE/SUBACK, real retained-message delivery, real PINGREQ/PINGRESP. 14/14 tests real and passing, including a genuine end-to-end publish → real broker → real `on_message` callback → real `EventBus` event. |
+| EventBus event translation | 🟢 GREEN | Every inbound MQTT message becomes a real `avishkar_core.EventBus.publish("layla.mqtt.<topic>", ...)` call — no separate MQTT event queue. |
+| Topic allowlist gating | 🟢 GREEN | Real, fail-closed publish/subscribe allowlists with real MQTT `+`/`#` wildcard matching (`topic_matches()`), verified against real MQTT topic-matching semantics. |
+| `EmbodimentController` gating | 🟢 GREEN | 2/2 real end-to-end tests: an approved publish reaches the real broker fixture; a denied one never does. **`EMBODIMENT_MQTT` was added to embodiment.py's `_DEFAULT_HIGH_RISK_CAPABILITIES` this pass** — a real security enhancement found while implementing this part (an MQTT publish is routinely how real physical devices are commanded, the same reasoning already applied to Home Assistant/ADB/Computer Control/Robotics). |
+| Live external broker | — | Not applicable — GREEN was achieved via a real in-repo broker fixture rather than requiring a live external broker. This sandboxed environment's outbound network access was confirmed allowlisted to specific known API hosts (Meta/Telegram/Slack/Discord/Twilio, Part V) — `test.mosquitto.org:1883` was confirmed unreachable during this pass, so no live public broker was used or claimed. |
+
+Install the optional extra:
+```bash
+pip install -e "layla/python[mqtt]"
+```
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
@@ -874,7 +893,7 @@ already covers it — extending that list requires an ADR.
 
 # Testing Guide
 
-474 tests as of Directive D Part VII (Home Assistant) (119
+491 tests as of Directive D Part VIII (MQTT) (119
 Phase 16 + 30 Priority 17.1 + 21 Priority 17.2 + 8 Priority 17.3 + 11
 Priority 17.4 + 1 Priority 17.5 + 30 Mission Layla 1 [PersonalModel/
 ProactiveEngine] + 82 Mission Layla continuation [Prediction/Skills/
@@ -896,7 +915,11 @@ Directive D Part VI [real local sensors/real EventBus threshold-based
 publishing/real retry-storm-safe ProactiveEngine evaluator/full real
 end-to-end chain integration] + 11 Directive D Part VII [real Home
 Assistant REST API dispatch against a real local fixture server/
-real end-to-end EmbodimentController approval gating]), 472
+real end-to-end EmbodimentController approval gating] + 17 Directive D
+Part VIII [real MQTT wire-protocol round trip against a real in-repo
+MQTT 3.1.1 broker fixture/real topic-allowlist and wildcard matching/
+real end-to-end EmbodimentController approval gating, including the
+new EMBODIMENT_MQTT high-risk-by-default classification]), 489
 running offline and passing, 2 live/environment-gated and skipped by
 default (`test_live_anthropic_integration.py` — see
 `docs/live-integration-guide.md` to actually run it; plus one OCR
@@ -909,6 +932,13 @@ under heavy real CPU contention from this development machine's own,
 actively-used Chrome tabs (21+ real `chrome.exe` processes observed at
 the time) — re-run in isolation immediately after, it passed in 19s.
 Not a code defect; disclosed here rather than silently re-run away.
+Also this pass: `MQTTBridge`'s first real test run surfaced a genuine
+bug (not a test artifact) — `paho-mqtt` 2.x's VERSION2 callback API
+passes `on_connect` a real `ReasonCode` object, not a plain int;
+`int(reason_code)` raised a real `TypeError`, caught immediately by
+the test suite and fixed to use the real, documented `reason_code.is_failure`
+property instead. Left in DECISIONS.md ADR-0035 as a concrete example
+of a real defect a real test caught before commit, not merely claimed.
 Via:
 ```bash
 PYTHONPATH="core/python;router/python;factories/agent-factory/python;factories/knowledge-factory/python;factories/mcp-factory/python;factories/memory-factory/python;factories/security-factory/python;factories/evaluation-factory/python;factories/prompt-factory/python;factories/workflow-factory/python;layla/python" \
@@ -924,6 +954,19 @@ at package-init time.) Voice tests need the optional `voice` extra
 model from Hugging Face on first run (cached after) and skips with an
 explicit reason if that download is impossible in a given environment,
 rather than failing the whole suite or fabricating a pass.
+
+**Gotcha for test-file-to-test-file imports** (found by this pass's
+own full-suite run, not merely anticipated): `discover -s
+layla/python/tests` adds that directory to `sys.path` and imports each
+file as a bare top-level module (`test_mqtt_bridge`, not
+`layla.python.tests.test_mqtt_bridge`), even though `tests/` has an
+`__init__.py`. A package-relative import between two test files (e.g.
+`test_mqtt_bridge.py` importing its `_minimal_mqtt_broker.py` fixture
+via `from ._minimal_mqtt_broker import ...`) works when a test is run
+by its full dotted path but fails under the real `discover` command
+with "attempted relative import with no known parent package." Use a
+plain top-level import (`from _minimal_mqtt_broker import ...`)
+instead for any shared test fixture module.
 Categories: unit (state machine, memory policy, risk, scheduler,
 execution/idempotency classification), contract (every component's own
 dataclass/error shape), integration (delegation through a real

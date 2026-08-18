@@ -821,6 +821,35 @@ defect, and not papered over by loosening a production timeout.
 every commit. Full detail: CONTRACT.md §40, DECISIONS.md ADR-0034,
 README.md Home Assistant section.
 
+## Mission Layla Directive D, Part VIII — MQTT (ADR-0035, 2026-08-16)
+
+A real, minimal, in-repo MQTT 3.1.1 broker (`tests/_minimal_mqtt_broker.py`)
+was built specifically to reach real GREEN status rather than settle
+for ADAPTER READY — `test.mosquitto.org` was confirmed unreachable
+from this sandboxed environment, but MQTT's protocol is fully
+specifiable and testable without any external dependency.
+
+**Real, fully-working**: `MQTTBridge` (real `paho-mqtt`, real connect/
+auth/publish/subscribe/reconnect, real EventBus event translation for
+every inbound message), real fail-closed topic allowlists with real
+MQTT `+`/`#` wildcard matching, a full real end-to-end test (publish →
+real broker → real `on_message` → real `EventBus` event).
+
+**Real bug found and fixed by this pass's own first test run**:
+`paho-mqtt` 2.x's VERSION2 callback API passes a real `ReasonCode`
+object to `on_connect`, not a plain int — `int(reason_code)` raised a
+real `TypeError`, fixed via the library's own `is_failure` property.
+
+**Real security enhancement**: `EMBODIMENT_MQTT` added to
+embodiment.py's `_DEFAULT_HIGH_RISK_CAPABILITIES` — an MQTT publish
+routinely commands real physical devices, the same reasoning already
+applied to Home Assistant/ADB/Computer Control/Robotics. A strictly
+conservative change (gates more, never less), confirmed safe by
+grepping the whole tree first.
+
+17 new tests — 491 total for Layla, zero regressions. Full detail:
+CONTRACT.md §42, DECISIONS.md ADR-0035, README.md MQTT section.
+
 ## How this roadmap changes
 
 A phase only moves to 🚧 when someone is actively working it, and only to

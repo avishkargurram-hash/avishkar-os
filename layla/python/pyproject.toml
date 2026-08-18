@@ -46,6 +46,8 @@ channels = ["requests", "twilio"]
 environment = ["psutil"]
 # Mission Layla Directive D, Part VII (Home Assistant).
 home_assistant = ["requests"]
+# Mission Layla Directive D, Part VIII (MQTT).
+mqtt = ["paho-mqtt"]
 
 [tool.setuptools.packages.find]
 where = ["."]

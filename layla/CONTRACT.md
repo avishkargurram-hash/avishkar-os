@@ -1127,7 +1127,55 @@ architecture must never permit unrestricted autonomous physical
 actions" -- there is no path from a model's output to a real Home
 Assistant service call that skips that gate.
 
-## §41. Errors
+## §42. MQTT (Mission Layla Directive D, Part VIII)
+
+`avishkar_layla.mqtt` -- REAL. `MQTTBridge` (mqtt/client.py) wraps the
+real, installed `paho-mqtt` client (VERSION2 callback API): real
+broker connection (host/port/TLS), real username/password
+authentication, real `publish`(QoS, retain)/`subscribe`(QoS), and real
+automatic reconnect (paho's own `reconnect_delay_set`, not
+reimplemented). Directive D Part VIII, verbatim: "MQTT events must
+enter Avishkar's EventBus rather than creating another event system"
+-- every inbound message is translated into a real
+`avishkar_core.EventBus.publish("layla.mqtt.<topic>", ...)` call
+inside the real paho `on_message` callback; there is no separate MQTT
+event queue for callers to poll.
+
+Publish and subscribe are each gated by a real, fail-closed topic
+allowlist (`allowed_publish_topics`/`allowed_subscribe_topics`, MQTT
+`+`/`#` wildcard semantics implemented for real in `topic_matches()`)
+-- empty allowlist = nothing published/subscribed, the same discipline
+`ComputerControlExecutor.run_shell`/`ADBExecutor`'s shell allowlists
+use.
+
+`MQTTExecutor` (executors/mqtt_executor.py) wraps a connected
+`MQTTBridge` as an `EmbodimentExecutor` for `EMBODIMENT_MQTT` --
+**added to embodiment.py's `_DEFAULT_HIGH_RISK_CAPABILITIES` this same
+pass (ADR-0035)**, alongside `EMBODIMENT_COMPUTER_CONTROL`/
+`EMBODIMENT_ADB`/`EMBODIMENT_ROBOTICS`/`EMBODIMENT_HOME_ASSISTANT`: a
+real MQTT `publish` is routinely how real physical devices are
+commanded, so it is escalated by construction rather than trusted to
+`classify_risk()`'s general-purpose text matching, exactly like
+`EMBODIMENT_HOME_ASSISTANT`. Every action through `MQTTExecutor`
+already requires `EmbodimentController` approval before it is even
+looked up, on top of `MQTTBridge`'s own topic allowlist -- two
+independent, non-redundant gates.
+
+Verified via a real, minimal, in-repo MQTT 3.1.1 broker
+(`tests/_minimal_mqtt_broker.py`) this suite runs itself -- a genuine
+binary wire-protocol implementation (CONNECT/CONNACK with real
+authentication, PUBLISH, SUBSCRIBE/SUBACK, retained-message delivery,
+PINGREQ/PINGRESP), the same "real local fixture" discipline
+`test_smtp_email_transport.py`/`test_home_assistant_executor.py`
+established for text protocols, extended here to a binary one. No real
+external MQTT broker was reachable from this environment (this
+sandbox's outbound network access is allowlisted to specific known
+API hosts, confirmed by testing -- `test.mosquitto.org:1883` was
+unreachable while `api.telegram.org`/`slack.com`/etc. from Part V were
+reachable) -- the in-repo broker fixture is what makes GREEN status
+possible here rather than falling back to ADAPTER READY.
+
+## §43. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,
@@ -1151,8 +1199,9 @@ errors (`ScreenCaptureError`, `OCRNotAvailableError`) live in
 `home_assistant_executor.py` directly (also used to normalize a real
 401 from Home Assistant, not only a missing-configuration case; real
 connectivity failures raise the stdlib `ConnectionError`);
-`SensorUnavailableError` lives in `environment/errors.py`; every
-channel transport raises the existing
-`avishkar_integration.ProtocolInvocationError` (no new channel-specific
-error types were introduced) -- all following the same locally-scoped
-convention as §22-§28's errors.
+`SensorUnavailableError` lives in `environment/errors.py`;
+`MQTTNotConnectedError`/`MQTTPublishNotAllowedError`/
+`MQTTSubscribeNotAllowedError` live in `mqtt/errors.py`; every channel
+transport raises the existing `avishkar_integration.ProtocolInvocationError`
+(no new channel-specific error types were introduced) -- all following
+the same locally-scoped convention as §22-§28's errors.

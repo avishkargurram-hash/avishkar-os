@@ -7,6 +7,7 @@ from avishkar_layla.embodiment import (
     EMBODIMENT_ADB,
     EMBODIMENT_BROWSER,
     EMBODIMENT_HOME_ASSISTANT,
+    EMBODIMENT_MQTT,
     EmbodimentCapabilityNotConfiguredError,
     EmbodimentController,
     EmbodimentNotApprovedError,
@@ -89,6 +90,25 @@ class TestEmbodimentControllerWithRealExecutor(unittest.TestCase):
         controller = EmbodimentController()
         controller.register_executor(EMBODIMENT_ADB, lambda action, params: None)
         self.assertEqual(controller.configured_capabilities(), (EMBODIMENT_ADB,))
+
+
+class TestEmbodimentControllerMQTTIsHighRiskByDefault(unittest.TestCase):
+    """Directive D Part VIII (ADR-0035): EMBODIMENT_MQTT was added to
+    _DEFAULT_HIGH_RISK_CAPABILITIES because a real MQTT `publish` can
+    command a real physical device -- the same reasoning already
+    applied to EMBODIMENT_HOME_ASSISTANT/EMBODIMENT_ADB/
+    EMBODIMENT_COMPUTER_CONTROL.
+    """
+
+    def test_mqtt_publish_requires_approval_even_for_innocuous_looking_text(self):
+        gate = ApprovalGate(policy="always_ask", callback=lambda task: False)
+        controller = EmbodimentController(approval_manager=ApprovalManager(approval_gate=gate))
+        controller.register_executor(EMBODIMENT_MQTT, lambda action, params: "should never run")
+
+        result = controller.request(EMBODIMENT_MQTT, "publish", {"topic": "home/sensor/status"}, task_id="t1")
+
+        self.assertEqual(result.status, "denied")
+        self.assertEqual(result.risk_level, RISK_HIGH)
 
 
 if __name__ == "__main__":

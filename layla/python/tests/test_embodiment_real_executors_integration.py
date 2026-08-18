@@ -1,31 +1,40 @@
 """End-to-end integration: real EmbodimentController (structural risk/
-approval gate, ADR-0027) + real executors (ADR-0030/ADR-0034)
+approval gate, ADR-0027) + real executors (ADR-0030/ADR-0034/ADR-0035)
 registered for EMBODIMENT_BROWSER / EMBODIMENT_COMPUTER_CONTROL /
-EMBODIMENT_HOME_ASSISTANT. Proves the full chain Directive D Parts
-III/VII require: risk classification -> approval -> only then a real
-action -- and that a denied request never reaches the real executor
-at all.
+EMBODIMENT_HOME_ASSISTANT / EMBODIMENT_MQTT. Proves the full chain
+Directive D Parts III/VII/VIII require: risk classification ->
+approval -> only then a real action -- and that a denied request
+never reaches the real executor at all.
 """
 
 import json
 import shutil
 import tempfile
 import threading
+import time
 import unittest
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from avishkar_agent import ApprovalGate
+from avishkar_core import EventBus
 
 from avishkar_layla.approval import ApprovalManager
 from avishkar_layla.embodiment import (
     EMBODIMENT_BROWSER,
     EMBODIMENT_COMPUTER_CONTROL,
     EMBODIMENT_HOME_ASSISTANT,
+    EMBODIMENT_MQTT,
     EmbodimentController,
 )
 from avishkar_layla.executors.browser_executor import BrowserExecutor
 from avishkar_layla.executors.computer_control_executor import ComputerControlExecutor
 from avishkar_layla.executors.home_assistant_executor import HomeAssistantExecutor
+from avishkar_layla.executors.mqtt_executor import MQTTExecutor
+from avishkar_layla.mqtt.client import MQTTBridge
+
+# Plain top-level import -- see test_mqtt_bridge.py's comment on the
+# same import for why this can't be a package-relative import.
+from _minimal_mqtt_broker import MinimalMQTTBroker
 
 
 class TestRealBrowserExecutorThroughEmbodimentController(unittest.TestCase):
@@ -200,6 +209,50 @@ class TestRealHomeAssistantExecutorThroughEmbodimentController(unittest.TestCase
         )
 
         self.assertEqual(result.status, "denied")
+
+
+class TestRealMQTTExecutorThroughEmbodimentController(unittest.TestCase):
+    def setUp(self):
+        self.broker = MinimalMQTTBroker()
+        self.bus = EventBus()
+        self.bridge = MQTTBridge(self.bus, allowed_publish_topics=("home/#",))
+        self.bridge.connect("127.0.0.1", self.broker.port, client_id="embodiment-test")
+        self.executor = MQTTExecutor(self.bridge)
+
+    def tearDown(self):
+        self.bridge.disconnect()
+        self.broker.stop()
+
+    def test_approved_publish_actually_reaches_the_real_broker(self):
+        gate = ApprovalGate(policy="always_allow")
+        controller = EmbodimentController(approval_manager=ApprovalManager(approval_gate=gate))
+        controller.register_executor(EMBODIMENT_MQTT, self.executor)
+
+        result = controller.request(
+            EMBODIMENT_MQTT, "publish", {"topic": "home/kitchen/light", "payload": b"on"}, task_id="t1",
+        )
+
+        self.assertEqual(result.status, "completed")
+        deadline = time.monotonic() + 3.0
+        while time.monotonic() < deadline and not self.broker.received_publishes:
+            time.sleep(0.05)
+        self.assertEqual(self.broker.received_publishes, [("home/kitchen/light", b"on")])
+
+    def test_denied_publish_never_reaches_the_real_broker(self):
+        """EMBODIMENT_MQTT is in _DEFAULT_HIGH_RISK_CAPABILITIES
+        (ADR-0035) -- every action requires approval, including one
+        that reads as completely innocuous.
+        """
+        gate = ApprovalGate(policy="always_ask", callback=lambda task: False)
+        controller = EmbodimentController(approval_manager=ApprovalManager(approval_gate=gate))
+        controller.register_executor(EMBODIMENT_MQTT, self.executor)
+
+        result = controller.request(
+            EMBODIMENT_MQTT, "publish", {"topic": "home/kitchen/light", "payload": b"on"}, task_id="t1",
+        )
+
+        self.assertEqual(result.status, "denied")
+        self.assertEqual(self.broker.received_publishes, [])
 
 
 if __name__ == "__main__":
