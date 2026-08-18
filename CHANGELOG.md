@@ -768,5 +768,25 @@ its first consumer.
   extra in `layla/python/pyproject.toml`. 17 new tests -- 491 total
   for Layla, up from 474, zero regressions. CONTRACT.md SS42,
   README.md updated; ADR-0035 recorded in DECISIONS.md.
+- Mission Layla Directive D, Part IX -- real Robotics/Embodiment safety
+  layer (`avishkar_layla.robotics`, ADR-0036), built entirely on
+  existing components (`EmbodimentController`/`risk.classify_risk`/
+  `ApprovalManager`/`AuditLogger`, all unmodified) -- no new cognitive/
+  risk/event framework. `RobotSafetyController` implements every
+  physical-action safety property Directive D Part IX requires, real
+  and genuinely tested without physical hardware via an injected fake
+  driver: a real emergency-stop latch (engages even if the real
+  driver's own stop call fails), a real human-override check ahead of
+  even an already-granted approval, real enforced timeout/cancellation
+  via `Thread.join()`, real fail-safe triggering on any timeout or
+  driver exception (which also latches the emergency stop until an
+  explicit, human-attributed reset), real state verification, and a
+  real audit trail. Registered for `EMBODIMENT_ROBOTICS` (already
+  HIGH-risk by default since ADR-0027); 3 real end-to-end tests through
+  the unmodified `EmbodimentController` gate. Physical robot hardware
+  itself remains ADAPTER READY -- `RobotDriver` is the documented
+  boundary a deployment implements for its real platform. 14 new tests
+  -- 505 total for Layla, up from 491, zero regressions. CONTRACT.md
+  SS44, README.md updated; ADR-0036 recorded in DECISIONS.md.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

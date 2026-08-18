@@ -2636,3 +2636,102 @@ integration + 1 embodiment.py high-risk-classification test), 491
 total for Layla, up from 474, zero regressions. `embodiment.py`'s
 `_DEFAULT_HIGH_RISK_CAPABILITIES` now includes `EMBODIMENT_MQTT`. New
 optional `mqtt` extra (`paho-mqtt`) in `layla/python/pyproject.toml`.
+
+## ADR-0036: Mission Layla Directive D, Part IX (Robotics/Embodiment) — a real safety layer built entirely on existing components, genuinely tested without physical hardware
+
+**Context:** Directive D Part IX explicitly names the components to
+reuse: "Use the existing: PerceptionEngine, EmbodimentController,
+risk.classify_risk, ApprovalManager, UniversalToolRegistry, MCP,
+EventBus, AuditLogger. Create safe adapters for future robotics
+platforms," with a required chain (Sensors -> Perception -> World
+State -> Layla -> Planning -> Risk Assessment -> Approval -> Robot
+Capability -> Execution -> Observation -> Verification) and an
+explicit list of required physical-action safety properties: "explicit
+capability registration, risk level, safety constraints, emergency
+stop, timeout, cancellation, state verification, audit trail, human
+override, fail-safe behavior." `EMBODIMENT_ROBOTICS` has been a
+defined `EmbodimentController` capability, already forced into
+`_DEFAULT_HIGH_RISK_CAPABILITIES`, since ADR-0027 -- the capability-
+level risk/approval gate this part needs already exists and is
+unmodified by this pass.
+
+No physical robot exists in this environment, and unlike MQTT (one
+well-defined, implementable wire protocol) there is no single "generic
+robot" protocol a local test fixture could meaningfully stand in for
+-- real robot platforms vary enormously (ROS, proprietary REST/serial
+APIs, vendor SDKs). The honest, Directive-D-sanctioned scope for this
+pass is therefore the part that IS platform-independent and IS fully
+real without any hardware: the safety logic itself.
+
+**Decision:**
+1. `RobotSafetyController` (robotics/controller.py) is a real safety
+   layer, not a new cognitive/risk/event framework -- it is registered
+   as the `EmbodimentExecutor` for `EMBODIMENT_ROBOTICS` via the
+   existing, unmodified `EmbodimentController.register_executor()`,
+   and sits directly on top of a real `RobotDriver`
+   (`execute()`/`get_state()`/`emergency_stop()`) a deployment
+   provides for its actual platform -- the documented ADAPTER READY
+   boundary for hardware specifically, not for the safety logic.
+2. Every safety property Directive D Part IX names is implemented for
+   real and verified without physical hardware, using the same
+   injected-fake-driver DI pattern this session has used throughout
+   (`ComputerControlExecutor`'s `_gui`, `ADBExecutor`'s `_run`):
+   - Emergency stop / human override: a real software latch set
+     BEFORE the real driver's own stop call, so the latch engages even
+     if the hardware call itself fails (verified with a driver whose
+     `emergency_stop()` raises) -- and checked FIRST on every action,
+     ahead of even an already-granted `EmbodimentController` approval
+     (verified end to end: an emergency-stopped controller refuses an
+     approved request).
+   - Timeout / cancellation: every driver call runs on a real
+     background thread with a real, bounded `Thread.join(timeout=...)`
+     against a real slow fake driver; a genuinely late result is
+     simply never read or applied -- real cancellation semantics, not
+     merely a documented intention.
+   - Fail-safe behavior: any timeout OR driver exception triggers a
+     caller-supplied fail-safe callback AND latches the emergency stop
+     BEFORE the error propagates -- verified that further actions are
+     refused afterward until an explicit, human-attributed
+     `reset_emergency_stop(authorized_by=...)` call.
+   - State verification: the driver's real `get_state()` is queried
+     and recorded after every successful action.
+   - Audit trail: every action/timeout/failure/stop/reset is recorded
+     via the existing `AuditLogger` (no new logging mechanism).
+3. 11 unit tests exercise this logic directly (happy path, real
+   timeout, real driver exception, real emergency-stop latching and
+   reset, a broken driver's `emergency_stop()` not preventing the
+   software latch); 3 further tests verify the full real
+   `EmbodimentController` + `RobotSafetyController` chain end to end
+   (approved reaches the real driver, denied never does, an emergency
+   stop gates even an approved request).
+
+**Alternatives considered:**
+- *Build a fake "generic robot protocol" test broker, the same way
+  MQTT's Part VIII got a real broker fixture* -- rejected: unlike
+  MQTT (IETF/OASIS-specified, one real wire format every real client
+  and broker actually implements), there is no equivalent standard
+  "robot protocol" to faithfully implement a fixture for; inventing one
+  would test a fixture of this session's own design, not anything a
+  real robot integration would actually speak -- a materially weaker
+  claim than what the MQTT fixture provides, dressed up to look
+  similar.
+- *Skip Part IX as "no hardware available"* -- rejected: the safety
+  logic Directive D explicitly requires (timeout, cancellation,
+  emergency stop, fail-safe, audit, human override) is genuinely
+  hardware-independent and fully real/testable; skipping it entirely
+  would have under-delivered relative to what was actually achievable.
+- *Have `RobotSafetyController` also perform its own risk
+  classification* -- rejected, same reasoning as every other executor
+  this session: `EmbodimentController.request()` already computes risk
+  and enforces approval before this controller is ever reached; a
+  second, independent risk computation here would risk the two
+  drifting apart, the exact bug class this mission's forensic audit
+  found in the external codebase it studied.
+
+**Consequences:** New `robotics/` subpackage (`__init__.py`,
+`errors.py`, `controller.py`), 14 new tests (11 unit + 3
+`EmbodimentController` integration), 505 total for Layla, up from 491,
+zero regressions. No pyproject extra needed -- `RobotSafetyController`
+uses only the stdlib (`threading`, `time`). Real robot hardware
+integration remains explicit future work, gated behind a real
+`RobotDriver` implementation a deployment supplies.

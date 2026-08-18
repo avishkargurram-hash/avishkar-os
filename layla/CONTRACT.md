@@ -1175,7 +1175,54 @@ unreachable while `api.telegram.org`/`slack.com`/etc. from Part V were
 reachable) -- the in-repo broker fixture is what makes GREEN status
 possible here rather than falling back to ADAPTER READY.
 
-## §43. Errors
+## §44. Robotics / Embodiment (Mission Layla Directive D, Part IX)
+
+`avishkar_layla.robotics` -- Sensors -> Perception -> World State ->
+Layla -> Planning -> Risk Assessment -> Approval -> Robot Capability ->
+Execution -> Observation -> Verification, Directive D Part IX's exact
+required chain, built entirely on existing components: `PerceptionEngine`
+(§28) for the sensing side, `EmbodimentController`/`risk.classify_risk`/
+`ApprovalManager` (§28, unchanged) for risk/approval, `AuditLogger` for
+the trail. No new cognitive/risk/event framework was created.
+
+`RobotSafetyController` (robotics/controller.py) is a real safety layer
+that sits between `EmbodimentController` and a real robot driver a
+deployment provides for its platform (`RobotDriver`: `execute()`/
+`get_state()`/`emergency_stop()` -- the documented ADAPTER READY
+boundary; no physical robot exists in this environment). Registered
+for `EMBODIMENT_ROBOTICS`, already in embodiment.py's
+`_DEFAULT_HIGH_RISK_CAPABILITIES` since ADR-0027 -- every action
+already requires `EmbodimentController` approval before this
+controller is even looked up. `RobotSafetyController` adds a SECOND,
+complementary safety gate beneath that, implementing every physical-
+action safety property Directive D Part IX explicitly requires, all
+real and genuinely tested (11 unit tests + 3 end-to-end
+`EmbodimentController` integration tests) without needing physical
+hardware:
+
+- **Emergency stop**: a real latch (`emergency_stop(reason=...)`) that
+  sets the software flag BEFORE calling the real driver's own stop
+  method, so a human override is never delayed by (or lost to) a
+  failing hardware call -- verified with a driver whose `emergency_stop()`
+  itself raises.
+- **Human override**: the latch is checked first on every call,
+  including one that would otherwise be a fully-approved
+  `EmbodimentController` request -- verified end to end.
+- **Timeout**: every driver call runs on a real background thread with
+  a real `Thread.join(timeout=...)`; a real slow driver genuinely
+  exceeding the configured budget raises `RobotActionTimeoutError`.
+- **Cancellation**: a timed-out call's eventual result (if the
+  abandoned thread ever finishes) is never read or applied.
+- **State verification**: the driver's real `get_state()` is queried
+  and recorded after every successful action.
+- **Fail-safe behavior**: any timeout OR driver exception both
+  triggers a caller-supplied fail-safe callback AND latches the
+  emergency stop, before the error propagates -- verified that further
+  actions are refused afterward until an explicit `reset_emergency_stop()`.
+- **Audit trail**: every action/timeout/failure/stop/reset is recorded
+  via the existing `AuditLogger` (`layla.robotics.*` event types).
+
+## §45. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,
@@ -1201,7 +1248,9 @@ errors (`ScreenCaptureError`, `OCRNotAvailableError`) live in
 connectivity failures raise the stdlib `ConnectionError`);
 `SensorUnavailableError` lives in `environment/errors.py`;
 `MQTTNotConnectedError`/`MQTTPublishNotAllowedError`/
-`MQTTSubscribeNotAllowedError` live in `mqtt/errors.py`; every channel
+`MQTTSubscribeNotAllowedError` live in `mqtt/errors.py`;
+`RobotEmergencyStoppedError`/`RobotActionTimeoutError`/
+`RobotActionFailedError` live in `robotics/errors.py`; every channel
 transport raises the existing `avishkar_integration.ProtocolInvocationError`
 (no new channel-specific error types were introduced) -- all following
 the same locally-scoped convention as §22-§28's errors.

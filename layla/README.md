@@ -54,12 +54,13 @@ layla/
 │   ├── voice/                      voice subsystem (Directive D Part I, ADR-0028)
 │   ├── vision/                     vision/OCR/spatial subsystem (Directive D Part II, ADR-0029)
 │   ├── mqtt/                        real MQTT bridge (Directive D Part VIII, ADR-0035)
+│   ├── robotics/                    real robot safety layer (Directive D Part IX, ADR-0036)
 │   └── executors/                  real EmbodimentController executors (Directive D Parts III-IV/VII-VIII, ADR-0030/0031/0034/0035)
 ├── examples/
 │   ├── end_to_end_scenario.py       Part IX's real, narrated demonstration
 │   ├── crash_recovery_scenario.py   resume-in-place demonstration (Priority 17.3)
 │   └── personal_model_and_proactive_scenario.py  Mission Layla Parts 1/2/11
-└── python/tests/                   491 tests (as of Directive D Part VIII; 1 live-gated, skipped by default)
+└── python/tests/                   505 tests (as of Directive D Part IX; 1 live-gated, skipped by default)
 ```
 
 ## Naming Standards
@@ -808,6 +809,22 @@ Install the optional extra:
 pip install -e "layla/python[mqtt]"
 ```
 
+# Robotics / Embodiment (Directive D, Part IX, ADR-0036)
+
+`RobotSafetyController` (robotics/controller.py) — a real safety layer
+built entirely on existing components (`EmbodimentController`,
+`risk.classify_risk`, `ApprovalManager`, `AuditLogger`); no new
+cognitive/risk/event framework. See CONTRACT.md §44.
+
+| Component | Status | Notes |
+|---|---|---|
+| Emergency stop / human override | 🟢 GREEN | A real software latch, set before the real driver's own stop call — verified even a driver whose `emergency_stop()` itself raises still leaves the latch engaged. Checked first on every call, ahead of any `EmbodimentController` approval. |
+| Timeout / cancellation | 🟢 GREEN | Real `threading.Thread.join(timeout=...)` against a real slow fake driver — a genuinely late result is never read or applied. |
+| Fail-safe behavior | 🟢 GREEN | Any timeout or driver exception triggers a real fail-safe callback AND latches the emergency stop before the error propagates — verified further actions are refused until an explicit `reset_emergency_stop()`. |
+| State verification / audit trail | 🟢 GREEN | Real `get_state()` queried and recorded after every action via the existing `AuditLogger`. |
+| `EmbodimentController` gating | 🟢 GREEN | 3/3 real end-to-end tests: approved reaches the real driver; denied never does; an emergency-stopped controller refuses even an approved request. `EMBODIMENT_ROBOTICS` has been in `_DEFAULT_HIGH_RISK_CAPABILITIES` since ADR-0027. |
+| Physical robot hardware | 🟡 YELLOW / ADAPTER READY | No physical robot exists in this environment. `RobotDriver` (`execute()`/`get_state()`/`emergency_stop()`) is the documented boundary a deployment implements for its real platform (ROS, a proprietary API, etc.) — all of the safety logic above is real and independent of which driver is plugged in. |
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
@@ -893,7 +910,7 @@ already covers it — extending that list requires an ADR.
 
 # Testing Guide
 
-491 tests as of Directive D Part VIII (MQTT) (119
+505 tests as of Directive D Part IX (Robotics/Embodiment) (119
 Phase 16 + 30 Priority 17.1 + 21 Priority 17.2 + 8 Priority 17.3 + 11
 Priority 17.4 + 1 Priority 17.5 + 30 Mission Layla 1 [PersonalModel/
 ProactiveEngine] + 82 Mission Layla continuation [Prediction/Skills/
@@ -919,8 +936,11 @@ real end-to-end EmbodimentController approval gating] + 17 Directive D
 Part VIII [real MQTT wire-protocol round trip against a real in-repo
 MQTT 3.1.1 broker fixture/real topic-allowlist and wildcard matching/
 real end-to-end EmbodimentController approval gating, including the
-new EMBODIMENT_MQTT high-risk-by-default classification]), 489
-running offline and passing, 2 live/environment-gated and skipped by
+new EMBODIMENT_MQTT high-risk-by-default classification] + 14
+Directive D Part IX [real enforced timeouts/real emergency-stop latch/
+real fail-safe triggering/real state verification/real end-to-end
+EmbodimentController approval gating, all without physical hardware]),
+503 running offline and passing, 2 live/environment-gated and skipped by
 default (`test_live_anthropic_integration.py` — see
 `docs/live-integration-guide.md` to actually run it; plus one OCR
 availability test that only runs on a machine WITHOUT tesseract

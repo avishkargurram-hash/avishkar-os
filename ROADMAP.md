@@ -850,6 +850,32 @@ grepping the whole tree first.
 17 new tests — 491 total for Layla, zero regressions. Full detail:
 CONTRACT.md §42, DECISIONS.md ADR-0035, README.md MQTT section.
 
+## Mission Layla Directive D, Part IX — Robotics/Embodiment (ADR-0036, 2026-08-16)
+
+Built entirely on existing components (`EmbodimentController`,
+`risk.classify_risk`, `ApprovalManager`, `AuditLogger`) — no new
+cognitive/risk/event framework. No physical robot exists in this
+environment, and unlike MQTT there's no single standard "robot
+protocol" a local fixture could faithfully stand in for — the honest
+scope this pass covers is the platform-independent safety logic
+Directive D explicitly requires, genuinely real and tested without any
+hardware via an injected fake driver.
+
+**Real, fully-working**: `RobotSafetyController` — a real emergency-
+stop latch (engages even if the real driver's own stop call fails), a
+real human-override check ahead of even an already-granted approval, a
+real enforced timeout/cancellation via `Thread.join()`, real fail-safe
+triggering on any timeout or driver exception (which itself also
+latches the emergency stop until an explicit, human-attributed
+reset), real state verification, and a real audit trail. 3 real
+end-to-end tests through the unmodified `EmbodimentController` gate.
+
+**Adapter ready**: physical robot hardware itself — `RobotDriver` is
+the documented boundary a deployment implements for its real platform.
+
+14 new tests — 505 total for Layla, zero regressions. Full detail:
+CONTRACT.md §44, DECISIONS.md ADR-0036, README.md Robotics section.
+
 ## How this roadmap changes
 
 A phase only moves to 🚧 when someone is actively working it, and only to

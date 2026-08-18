@@ -1,10 +1,11 @@
 """End-to-end integration: real EmbodimentController (structural risk/
-approval gate, ADR-0027) + real executors (ADR-0030/ADR-0034/ADR-0035)
-registered for EMBODIMENT_BROWSER / EMBODIMENT_COMPUTER_CONTROL /
-EMBODIMENT_HOME_ASSISTANT / EMBODIMENT_MQTT. Proves the full chain
-Directive D Parts III/VII/VIII require: risk classification ->
-approval -> only then a real action -- and that a denied request
-never reaches the real executor at all.
+approval gate, ADR-0027) + real executors
+(ADR-0030/ADR-0034/ADR-0035/ADR-0036) registered for EMBODIMENT_BROWSER
+/ EMBODIMENT_COMPUTER_CONTROL / EMBODIMENT_HOME_ASSISTANT /
+EMBODIMENT_MQTT / EMBODIMENT_ROBOTICS. Proves the full chain Directive
+D Parts III/VII/VIII/IX require: risk classification -> approval ->
+only then a real action -- and that a denied request never reaches
+the real executor at all.
 """
 
 import json
@@ -24,6 +25,7 @@ from avishkar_layla.embodiment import (
     EMBODIMENT_COMPUTER_CONTROL,
     EMBODIMENT_HOME_ASSISTANT,
     EMBODIMENT_MQTT,
+    EMBODIMENT_ROBOTICS,
     EmbodimentController,
 )
 from avishkar_layla.executors.browser_executor import BrowserExecutor
@@ -31,6 +33,8 @@ from avishkar_layla.executors.computer_control_executor import ComputerControlEx
 from avishkar_layla.executors.home_assistant_executor import HomeAssistantExecutor
 from avishkar_layla.executors.mqtt_executor import MQTTExecutor
 from avishkar_layla.mqtt.client import MQTTBridge
+from avishkar_layla.robotics.controller import RobotSafetyController
+from avishkar_layla.robotics.errors import RobotEmergencyStoppedError
 
 # Plain top-level import -- see test_mqtt_bridge.py's comment on the
 # same import for why this can't be a package-relative import.
@@ -253,6 +257,65 @@ class TestRealMQTTExecutorThroughEmbodimentController(unittest.TestCase):
 
         self.assertEqual(result.status, "denied")
         self.assertEqual(self.broker.received_publishes, [])
+
+
+class _FakeRobotDriver:
+    def __init__(self):
+        self.calls = []
+
+    def execute(self, action, parameters):
+        self.calls.append((action, dict(parameters)))
+        return "done"
+
+    def get_state(self):
+        return {"position": "docked"}
+
+    def emergency_stop(self):
+        self.calls.append(("emergency_stop", {}))
+
+
+class TestRealRobotSafetyControllerThroughEmbodimentController(unittest.TestCase):
+    def setUp(self):
+        self.driver = _FakeRobotDriver()
+        self.robot = RobotSafetyController(self.driver)
+
+    def test_approved_action_actually_reaches_the_real_driver(self):
+        gate = ApprovalGate(policy="always_allow")
+        controller = EmbodimentController(approval_manager=ApprovalManager(approval_gate=gate))
+        controller.register_executor(EMBODIMENT_ROBOTICS, self.robot)
+
+        result = controller.request(EMBODIMENT_ROBOTICS, "move_to", {"x": 1, "y": 2}, task_id="t1")
+
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.output["result"], "done")
+        self.assertEqual(self.driver.calls, [("move_to", {"x": 1, "y": 2})])
+
+    def test_denied_action_never_reaches_the_real_driver(self):
+        """EMBODIMENT_ROBOTICS is already in _DEFAULT_HIGH_RISK_CAPABILITIES
+        -- every action requires approval, including one that reads as
+        completely innocuous.
+        """
+        gate = ApprovalGate(policy="always_ask", callback=lambda task: False)
+        controller = EmbodimentController(approval_manager=ApprovalManager(approval_gate=gate))
+        controller.register_executor(EMBODIMENT_ROBOTICS, self.robot)
+
+        result = controller.request(EMBODIMENT_ROBOTICS, "move_to", {"x": 1, "y": 2}, task_id="t1")
+
+        self.assertEqual(result.status, "denied")
+        self.assertEqual(self.driver.calls, [])
+
+    def test_emergency_stop_gates_even_an_approved_request(self):
+        """A human override takes precedence over an already-granted
+        EmbodimentController approval -- the second, complementary
+        safety gate this pass added.
+        """
+        gate = ApprovalGate(policy="always_allow")
+        controller = EmbodimentController(approval_manager=ApprovalManager(approval_gate=gate))
+        controller.register_executor(EMBODIMENT_ROBOTICS, self.robot)
+        self.robot.emergency_stop(reason="operator request")
+
+        with self.assertRaises(RobotEmergencyStoppedError):
+            controller.request(EMBODIMENT_ROBOTICS, "move_to", {"x": 1}, task_id="t1")
 
 
 if __name__ == "__main__":
