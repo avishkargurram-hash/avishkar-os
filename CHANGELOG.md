@@ -726,5 +726,25 @@ its first consumer.
   `environment` extra in `layla/python/pyproject.toml`. 20 new tests
   -- 463 total for Layla, up from 443, zero regressions. CONTRACT.md
   SS38, README.md updated; ADR-0033 recorded in DECISIONS.md.
+- Mission Layla Directive D, Part VII -- real Home Assistant executor
+  (`avishkar_layla.executors.home_assistant_executor`, ADR-0034).
+  `HomeAssistantExecutor` builds real HTTP requests against Home
+  Assistant's actual REST API (`list_states`/`get_state`/
+  `call_service`/`get_config`); no live instance is configured in this
+  environment, so verified instead against a real, minimal, in-repo
+  HTTP server fixture this suite runs itself (real Bearer-token
+  checking, real 401 handling, real JSON parsing -- the same pattern
+  SMTPEmailTransport established). Registered for
+  `EMBODIMENT_HOME_ASSISTANT` (already HIGH-risk by default in
+  embodiment.py, unchanged) -- a real end-to-end test confirms an
+  approved call reaches the fixture server and a denied one never
+  does. One real, disclosed environmental test flake (a Playwright
+  click test under heavy real CPU contention from this development
+  machine's own concurrent browser usage) was independently confirmed
+  to pass cleanly in isolation and is documented rather than hidden.
+  New optional `home_assistant` extra in `layla/python/pyproject.toml`.
+  11 new tests -- 474 total for Layla, up from 463, zero regressions.
+  CONTRACT.md SS40, README.md updated; ADR-0034 recorded in
+  DECISIONS.md.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

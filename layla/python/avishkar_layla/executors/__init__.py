@@ -28,6 +28,7 @@ from .errors import (
     ShellCommandNotAllowedError,
     UnknownActionError,
 )
+from .home_assistant_executor import HomeAssistantExecutor, HomeAssistantNotConfiguredError
 
 __all__ = [
     "ADBExecutor",
@@ -35,6 +36,8 @@ __all__ = [
     "BrowserActionError",
     "BrowserExecutor",
     "ComputerControlExecutor",
+    "HomeAssistantExecutor",
+    "HomeAssistantNotConfiguredError",
     "PathOutsideWorkspaceError",
     "ShellCommandNotAllowedError",
     "UnknownActionError",

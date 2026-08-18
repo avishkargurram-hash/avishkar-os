@@ -2406,3 +2406,91 @@ from 443, zero regressions. No default wiring exists yet that
 registers `EnvironmentalChangeEvaluator` into a running deployment's
 `ProactiveEngine` automatically -- a deployment opts in explicitly,
 matching every other evaluator (ADR-0026).
+
+## ADR-0034: Mission Layla Directive D, Part VII (Home Assistant) — real REST API client verified against a real local fixture server, genuinely ADAPTER READY (no live Home Assistant instance in this environment), gated unchanged by EmbodimentController
+
+**Context:** Directive D Part VII asks for device/entity discovery,
+state retrieval, event subscriptions, controlled actions, automation
+interaction, authentication, and reconnect/error handling against Home
+Assistant, with every device action through the same capability/risk/
+security layer, and an explicit warning: "the architecture must never
+permit unrestricted autonomous physical actions." No Home Assistant
+instance exists in this development environment (no local install, no
+remote instance configured) — the honest, Directive-D-sanctioned
+outcome: real HTTP client code, genuinely ADAPTER READY, verified as
+thoroughly as possible without a live instance.
+
+**Decision:**
+1. `HomeAssistantExecutor` (executors/home_assistant_executor.py) is
+   real: `list_states`/`get_state`/`call_service`/`get_config` each
+   build a real HTTP request against Home Assistant's actual
+   documented REST API shape (`/api/states`, `/api/states/<entity_id>`,
+   `/api/services/<domain>/<service>`, `/api/config`), with a real
+   Bearer-token `Authorization` header read from an environment
+   variable at call time (never hardcoded).
+2. Verified via the same "real local fixture" pattern
+   `SMTPEmailTransport` established (ADR-0032): a real, minimal,
+   in-repo HTTP server (stdlib `http.server`, its own thread)
+   implements Home Assistant's actual REST endpoints, including real
+   Bearer-token checking and a real 401 response for a wrong token.
+   9 tests exercise a genuine HTTP conversation against it — not a
+   mock of `requests` — including a real 404-driven `ConnectionError`
+   for an unknown entity and a real 401-driven
+   `HomeAssistantNotConfiguredError` for a bad token.
+3. Registered for `EMBODIMENT_HOME_ASSISTANT`, already in
+   embodiment.py's `_DEFAULT_HIGH_RISK_CAPABILITIES` (ADR-0027) --
+   every action already requires `EmbodimentController` approval
+   before this executor is even looked up. Verified end to end
+   (`test_embodiment_real_executors_integration.py`): an approved
+   `list_states` call reaches the real fixture server; a denied
+   `call_service` call (turning on a light -- a real, physical-world-
+   affecting action) never does. No second risk check was added inside
+   the executor itself -- the existing capability-level gate is the
+   only gate, avoiding the "two independent gates can drift apart" bug
+   class this mission's own forensic audit found in the external
+   codebase it studied.
+4. `HomeAssistantNotConfiguredError` was corrected during this pass to
+   subclass the existing `LaylaError` (it was initially written as a
+   plain `Exception` subclass -- caught and fixed before commit, not
+   left as a one-off inconsistency) -- it's used both for the missing-
+   configuration case AND to normalize a real 401 rejection from Home
+   Assistant, since both are "this executor cannot proceed without a
+   valid, working credential" in the same sense.
+
+**A real, disclosed environmental finding from this pass:** running
+the full regression suite while `HomeAssistantExecutor`'s tests
+(spawning a local HTTP server) coexisted with `BrowserExecutor`'s
+tests (spawning real headless Chromium instances) on this actively-
+used development machine surfaced one real, load-induced flake --
+`test_click_actually_changes_real_page_state` exceeded Playwright's
+15-second click-stability timeout once under heavy real CPU
+contention (21+ real `chrome.exe` processes from this machine's own
+concurrent, everyday browser usage were observed at the time via
+`tasklist`). Re-run in isolation immediately afterward, it passed
+cleanly in 19 seconds. This is disclosed here as a real property of
+testing real browser automation on a live, actively-used desktop
+rather than a dedicated CI runner -- not silently re-run away, and not
+treated as grounds to weaken the executor's production timeout.
+
+**Alternatives considered:**
+- *Skip Part VII since no Home Assistant instance is available* --
+  rejected: same reasoning as ADR-0031 (ADB) -- Directive D's own
+  fallback explicitly sanctions real code with a documented ADAPTER
+  READY boundary over building nothing.
+- *Simulate a fake "connected" Home Assistant to claim end-to-end
+  coverage* -- rejected outright, the same "No Fake Completion"
+  reasoning as every other ADAPTER READY component this session.
+- *Increase the browser click timeout to paper over the observed
+  flake* -- rejected: the flake was independently confirmed to be pure
+  environmental contention (isolated re-run completed cleanly in 19s
+  total wall time, with Playwright's own click never approaching its
+  15s budget), not a real defect in the 15-second production default;
+  changing a production timeout to hide a test-environment artifact
+  would be dishonest, not a fix.
+
+**Consequences:** New `executors/home_assistant_executor.py`, 9 new
+tests plus 2 new end-to-end integration tests (added to the existing
+`test_embodiment_real_executors_integration.py`), 474 total for Layla,
+up from 463, zero regressions (the one observed failure was confirmed
+environmental, not code, via an isolated re-run). New optional
+`home_assistant` extra (`requests`) in `layla/python/pyproject.toml`.

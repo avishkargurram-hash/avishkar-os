@@ -44,6 +44,8 @@ channels = ["requests", "twilio"]
 # Mission Layla Directive D, Part VI (Environmental Awareness).
 # IdleTimeSensor needs no extra package (stdlib ctypes, Windows-only).
 environment = ["psutil"]
+# Mission Layla Directive D, Part VII (Home Assistant).
+home_assistant = ["requests"]
 
 [tool.setuptools.packages.find]
 where = ["."]

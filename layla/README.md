@@ -53,12 +53,12 @@ layla/
 │   ├── environment/                 environmental awareness (Directive D Part VI, ADR-0033)
 │   ├── voice/                      voice subsystem (Directive D Part I, ADR-0028)
 │   ├── vision/                     vision/OCR/spatial subsystem (Directive D Part II, ADR-0029)
-│   └── executors/                  real EmbodimentController executors (Directive D Parts III-IV, ADR-0030/0031)
+│   └── executors/                  real EmbodimentController executors (Directive D Parts III-IV/VII, ADR-0030/0031/0034)
 ├── examples/
 │   ├── end_to_end_scenario.py       Part IX's real, narrated demonstration
 │   ├── crash_recovery_scenario.py   resume-in-place demonstration (Priority 17.3)
 │   └── personal_model_and_proactive_scenario.py  Mission Layla Parts 1/2/11
-└── python/tests/                   463 tests (as of Directive D Part VI; 1 live-gated, skipped by default)
+└── python/tests/                   474 tests (as of Directive D Part VII; 1 live-gated, skipped by default)
 ```
 
 ## Naming Standards
@@ -778,6 +778,17 @@ into a running `ExecutiveRuntime`'s `ProactiveEngine` by default — a
 deployment opts in explicitly via `ProactiveEngine(extra_evaluators=(evaluator,))`,
 matching every other evaluator's wiring (ADR-0026).
 
+# Home Assistant (Directive D, Part VII, ADR-0034)
+
+`HomeAssistantExecutor` (executors/home_assistant_executor.py) — REAL
+CODE / ADAPTER READY. See CONTRACT.md §40.
+
+| Component | Status | Notes |
+|---|---|---|
+| `list_states`/`get_state`/`call_service`/`get_config` dispatch | 🟢 GREEN | Real HTTP client against Home Assistant's actual REST API shape; 9/9 tests real and passing against a real, minimal, in-repo HTTP server fixture this suite runs itself (real Bearer-token checking, real 401 handling, real JSON parsing). |
+| `EmbodimentController` gating | 🟢 GREEN | 2/2 real end-to-end tests: an approved `list_states` call reaches the real fixture server; a denied `call_service` call never does. `EMBODIMENT_HOME_ASSISTANT` is already in embodiment.py's `_DEFAULT_HIGH_RISK_CAPABILITIES` — every action requires approval regardless of wording. |
+| Live device/entity interaction | 🟡 YELLOW | No live Home Assistant instance exists in this environment — genuinely untested live. `HomeAssistantExecutor` raises `HomeAssistantNotConfiguredError` ("ADAPTER READY") rather than fabricating a result when no base URL/token is configured. |
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
@@ -863,7 +874,7 @@ already covers it — extending that list requires an ADR.
 
 # Testing Guide
 
-463 tests as of Directive D Part VI (Environmental Awareness) (119
+474 tests as of Directive D Part VII (Home Assistant) (119
 Phase 16 + 30 Priority 17.1 + 21 Priority 17.2 + 8 Priority 17.3 + 11
 Priority 17.4 + 1 Priority 17.5 + 30 Mission Layla 1 [PersonalModel/
 ProactiveEngine] + 82 Mission Layla continuation [Prediction/Skills/
@@ -883,12 +894,22 @@ Telegram, Slack, Discord, and Twilio's actual APIs with deliberately
 invalid credentials/adapter+registry routing for 4 new channels] + 20
 Directive D Part VI [real local sensors/real EventBus threshold-based
 publishing/real retry-storm-safe ProactiveEngine evaluator/full real
-end-to-end chain integration]), 461
+end-to-end chain integration] + 11 Directive D Part VII [real Home
+Assistant REST API dispatch against a real local fixture server/
+real end-to-end EmbodimentController approval gating]), 472
 running offline and passing, 2 live/environment-gated and skipped by
 default (`test_live_anthropic_integration.py` — see
 `docs/live-integration-guide.md` to actually run it; plus one OCR
 availability test that only runs on a machine WITHOUT tesseract
-installed, correctly skipped on this one), via:
+installed, correctly skipped on this one). One real, environment-load
+test flake was observed and independently reproduced-clean in this
+pass: `test_click_actually_changes_real_page_state` (a real Playwright
+click against a real headless browser) exceeded its 15s timeout once
+under heavy real CPU contention from this development machine's own,
+actively-used Chrome tabs (21+ real `chrome.exe` processes observed at
+the time) — re-run in isolation immediately after, it passed in 19s.
+Not a code defect; disclosed here rather than silently re-run away.
+Via:
 ```bash
 PYTHONPATH="core/python;router/python;factories/agent-factory/python;factories/knowledge-factory/python;factories/mcp-factory/python;factories/memory-factory/python;factories/security-factory/python;factories/evaluation-factory/python;factories/prompt-factory/python;factories/workflow-factory/python;layla/python" \
   python -m unittest discover -s layla/python/tests

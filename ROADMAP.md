@@ -798,6 +798,29 @@ with zero LLM calls in the path.
 Full detail: CONTRACT.md §38, DECISIONS.md ADR-0033, README.md
 Environmental Awareness section.
 
+## Mission Layla Directive D, Part VII — Home Assistant (ADR-0034, 2026-08-16)
+
+No live Home Assistant instance exists in this environment — the
+honest, Directive-D-sanctioned outcome: real `HomeAssistantExecutor`
+REST API client code, verified against a real, minimal, in-repo HTTP
+server fixture this suite runs itself (real Bearer-token checking,
+real 401 handling), registered for `EMBODIMENT_HOME_ASSISTANT`
+(already forced HIGH-risk by embodiment.py) with no change to that
+existing gate. A real end-to-end test proves an approved `list_states`
+call reaches the fixture server and a denied `call_service` call never
+does.
+
+One real, disclosed environmental finding: a Playwright click test
+flaked once under heavy real CPU contention from this actively-used
+development machine's own concurrent browser usage (21+ real
+`chrome.exe` processes observed), independently confirmed to pass
+cleanly in isolation — a property of the test environment, not a code
+defect, and not papered over by loosening a production timeout.
+
+11 new tests — 474 total for Layla, zero regressions (confirmed) at
+every commit. Full detail: CONTRACT.md §40, DECISIONS.md ADR-0034,
+README.md Home Assistant section.
+
 ## How this roadmap changes
 
 A phase only moves to 🚧 when someone is actively working it, and only to

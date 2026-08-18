@@ -1,21 +1,31 @@
 """End-to-end integration: real EmbodimentController (structural risk/
-approval gate, ADR-0027) + real executors (ADR-0030) registered for
-EMBODIMENT_BROWSER / EMBODIMENT_COMPUTER_CONTROL. Proves the full
-chain Directive D Part III requires: risk classification -> approval
--> only then a real action -- and that a denied request never reaches
-the real executor at all.
+approval gate, ADR-0027) + real executors (ADR-0030/ADR-0034)
+registered for EMBODIMENT_BROWSER / EMBODIMENT_COMPUTER_CONTROL /
+EMBODIMENT_HOME_ASSISTANT. Proves the full chain Directive D Parts
+III/VII require: risk classification -> approval -> only then a real
+action -- and that a denied request never reaches the real executor
+at all.
 """
 
+import json
 import shutil
 import tempfile
+import threading
 import unittest
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from avishkar_agent import ApprovalGate
 
 from avishkar_layla.approval import ApprovalManager
-from avishkar_layla.embodiment import EMBODIMENT_BROWSER, EMBODIMENT_COMPUTER_CONTROL, EmbodimentController
+from avishkar_layla.embodiment import (
+    EMBODIMENT_BROWSER,
+    EMBODIMENT_COMPUTER_CONTROL,
+    EMBODIMENT_HOME_ASSISTANT,
+    EmbodimentController,
+)
 from avishkar_layla.executors.browser_executor import BrowserExecutor
 from avishkar_layla.executors.computer_control_executor import ComputerControlExecutor
+from avishkar_layla.executors.home_assistant_executor import HomeAssistantExecutor
 
 
 class TestRealBrowserExecutorThroughEmbodimentController(unittest.TestCase):
@@ -123,6 +133,72 @@ class TestRealComputerControlExecutorThroughEmbodimentController(unittest.TestCa
 
         result = controller.request(EMBODIMENT_COMPUTER_CONTROL, "list_dir", {"path": "."}, task_id="t1")
         self.assertEqual(result.risk_level, RISK_HIGH)
+        self.assertEqual(result.status, "denied")
+
+
+class _HAHandler(BaseHTTPRequestHandler):
+    def log_message(self, *args):
+        pass
+
+    def do_GET(self):
+        if self.headers.get("Authorization") != "Bearer real-test-token":
+            self._send(401, {"message": "Unauthorized"})
+            return
+        self._send(200, [{"entity_id": "light.kitchen", "state": "off"}])
+
+    def _send(self, status, payload):
+        body = json.dumps(payload).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+
+class TestRealHomeAssistantExecutorThroughEmbodimentController(unittest.TestCase):
+    def setUp(self):
+        self.server = HTTPServer(("127.0.0.1", 0), _HAHandler)
+        self.port = self.server.server_address[1]
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        import os
+
+        os.environ["TEST_HA_INTEGRATION_TOKEN"] = "real-test-token"
+        self.executor = HomeAssistantExecutor(
+            base_url=f"http://127.0.0.1:{self.port}", token_env="TEST_HA_INTEGRATION_TOKEN",
+        )
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+        import os
+
+        os.environ.pop("TEST_HA_INTEGRATION_TOKEN", None)
+
+    def test_approved_list_states_actually_reaches_the_real_server(self):
+        gate = ApprovalGate(policy="always_allow")
+        controller = EmbodimentController(approval_manager=ApprovalManager(approval_gate=gate))
+        controller.register_executor(EMBODIMENT_HOME_ASSISTANT, self.executor)
+
+        result = controller.request(EMBODIMENT_HOME_ASSISTANT, "list_states", {}, task_id="t1")
+
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.output[0]["entity_id"], "light.kitchen")
+
+    def test_denied_call_service_never_reaches_the_real_server(self):
+        """EMBODIMENT_HOME_ASSISTANT is in _DEFAULT_HIGH_RISK_CAPABILITIES
+        -- every action requires approval, including one that reads as
+        completely innocuous.
+        """
+        gate = ApprovalGate(policy="always_ask", callback=lambda task: False)
+        controller = EmbodimentController(approval_manager=ApprovalManager(approval_gate=gate))
+        controller.register_executor(EMBODIMENT_HOME_ASSISTANT, self.executor)
+
+        result = controller.request(
+            EMBODIMENT_HOME_ASSISTANT, "call_service",
+            {"domain": "light", "service": "turn_on", "service_data": {"entity_id": "light.kitchen"}}, task_id="t1",
+        )
+
         self.assertEqual(result.status, "denied")
 
 

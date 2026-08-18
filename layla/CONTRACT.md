@@ -1102,7 +1102,32 @@ capture -> a real `ProactiveTrigger` from `ProactiveEngine.evaluate()`
 -- entirely without any LLM call, matching Directive D's "wake Layla
 intelligence only when required."
 
-## §39. Errors
+## §40. Home Assistant (Mission Layla Directive D, Part VII)
+
+`HomeAssistantExecutor` (executors/home_assistant_executor.py) -- REAL
+CODE / ADAPTER READY. Genuine HTTP client against Home Assistant's
+real REST API: `list_states` (`GET /api/states`), `get_state`
+(`GET /api/states/<entity_id>`), `call_service`
+(`POST /api/services/<domain>/<service>`), `get_config`
+(`GET /api/config`). No live Home Assistant instance exists in this
+environment; `test_home_assistant_executor.py` runs a real, minimal,
+in-repo HTTP server implementing Home Assistant's actual REST API
+shape (the same pattern `test_smtp_email_transport.py` established for
+Email) -- a genuine HTTP conversation with real Bearer-token checking,
+real 401 handling, real JSON parsing, not a mock of `requests`.
+
+Registered for `EMBODIMENT_HOME_ASSISTANT`, already in embodiment.py's
+`_DEFAULT_HIGH_RISK_CAPABILITIES` -- every action always requires
+approval before `EmbodimentController` even looks up this executor
+(verified end to end in
+`test_embodiment_real_executors_integration.py`: an approved
+`list_states` call reaches the real local fixture server; a denied
+`call_service` call never does). Directive D Part VII, verbatim: "the
+architecture must never permit unrestricted autonomous physical
+actions" -- there is no path from a model's output to a real Home
+Assistant service call that skips that gate.
+
+## §41. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,
@@ -1122,8 +1147,12 @@ errors (`ScreenCaptureError`, `OCRNotAvailableError`) live in
 `vision/errors.py`; executor errors (`UnknownActionError`,
 `BrowserActionError`, `ShellCommandNotAllowedError`,
 `PathOutsideWorkspaceError`, `ADBNotAvailableError`) live in
-`executors/errors.py`; `SensorUnavailableError` lives in
-`environment/errors.py`; every channel transport raises the existing
+`executors/errors.py`; `HomeAssistantNotConfiguredError` lives in
+`home_assistant_executor.py` directly (also used to normalize a real
+401 from Home Assistant, not only a missing-configuration case; real
+connectivity failures raise the stdlib `ConnectionError`);
+`SensorUnavailableError` lives in `environment/errors.py`; every
+channel transport raises the existing
 `avishkar_integration.ProtocolInvocationError` (no new channel-specific
 error types were introduced) -- all following the same locally-scoped
 convention as §22-§28's errors.
