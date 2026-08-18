@@ -788,5 +788,24 @@ its first consumer.
   boundary a deployment implements for its real platform. 14 new tests
   -- 505 total for Layla, up from 491, zero regressions. CONTRACT.md
   SS44, README.md updated; ADR-0036 recorded in DECISIONS.md.
+- Mission Layla Directive D, Part X -- real Personal Executive
+  Communication (`avishkar_layla.executive_communication`, ADR-0037),
+  implementing Directive D's own worked example exactly: "Avishkar has
+  not responded to this person for 7 days -> ... -> Generate draft ->
+  Risk assessment -> Approval policy -> Send -> Record outcome ->
+  Update memory." `StaleRelationshipEvaluator`: a real
+  `proactive.TriggerEvaluator` -- real `PersonalModel` relationship
+  lookup, real days-since-contact computation, real `do_not_disturb`/
+  custom-eligibility filtering, real retry-storm-safe dedup; emits
+  `ACTION_SUGGEST` only, never an autonomous send. `record_contact_outcome()`:
+  a real, provenance-tracked `PersonalModel.correct()` call, refusing
+  to record a follow-up against an unknown contact. Draft generation,
+  risk classification, approval, and sending are deliberately NOT
+  reimplemented -- they are exactly what the unchanged
+  `ExecutiveRuntime.handle_event()` pipeline already does when a
+  suggestion is acted on. Calendar/Meetings/Appointments/Reminders
+  remain existing `LifeOS` functionality, not rebuilt. 11 new tests
+  -- 516 total for Layla, up from 505, zero regressions. CONTRACT.md
+  SS46, README.md updated; ADR-0037 recorded in DECISIONS.md.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

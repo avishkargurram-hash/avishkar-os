@@ -2735,3 +2735,95 @@ zero regressions. No pyproject extra needed -- `RobotSafetyController`
 uses only the stdlib (`threading`, `time`). Real robot hardware
 integration remains explicit future work, gated behind a real
 `RobotDriver` implementation a deployment supplies.
+
+## ADR-0037: Mission Layla Directive D, Part X (Personal Executive Communication) — implements Directive D's own worked example exactly, reusing handle_event()'s existing draft/risk/approval/send pipeline rather than reimplementing any of it
+
+**Context:** Directive D Part X asks for executive communication
+across Email/WhatsApp/LinkedIn/Slack/Telegram/Calendar/Meetings/
+Appointments/Reminders/Follow-ups/Notifications, and gives one
+specific worked example as the concrete shape this capability should
+take: "Avishkar has not responded to this person for 7 days ->
+Relationship/context lookup -> Determine follow-up appropriateness ->
+Generate draft -> Risk assessment -> Approval policy -> Send -> Record
+outcome -> Update memory." Calendar/Meetings/Appointments/Reminders
+are already real, existing `LifeOS` functionality (ADR-0027); nothing
+in this part needed to rebuild that.
+
+**Decision:**
+1. `StaleRelationshipEvaluator` (executive_communication.py) is a real
+   `proactive.TriggerEvaluator` implementing the example's first three
+   steps: real relationship/context lookup against `PersonalModel`'s
+   existing `relationships` category, a real days-since-last-contact
+   computation (not a placeholder), and real follow-up-appropriateness
+   filtering (`do_not_disturb`, plus an optional caller-supplied
+   `is_eligible` predicate for deployment-specific rules). It emits
+   `ACTION_SUGGEST` -- never `ACTION_ACT` -- because deciding what to
+   say to a real person, and whether to say it at all, is not a
+   decision this evaluator is positioned to make safely on its own.
+   Deduplicates per `(contact_id, last_contact_date)`, the same
+   retry-storm-safe pattern `EnvironmentalChangeEvaluator` (ADR-0033)
+   established, verified by a real test that the same staleness state
+   is never re-suggested on a later `evaluate()` tick.
+2. The example's remaining steps -- "Generate draft -> Risk assessment
+   -> Approval policy -> Send" -- are deliberately NOT reimplemented
+   in this module. They are exactly what `ExecutiveRuntime.handle_event()`
+   already does, unmodified, for any suggestion a human (or a future
+   `ProactiveEngine.act_callback`) chooses to act on: real intent/
+   context/planning, the real `risk.classify_risk()`/`ApprovalManager`
+   gate, real delegation to a Chief Domain Agent for the actual
+   drafting (a genuine LLM call, not fabricated text), and the real
+   Part V channel adapters for the actual send. Building a second
+   drafting/risk/send path here would be exactly the kind of
+   duplicated-framework Mission Layla's own architecture rule
+   ("AVISHKAR OS REMAINS THE FOUNDATION") and Directive D's Critical
+   Rules explicitly forbid.
+3. `record_contact_outcome()` implements the example's final two
+   steps -- "Record outcome -> Update memory" -- as a real
+   `PersonalModel.correct()` call (provenance-tracked, per CONTRACT.md
+   §19's real-contradiction-handling discipline), intended to be
+   called after a real Part V channel adapter confirms delivery (a
+   real `message_id`). It raises the stdlib `ValueError` for a contact
+   `PersonalModel` has no record of, rather than silently creating
+   one -- a follow-up can only be recorded against relationship
+   context that was already real.
+4. A full real integration test wires `StaleRelationshipEvaluator`
+   into a real `ProactiveEngine` (the same construction
+   `test_proactive.py` and the Part VI end-to-end test use) and
+   confirms the entire chain from a stale `PersonalModel` fact to a
+   real `Notification` -- proving the pieces genuinely compose, not
+   merely that each function works in isolation.
+
+**Alternatives considered:**
+- *Have this module call an LLM directly to draft follow-up messages*
+  -- rejected: `ExecutiveRuntime.handle_event()` -> Chief Domain Agent
+  delegation is the existing, real, risk-gated path for any LLM-backed
+  action; calling a model directly here would bypass
+  `risk.classify_risk()`/`ApprovalManager` entirely for what is, by
+  Directive D's own explicit account, a real communication to a real
+  person -- precisely the kind of gate-bypass this mission's Part-1
+  forensic audit found catastrophic in the external codebase it
+  studied.
+- *Emit `ACTION_ACT` directly for stale relationships above some
+  higher staleness threshold (e.g. 30+ days), treating extreme
+  staleness as sufficient autonomous justification* -- rejected:
+  unlike environmental signals (network state, battery), a stale
+  relationship's appropriate response depends on real-world context
+  this evaluator cannot see (whether a reply is actually still
+  expected, whether the relationship has quietly ended, whether now is
+  a bad time) -- `ACTION_SUGGEST` (a human decides) is the correct
+  ceiling regardless of how stale the relationship is.
+- *Build a new relationship-tracking data structure instead of reusing
+  `PersonalModel`'s `relationships` category* -- rejected: that
+  category already exists, is already `SENSITIVE_CATEGORIES`-gated
+  (requires `confirmed=True`), and is already the correct place for
+  exactly this kind of fact; a parallel structure would fragment where
+  "who do I know, and how" lives.
+
+**Consequences:** New `executive_communication.py` (added to
+`avishkar_layla/__init__.py`'s top-level exports, since this is core
+cognitive-layer functionality, not an optional hardware/network
+capability like `voice`/`vision`/`mqtt`/`robotics`), 11 new tests (8
+evaluator + 3 outcome-recording, plus 1 already counted in the
+end-to-end integration test), 516 total for Layla, up from 505, zero
+regressions. No pyproject extra needed -- pure Python over existing
+`PersonalModel`/`proactive` primitives.

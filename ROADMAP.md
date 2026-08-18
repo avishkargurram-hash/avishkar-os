@@ -876,6 +876,31 @@ the documented boundary a deployment implements for its real platform.
 14 new tests — 505 total for Layla, zero regressions. Full detail:
 CONTRACT.md §44, DECISIONS.md ADR-0036, README.md Robotics section.
 
+## Mission Layla Directive D, Part X — Personal Executive Communication (ADR-0037, 2026-08-16)
+
+Implements Directive D's own worked example exactly: "Avishkar has not
+responded to this person for 7 days → … → Generate draft → Risk
+assessment → Approval policy → Send → Record outcome → Update memory."
+Calendar/Meetings/Appointments/Reminders are already real, existing
+`LifeOS` functionality — not rebuilt.
+
+**Real, fully-working**: `StaleRelationshipEvaluator` (real
+relationship lookup, real staleness computation, real eligibility
+filtering, real retry-storm-safe dedup, emits `ACTION_SUGGEST` only —
+never autonomous send), `record_contact_outcome()` (a real, provenance-
+tracked `PersonalModel` update). A full real `ProactiveEngine`
+integration test proves the chain composes end to end.
+
+**Deliberately not reimplemented**: draft generation, risk
+classification, approval, and sending — these are exactly what the
+unchanged `ExecutiveRuntime.handle_event()` pipeline already does;
+duplicating them here would violate "Avishkar OS remains the
+foundation."
+
+11 new tests — 516 total for Layla, zero regressions. Full detail:
+CONTRACT.md §46, DECISIONS.md ADR-0037, README.md Personal Executive
+Communication section.
+
 ## How this roadmap changes
 
 A phase only moves to 🚧 when someone is actively working it, and only to

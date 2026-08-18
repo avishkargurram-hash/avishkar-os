@@ -69,6 +69,12 @@ from .execution import (
     ExecutionTracker,
     classify_operation,
 )
+from .executive_communication import (
+    RELATIONSHIPS_CATEGORY,
+    RelationshipContact,
+    StaleRelationshipEvaluator,
+    record_contact_outcome,
+)
 from .executive_dashboard import ExecutiveDashboard
 from .identity import (
     ALL_PERMISSIONS,
@@ -320,5 +326,9 @@ __all__ = [
     "BusinessIntelligenceEngine",
     "BusinessIntelligenceReport",
     "ExecutiveDashboard",
+    "RELATIONSHIPS_CATEGORY",
+    "RelationshipContact",
+    "StaleRelationshipEvaluator",
+    "record_contact_outcome",
     "__version__",
 ]

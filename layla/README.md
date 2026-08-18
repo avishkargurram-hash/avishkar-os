@@ -48,19 +48,20 @@ ExecutiveRuntime (event loop: IDLE -> EVENT -> INGEST -> UNDERSTAND ->
 layla/
 ├── CONTRACT.md              language-agnostic contract
 ├── README.md                  this file
-├── python/avishkar_layla/       reference implementation (41 modules)
+├── python/avishkar_layla/       reference implementation (42 modules)
 │   ├── channels/                   communication channel adapters (6 real transports, Directive D Part V, ADR-0032)
 │   ├── environment/                 environmental awareness (Directive D Part VI, ADR-0033)
 │   ├── voice/                      voice subsystem (Directive D Part I, ADR-0028)
 │   ├── vision/                     vision/OCR/spatial subsystem (Directive D Part II, ADR-0029)
 │   ├── mqtt/                        real MQTT bridge (Directive D Part VIII, ADR-0035)
 │   ├── robotics/                    real robot safety layer (Directive D Part IX, ADR-0036)
+│   ├── executive_communication.py   real stale-relationship follow-up chain (Directive D Part X, ADR-0037)
 │   └── executors/                  real EmbodimentController executors (Directive D Parts III-IV/VII-VIII, ADR-0030/0031/0034/0035)
 ├── examples/
 │   ├── end_to_end_scenario.py       Part IX's real, narrated demonstration
 │   ├── crash_recovery_scenario.py   resume-in-place demonstration (Priority 17.3)
 │   └── personal_model_and_proactive_scenario.py  Mission Layla Parts 1/2/11
-└── python/tests/                   505 tests (as of Directive D Part IX; 1 live-gated, skipped by default)
+└── python/tests/                   516 tests (as of Directive D Part X; 1 live-gated, skipped by default)
 ```
 
 ## Naming Standards
@@ -825,6 +826,22 @@ cognitive/risk/event framework. See CONTRACT.md §44.
 | `EmbodimentController` gating | 🟢 GREEN | 3/3 real end-to-end tests: approved reaches the real driver; denied never does; an emergency-stopped controller refuses even an approved request. `EMBODIMENT_ROBOTICS` has been in `_DEFAULT_HIGH_RISK_CAPABILITIES` since ADR-0027. |
 | Physical robot hardware | 🟡 YELLOW / ADAPTER READY | No physical robot exists in this environment. `RobotDriver` (`execute()`/`get_state()`/`emergency_stop()`) is the documented boundary a deployment implements for its real platform (ROS, a proprietary API, etc.) — all of the safety logic above is real and independent of which driver is plugged in. |
 
+# Personal Executive Communication (Directive D, Part X, ADR-0037)
+
+`executive_communication.py` implements Directive D's own worked
+example: "Avishkar has not responded to this person for 7 days → …→
+Generate draft → Risk assessment → Approval policy → Send → Record
+outcome → Update memory." Calendar/Meetings/Appointments/Reminders are
+already real, existing `LifeOS` functionality — not rebuilt. See
+CONTRACT.md §46.
+
+| Component | Status | Notes |
+|---|---|---|
+| `StaleRelationshipEvaluator` | 🟢 GREEN | Real relationship lookup (`PersonalModel`), real days-since-contact computation, real `do_not_disturb`/custom-eligibility filtering, real retry-storm-safe dedup. 8/8 tests real and passing. |
+| `record_contact_outcome()` | 🟢 GREEN | Real `PersonalModel.correct()` call, provenance-tracked; 3/3 tests real and passing, including that an unknown contact is refused rather than silently created. |
+| Full chain integration | 🟢 GREEN | A real `ProactiveEngine` end-to-end test: a stale `PersonalModel` relationship → a real `ACTION_SUGGEST` trigger → a real `Notification`. |
+| Draft generation / send | — | Deliberately NOT reimplemented here — this is exactly what the unchanged `ExecutiveRuntime.handle_event()` pipeline already does (real risk classification, real approval, real Chief-Domain-Agent drafting, real Part V channel sending) when a suggestion is acted on. Duplicating it here would violate "Avishkar OS remains the foundation." |
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
@@ -910,7 +927,7 @@ already covers it — extending that list requires an ADR.
 
 # Testing Guide
 
-505 tests as of Directive D Part IX (Robotics/Embodiment) (119
+516 tests as of Directive D Part X (Personal Executive Communication) (119
 Phase 16 + 30 Priority 17.1 + 21 Priority 17.2 + 8 Priority 17.3 + 11
 Priority 17.4 + 1 Priority 17.5 + 30 Mission Layla 1 [PersonalModel/
 ProactiveEngine] + 82 Mission Layla continuation [Prediction/Skills/
@@ -939,8 +956,11 @@ real end-to-end EmbodimentController approval gating, including the
 new EMBODIMENT_MQTT high-risk-by-default classification] + 14
 Directive D Part IX [real enforced timeouts/real emergency-stop latch/
 real fail-safe triggering/real state verification/real end-to-end
-EmbodimentController approval gating, all without physical hardware]),
-503 running offline and passing, 2 live/environment-gated and skipped by
+EmbodimentController approval gating, all without physical hardware] +
+11 Directive D Part X [real relationship-staleness detection/real
+follow-up eligibility filtering/real retry-storm-safe dedup/real
+outcome recording/full real ProactiveEngine end-to-end integration]),
+514 running offline and passing, 2 live/environment-gated and skipped by
 default (`test_live_anthropic_integration.py` — see
 `docs/live-integration-guide.md` to actually run it; plus one OCR
 availability test that only runs on a machine WITHOUT tesseract

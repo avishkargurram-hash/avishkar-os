@@ -1222,7 +1222,46 @@ hardware:
 - **Audit trail**: every action/timeout/failure/stop/reset is recorded
   via the existing `AuditLogger` (`layla.robotics.*` event types).
 
-## §45. Errors
+## §46. Personal Executive Communication (Mission Layla Directive D, Part X)
+
+`avishkar_layla.executive_communication`. Calendar/Meetings/
+Appointments/Reminders are already real, existing `LifeOS`
+functionality (§24/ADR-0027) -- not rebuilt. This module implements
+Directive D's own worked example: "Avishkar has not responded to this
+person for 7 days -> Relationship/context lookup -> Determine
+follow-up appropriateness -> Generate draft -> Risk assessment ->
+Approval policy -> Send -> Record outcome -> Update memory."
+
+- `StaleRelationshipEvaluator` -- a real `proactive.TriggerEvaluator`
+  covering the chain's first three steps: real relationship/context
+  lookup (`PersonalModel`'s `relationships` category), real staleness
+  detection (a real days-since-last-contact computation against a
+  configurable `threshold_days`), and real follow-up-appropriateness
+  filtering (`do_not_disturb`, plus an optional caller-supplied
+  `is_eligible` predicate). Emits `ACTION_SUGGEST`, never `ACTION_ACT`
+  -- deciding what to send, and to whom, is not this evaluator's job.
+  Deduplicates per `(contact_id, last_contact_date)` so the same
+  staleness state is never re-suggested on every `ProactiveEngine.evaluate()`
+  tick (the same retry-storm-safe pattern `EnvironmentalChangeEvaluator`,
+  §38, established).
+- The chain's remaining steps ("Generate draft -> Risk assessment ->
+  Approval policy -> Send") are deliberately NOT reimplemented here --
+  they are exactly what the unchanged `ExecutiveRuntime.handle_event()`
+  pipeline already does for any suggestion a human or
+  `ProactiveEngine.act_callback` chooses to act on: real intent/
+  context/planning, real `risk.classify_risk()`, real `ApprovalManager`,
+  real delegation to a Chief Domain Agent for drafting, and real Part V
+  channel adapters for sending. Reimplementing any of this here would
+  duplicate the exact pipeline Mission Layla's own architecture rule
+  ("AVISHKAR OS REMAINS THE FOUNDATION") forbids duplicating.
+- `record_contact_outcome()` -- the chain's final two steps ("Record
+  outcome -> Update memory"): a real `PersonalModel.correct()` call
+  updating the contact's `last_contact_date`/`last_contact_channel`/
+  `last_contact_message_id`, called after a real Part V channel
+  adapter confirms delivery (a real `message_id`) -- never before, and
+  never for a contact `PersonalModel` has no existing record of.
+
+## §47. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,
@@ -1250,7 +1289,12 @@ connectivity failures raise the stdlib `ConnectionError`);
 `MQTTNotConnectedError`/`MQTTPublishNotAllowedError`/
 `MQTTSubscribeNotAllowedError` live in `mqtt/errors.py`;
 `RobotEmergencyStoppedError`/`RobotActionTimeoutError`/
-`RobotActionFailedError` live in `robotics/errors.py`; every channel
-transport raises the existing `avishkar_integration.ProtocolInvocationError`
-(no new channel-specific error types were introduced) -- all following
-the same locally-scoped convention as §22-§28's errors.
+`RobotActionFailedError` live in `robotics/errors.py`;
+`executive_communication.py`'s `record_contact_outcome()` raises the
+stdlib `ValueError` for an unknown contact (deliberately not a new
+`LaylaError` subclass -- "the caller passed a contact id PersonalModel
+has never heard of" is a plain programmer-error/bad-input case, not a
+Layla-domain error condition); every channel transport raises the
+existing `avishkar_integration.ProtocolInvocationError` (no new
+channel-specific error types were introduced) -- all following the
+same locally-scoped convention as §22-§28's errors.
