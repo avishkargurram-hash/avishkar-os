@@ -97,6 +97,7 @@ from .life_os import LifeOS
 from .memory_policy import LaylaMemoryPolicy
 from .monitoring import HealthMonitor
 from .notifications import NotificationManager
+from .observability import ProductionHealthReport, build_production_health_report
 from .perception import (
     PERCEPTION_ENVIRONMENTAL,
     PERCEPTION_OCR,
@@ -333,5 +334,7 @@ __all__ = [
     "record_contact_outcome",
     "TaskLease",
     "TaskLeaseManager",
+    "ProductionHealthReport",
+    "build_production_health_report",
     "__version__",
 ]

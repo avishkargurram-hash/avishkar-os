@@ -1382,7 +1382,44 @@ intentional test fixtures (AWS's own documented
 `test_memory_policy.py`) -- zero real secrets, zero new findings
 introduced across this entire Directive D pass (Parts I-XIII).
 
-## §53. Errors
+## §54. Observability (Mission Layla Directive D, Part XIV)
+
+Most of what Directive D Part XIV asks for is already real, existing,
+separate capability: a structured, correlation/task-scoped execution
+journal (`AuditLogger`, every event `layla.*`-namespaced with a real
+`task_id`), real cost/request tracking (`Router`'s `cost_usd`/
+`request_id`, Priority 17.5), real per-capability success/failure
+aggregation and cost totals (`BusinessIntelligenceEngine.generate_report()`,
+§29/ADR-0027), and real scheduler/liveness health
+(`ExecutiveRuntime.operational_health()`, §48/ADR-0038). Directive D's
+own explicit remaining ask -- "Create a production health report
+capability" -- is exactly what `observability.py`'s
+`build_production_health_report()` is: a single-call aggregation of
+these already-real pieces, not a new metrics/tracing system.
+
+A real bug was found and fixed while writing this module's own first
+test run: `AuditLogger.history()` is scoped per `task_id` (or
+`"system"` with none) -- there is no single global query across every
+task's audit trail. An initial draft called `runtime.audit.history()`
+with no arguments, silently seeing only `"system"`-scoped events and
+missing every real per-task delegation record (which `runtime.py`
+always records with `task_id=task.id`). Fixed to mirror
+`BusinessIntelligenceEngine.generate_report()`'s own established real
+pattern exactly: enumerate every real task via
+`SessionManager.list_all()`, then query each task's own
+`layla.delegation.*` history -- confirmed correct by a real test using
+genuinely saved `LaylaTask`/`Plan` records, not merely audit calls in
+isolation.
+
+Honestly NOT covered (disclosed, not fabricated): `avishkar_core.EventBus`
+queue-depth/throughput metrics and per-operation `LaylaMemoryPolicy`
+backend latency. Neither exposes any statistics at its current
+abstraction layer; adding that instrumentation would mean modifying
+core/'s locked `EventBus` or introducing a new cross-cutting metrics
+collector, both out of this pass's scope. See README.md Observability
+section.
+
+## §55. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,

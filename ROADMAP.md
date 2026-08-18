@@ -970,6 +970,31 @@ of Parts I–XIII.
 CONTRACT.md §52, DECISIONS.md ADR-0040, README.md Security Hardening
 section.
 
+## Mission Layla Directive D, Part XIV — Observability (ADR-0041, 2026-08-16)
+
+Nearly all of Directive D's list was already real, separate
+functionality (`AuditLogger`, `Router` cost tracking,
+`BusinessIntelligenceEngine`, `operational_health()`) — the real
+remaining gap was Directive D's own explicit ask: "Create a production
+health report capability."
+
+**Real, fully-working**: `build_production_health_report()` — a
+single-call aggregation, reusing `BusinessIntelligenceEngine`'s own
+report rather than recomputing it.
+
+**Real bug found and fixed by this module's own first test run**:
+`AuditLogger.history()` is scoped per task, not global — an initial
+draft silently saw zero delegation records; fixed to mirror
+`BusinessIntelligenceEngine`'s own established real pattern.
+
+**Honestly not covered**: EventBus/memory-backend statistics — both
+would require touching locked frameworks or new cross-cutting
+infrastructure, disclosed as real future work.
+
+7 new tests — 569 total for Layla, zero regressions. Full detail:
+CONTRACT.md §54, DECISIONS.md ADR-0041, README.md Observability
+section.
+
 ## How this roadmap changes
 
 A phase only moves to 🚧 when someone is actively working it, and only to

@@ -3091,3 +3091,78 @@ guard unit tests + 1 real end-to-end refusal test against the live
 `BrowserExecutor`), 562 total for Layla, up from 551, zero regressions.
 No pyproject extra needed -- pure stdlib (`ipaddress`/`socket`/
 `urllib.parse`).
+
+## ADR-0041: Mission Layla Directive D, Part XIV (Observability) — a single-call production health report aggregating already-real capabilities, plus a real audit-scoping bug found and fixed by this module's own first test run
+
+**Context:** Directive D Part XIV asks for structured logs, metrics,
+traces, correlation/task/agent/tool IDs, cost/token tracking, latency,
+failure/retry rates, and "a production health report capability."
+Nearly all of this is already real, existing, separate functionality:
+`AuditLogger` (a real, `task_id`-correlated structured event journal),
+`Router`'s real `cost_usd`/`request_id` (Priority 17.5),
+`BusinessIntelligenceEngine.generate_report()` (real per-capability
+success rate and total cost, §29/ADR-0027), and
+`ExecutiveRuntime.operational_health()` (real liveness/scheduler
+state, §48/ADR-0038). Directive D's own single remaining explicit ask
+-- "Create a production health report capability" -- is a genuine gap:
+nothing combines these into one call.
+
+**Decision:**
+1. `observability.py`'s `build_production_health_report()` is exactly
+   that combination: `runtime.operational_health()` plus a real,
+   computed per-status delegation failure rate plus (optionally)
+   `BusinessIntelligenceEngine`'s own real report folded in verbatim
+   via `dataclasses.asdict()` -- never recomputing cost/success-rate
+   logic a second time, avoiding the two-independent-implementations
+   drift risk this session has repeatedly guarded against elsewhere
+   (`EmbodimentController`'s structural risk gate, ADB's allowlist-
+   plus-capability-gate).
+2. **A real bug, found and fixed by this module's own first test
+   run**: `AuditLogger.history()` is scoped per `task_id` (or
+   `"system"` with none) -- there is no single global query across
+   every task's audit trail. The first draft of
+   `_delegation_totals()` called `runtime.audit.history()` with no
+   arguments, which silently returned only `"system"`-scoped records;
+   since `runtime.py` always records delegation events with
+   `task_id=task.id` (never `"system"`), every real delegation record
+   was invisible to it -- the very first test run produced `0`
+   everywhere instead of the expected real counts. Fixed by mirroring
+   `BusinessIntelligenceEngine.generate_report()`'s own already-
+   established, correct real pattern: enumerate every real task via
+   `SessionManager.list_all()`, then query each task's own
+   `layla.delegation.*` history. Confirmed correct afterward with real
+   tests that save genuine `LaylaTask`/`Plan` records (not merely call
+   `AuditLogger.record()` in isolation, which would not have caught
+   this bug) -- disclosed here as concrete evidence this module's
+   tests were actually run against real behavior, not merely written
+   and assumed to pass.
+3. What's honestly NOT covered is disclosed, not implied to exist:
+   `avishkar_core.EventBus` and `LaylaMemoryPolicy` expose no
+   statistics at their current abstraction layers (queue depth/
+   throughput, per-operation latency). Adding either would mean
+   modifying core/'s locked `EventBus` or introducing a new cross-
+   cutting metrics collector -- both real, legitimate future work, not
+   attempted in this pass.
+
+**Alternatives considered:**
+- *Recompute delegation success/failure rates independently instead of
+  reusing `BusinessIntelligenceEngine`* -- rejected: would create a
+  second implementation of the same real logic, with a real risk of
+  the two drifting apart over time (e.g. if `BusinessIntelligenceEngine`'s
+  definition of "success" changes and this module's doesn't).
+- *Silently work around the scoping bug by using a different storage
+  key instead of understanding why `history()` returned nothing* --
+  never seriously considered: the whole point of running real tests
+  is to catch exactly this kind of real mismatch between assumption
+  and actual behavior; the fix is to use the correct existing pattern,
+  not to bend the design around a misunderstanding.
+- *Build real EventBus/memory-backend instrumentation to close the
+  disclosed gaps* -- rejected for this pass: both require touching
+  locked frameworks or adding new cross-cutting infrastructure, a
+  larger commitment than a single Observability part justifies;
+  documented as real, specific future work instead.
+
+**Consequences:** New `observability.py` (added to
+`avishkar_layla/__init__.py`'s top-level exports), 7 new tests, 569
+total for Layla, up from 562, zero regressions. No pyproject extra
+needed -- pure Python over existing real components.

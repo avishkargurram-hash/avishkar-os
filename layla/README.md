@@ -48,7 +48,7 @@ ExecutiveRuntime (event loop: IDLE -> EVENT -> INGEST -> UNDERSTAND ->
 layla/
 ├── CONTRACT.md              language-agnostic contract
 ├── README.md                  this file
-├── python/avishkar_layla/       reference implementation (43 modules)
+├── python/avishkar_layla/       reference implementation (44 modules)
 │   ├── channels/                   communication channel adapters (6 real transports, Directive D Part V, ADR-0032)
 │   ├── environment/                 environmental awareness (Directive D Part VI, ADR-0033)
 │   ├── voice/                      voice subsystem (Directive D Part I, ADR-0028)
@@ -57,12 +57,13 @@ layla/
 │   ├── robotics/                    real robot safety layer (Directive D Part IX, ADR-0036)
 │   ├── executive_communication.py   real stale-relationship follow-up chain (Directive D Part X, ADR-0037)
 │   ├── task_lease.py                real task ownership/stale-task recovery (Directive D Part XII, ADR-0039)
+│   ├── observability.py             real production health report (Directive D Part XIV, ADR-0041)
 │   └── executors/                  real EmbodimentController executors (Directive D Parts III-IV/VII-VIII, ADR-0030/0031/0034/0035)
 ├── examples/
 │   ├── end_to_end_scenario.py       Part IX's real, narrated demonstration
 │   ├── crash_recovery_scenario.py   resume-in-place demonstration (Priority 17.3)
 │   └── personal_model_and_proactive_scenario.py  Mission Layla Parts 1/2/11
-└── python/tests/                   562 tests (as of Directive D Part XIII; 1 live-gated, skipped by default)
+└── python/tests/                   569 tests (as of Directive D Part XIV; 1 live-gated, skipped by default)
 ```
 
 ## Naming Standards
@@ -888,6 +889,21 @@ Directive D pass). See CONTRACT.md §52.
 | Prompt injection / hostile tool responses / unauthorized capability requests | 🟢 Already real | `test_adversarial.py`, unmodified this pass — continues passing. |
 | Sensitive memory / PII / health / financial data | 🟢 Already real | `PersonalModel.SENSITIVE_CATEGORIES` requires `confirmed=True` for `relationships`/`behavioral_patterns`/`finance`/`health` — unmodified, used correctly by every new component this pass that touches personal data (e.g. `executive_communication.py`'s relationship writes). |
 
+# Observability (Directive D, Part XIV, ADR-0041)
+
+`build_production_health_report()` — a single-call aggregation of
+already-real, separate capabilities (`AuditLogger`, `Router` cost/
+request tracking, `BusinessIntelligenceEngine`,
+`ExecutiveRuntime.operational_health()`), not a new metrics/tracing
+system. See CONTRACT.md §54.
+
+| Component | Status | Notes |
+|---|---|---|
+| `build_production_health_report()` | 🟢 GREEN | Real aggregation: operational health, real per-status delegation totals, a real computed failure rate, and (when given) `BusinessIntelligenceEngine`'s own real cost/success-rate report folded in unmodified. 7/7 tests real and passing. |
+| Real bug found and fixed by this module's own first test run | 🟢 disclosed | `AuditLogger.history()` is scoped per `task_id` — an initial draft's global, no-argument call silently saw only `"system"`-scoped events and missed every real per-task delegation record. Fixed to mirror `BusinessIntelligenceEngine`'s own established real pattern (enumerate tasks via `SessionManager.list_all()`, then query each task's own history) rather than introducing a second, different way of answering the same question. |
+| EventBus queue-depth/throughput metrics | 🔴 NOT COVERED | Honestly disclosed, not fabricated: `avishkar_core.EventBus` exposes no statistics at its current abstraction layer; adding this would mean modifying core/'s locked `EventBus`, out of scope for this pass. |
+| Memory-backend operation latency | 🔴 NOT COVERED | Same reasoning — `LaylaMemoryPolicy`/its backend expose no per-operation timing; a future pass would need a new cross-cutting instrumentation layer, not built here. |
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
@@ -973,7 +989,7 @@ already covers it — extending that list requires an ADR.
 
 # Testing Guide
 
-562 tests as of Directive D Part XIII (Security Hardening) (119
+569 tests as of Directive D Part XIV (Observability) (119
 Phase 16 + 30 Priority 17.1 + 21 Priority 17.2 + 8 Priority 17.3 + 11
 Priority 17.4 + 1 Priority 17.5 + 30 Mission Layla 1 [PersonalModel/
 ProactiveEngine] + 82 Mission Layla continuation [Prediction/Skills/
@@ -1013,7 +1029,9 @@ thread-safe task-lease acquire/renew/release/real 20-thread concurrency
 proof/real stale-lease detection] + 11 Directive D Part XIII [real
 SSRF guard for private/loopback/link-local/metadata addresses/real
 end-to-end refusal test against a live BrowserExecutor/repository-wide
-secret scan]), 560 running offline and
+secret scan] + 7 Directive D Part XIV [real production-health-report
+aggregation/real per-task delegation-history discovery bug found and
+fixed/real BusinessIntelligenceEngine integration]), 567 running offline and
 passing, 2 live/environment-gated and skipped by
 default (`test_live_anthropic_integration.py` — see
 `docs/live-integration-guide.md` to actually run it; plus one OCR

@@ -864,5 +864,25 @@ its first consumer.
   findings across all of Parts I-XIII. 11 new tests -- 562 total for
   Layla, up from 551, zero regressions. CONTRACT.md SS52, README.md
   updated; ADR-0040 recorded in DECISIONS.md.
+- Mission Layla Directive D, Part XIV -- real Observability
+  (`avishkar_layla.observability`, ADR-0041). Nearly all of Directive
+  D's list was already real, separate functionality (AuditLogger,
+  Router cost tracking, BusinessIntelligenceEngine,
+  ExecutiveRuntime.operational_health()) -- the real remaining gap was
+  Directive D's own explicit ask: "Create a production health report
+  capability." build_production_health_report() is a single-call
+  aggregation, folding in BusinessIntelligenceEngine's own real report
+  rather than recomputing it. A real bug was found and fixed by this
+  module's own first test run: AuditLogger.history() is scoped per
+  task, not global -- an initial draft silently saw zero delegation
+  records because it called history() with no arguments; fixed to
+  mirror BusinessIntelligenceEngine's own established real pattern
+  (enumerate tasks via SessionManager.list_all(), then query each
+  task's own history), confirmed correct with tests that save genuine
+  LaylaTask/Plan records. EventBus/memory-backend statistics are
+  honestly disclosed as not covered -- both would require touching
+  locked frameworks or new cross-cutting infrastructure. 7 new tests
+  -- 569 total for Layla, up from 562, zero regressions. CONTRACT.md
+  SS54, README.md updated; ADR-0041 recorded in DECISIONS.md.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD
