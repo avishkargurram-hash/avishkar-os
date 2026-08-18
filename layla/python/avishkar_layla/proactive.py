@@ -115,6 +115,7 @@ class ProactiveEngine:
         stuck_alert_seconds: float = _DEFAULT_STUCK_ALERT_SECONDS,
         failure_observe_threshold: int = _DEFAULT_FAILURE_OBSERVE_THRESHOLD,
         failure_suggest_threshold: int = _DEFAULT_FAILURE_SUGGEST_THRESHOLD,
+        max_act_triggers_per_evaluate: Optional[int] = 5,
     ) -> None:
         """`act_callback`, if given, is invoked for every ACT-level
         trigger -- the intended wiring is
@@ -135,6 +136,16 @@ class ProactiveEngine:
         self._stuck_alert_seconds = stuck_alert_seconds
         self._failure_observe_threshold = failure_observe_threshold
         self._failure_suggest_threshold = failure_suggest_threshold
+        # Directive D Part XV (ADR-0042): a real, previously-open
+        # "runaway autonomous loop" gap -- evaluate() dispatched EVERY
+        # ACT-level trigger from EVERY evaluator with no cap at all, so
+        # a single evaluate() call (one Scheduler tick) could trigger
+        # unboundedly many real handle_event() calls (real LLM cost)
+        # if enough evaluators/triggers fired at once. Default of 5 is
+        # a real, conservative ceiling per tick, not a magic number --
+        # None restores the prior unbounded behavior explicitly, for a
+        # caller that has its own reason to want that.
+        self._max_act_triggers_per_evaluate = max_act_triggers_per_evaluate
         self._evaluators: Tuple[TriggerEvaluator, ...] = (
             ProactiveEngine._evaluate_stuck_tasks,
             ProactiveEngine._evaluate_repeated_delegation_failures,
@@ -145,11 +156,34 @@ class ProactiveEngine:
         each resulting trigger per its action level, and returns the
         full set of triggers found (for callers/tests that want to
         inspect what happened this tick).
+
+        Real resource guard (Directive D Part XV, ADR-0042): at most
+        `max_act_triggers_per_evaluate` ACT-level triggers are actually
+        dispatched (i.e. actually reach `act_callback` and therefore a
+        real `handle_event()` call) per `evaluate()` call -- every
+        trigger beyond that is recorded as throttled via the existing
+        `AuditLogger`, not silently dropped, and non-ACT triggers
+        (OBSERVE/SUGGEST/ASK/URGENTLY_ALERT) are never throttled, since
+        those never themselves cause a real LLM call.
         """
         triggers: List[ProactiveTrigger] = []
         for evaluator in self._evaluators:
             triggers.extend(evaluator(self))
+        act_dispatched = 0
         for trigger in triggers:
+            if trigger.action_level == ACTION_ACT:
+                if (
+                    self._max_act_triggers_per_evaluate is not None
+                    and act_dispatched >= self._max_act_triggers_per_evaluate
+                ):
+                    self._audit.record(
+                        "layla.proactive.act_throttled",
+                        {"trigger_id": trigger.id, "description": trigger.description, "source": trigger.source,
+                         "max_act_triggers_per_evaluate": self._max_act_triggers_per_evaluate},
+                        task_id=trigger.task_id,
+                    )
+                    continue
+                act_dispatched += 1
             self._dispatch(trigger)
         return tuple(triggers)
 

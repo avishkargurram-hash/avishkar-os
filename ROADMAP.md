@@ -995,6 +995,30 @@ infrastructure, disclosed as real future work.
 CONTRACT.md §54, DECISIONS.md ADR-0041, README.md Observability
 section.
 
+## Mission Layla Directive D, Part XV — Cost/Resource Management (ADR-0042, 2026-08-18)
+
+Rate limits/retry policy and cost tracking were already real, separate
+functionality (`avishkar_integration.RateLimit`/`RetryPolicy`,
+`Router` cost tracking) — the real remaining gap was Directive D's own
+explicitly-named risk: "Never allow a runaway autonomous loop to
+consume unlimited resources."
+
+**Real, previously-open gap found and fixed**: `ProactiveEngine.evaluate()`
+dispatched every `ACTION_ACT`-level trigger from every evaluator with
+no cap, meaning unboundedly many real `handle_event()` calls per
+single `Scheduler` tick. Fixed with an additive
+`max_act_triggers_per_evaluate` parameter (default `5`, confirmed via
+inspection to change no existing evaluator's behavior); triggers past
+the cap are recorded via the real `AuditLogger`, never silently
+dropped. `None` restores the prior unbounded behavior explicitly.
+
+**Honestly not covered**: hard token/task budget ceilings and explicit
+max-concurrent-task limits — disclosed as real future work.
+
+5 new tests — 574 total for Layla, zero regressions. Full detail:
+CONTRACT.md §56, DECISIONS.md ADR-0042, README.md Cost/Resource
+Management section.
+
 ## How this roadmap changes
 
 A phase only moves to 🚧 when someone is actively working it, and only to

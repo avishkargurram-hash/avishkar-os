@@ -63,7 +63,7 @@ layla/
 │   ├── end_to_end_scenario.py       Part IX's real, narrated demonstration
 │   ├── crash_recovery_scenario.py   resume-in-place demonstration (Priority 17.3)
 │   └── personal_model_and_proactive_scenario.py  Mission Layla Parts 1/2/11
-└── python/tests/                   569 tests (as of Directive D Part XIV; 1 live-gated, skipped by default)
+└── python/tests/                   574 tests (as of Directive D Part XV; 1 live-gated, skipped by default)
 ```
 
 ## Naming Standards
@@ -904,6 +904,23 @@ system. See CONTRACT.md §54.
 | EventBus queue-depth/throughput metrics | 🔴 NOT COVERED | Honestly disclosed, not fabricated: `avishkar_core.EventBus` exposes no statistics at its current abstraction layer; adding this would mean modifying core/'s locked `EventBus`, out of scope for this pass. |
 | Memory-backend operation latency | 🔴 NOT COVERED | Same reasoning — `LaylaMemoryPolicy`/its backend expose no per-operation timing; a future pass would need a new cross-cutting instrumentation layer, not built here. |
 
+# Cost/Resource Management (Directive D, Part XV, ADR-0042)
+
+Rate limits and retry policy per external tool were already real,
+existing capability (`avishkar_integration`'s `RateLimit`/
+`RetryPolicy`) — reused as-is, not duplicated. The real, previously-
+open gap was in `ProactiveEngine.evaluate()`: no cap at all on how
+many `ACTION_ACT`-level triggers it would dispatch (i.e. actually
+invoke `act_callback`, which is always wired to a real `handle_event()`
+call) in a single tick. See CONTRACT.md §56.
+
+| Component | Status | Notes |
+|---|---|---|
+| `ProactiveEngine.evaluate()` ACT-trigger throttle | 🟢→🟢 FOUND AND FIXED | Real, previously-open "runaway autonomous loop" gap: a custom evaluator returning many ACT triggers in one tick had zero dispatch limit, meaning unboundedly many real LLM calls per single `Scheduler` tick. Fixed with an additive `max_act_triggers_per_evaluate` parameter (default `5`, conservative but confirmed via inspection to change no existing evaluator's behavior); triggers beyond the cap are recorded via the real `AuditLogger` as `layla.proactive.act_throttled`, never silently dropped. `None` restores the prior unbounded behavior explicitly. 5/5 new tests real and passing, all 14 tests in the file passing. |
+| External tool rate limits / retry policy | 🟢 Already real | `avishkar_integration.RateLimit`/`RetryPolicy` — unmodified, judged sufficient reuse for this directive's "rate limits" ask; no new infrastructure built. |
+| Token/task cost budgets (hard spend ceilings) | 🔴 NOT COVERED | Honestly disclosed: `Router` already tracks real per-request `cost_usd` (Priority 17.5) and `BusinessIntelligenceEngine` already aggregates it, but no component enforces a hard budget ceiling that blocks further execution once crossed — future work, not built this pass. |
+| Concurrency limits (max simultaneous in-flight tasks) | 🔴 NOT COVERED | Honestly disclosed: `Scheduler`/`ExecutiveRuntime` place no explicit ceiling on concurrently EXECUTING tasks; not built this pass. |
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
@@ -989,7 +1006,7 @@ already covers it — extending that list requires an ADR.
 
 # Testing Guide
 
-569 tests as of Directive D Part XIV (Observability) (119
+574 tests as of Directive D Part XV (Cost/Resource Management) (119
 Phase 16 + 30 Priority 17.1 + 21 Priority 17.2 + 8 Priority 17.3 + 11
 Priority 17.4 + 1 Priority 17.5 + 30 Mission Layla 1 [PersonalModel/
 ProactiveEngine] + 82 Mission Layla continuation [Prediction/Skills/
@@ -1031,7 +1048,10 @@ SSRF guard for private/loopback/link-local/metadata addresses/real
 end-to-end refusal test against a live BrowserExecutor/repository-wide
 secret scan] + 7 Directive D Part XIV [real production-health-report
 aggregation/real per-task delegation-history discovery bug found and
-fixed/real BusinessIntelligenceEngine integration]), 567 running offline and
+fixed/real BusinessIntelligenceEngine integration] + 5 Directive D
+Part XV [real ProactiveEngine ACT-trigger dispatch throttle/real
+runaway-autonomous-loop resource-exhaustion gap found and fixed/real
+AuditLogger-recorded throttling, never silently dropped]), 572 running offline and
 passing, 2 live/environment-gated and skipped by
 default (`test_live_anthropic_integration.py` — see
 `docs/live-integration-guide.md` to actually run it; plus one OCR

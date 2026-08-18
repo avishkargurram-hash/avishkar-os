@@ -1419,7 +1419,40 @@ core/'s locked `EventBus` or introducing a new cross-cutting metrics
 collector, both out of this pass's scope. See README.md Observability
 section.
 
-## §55. Errors
+## §56. Cost/Resource Management (Mission Layla Directive D, Part XV)
+
+Rate limits and retry policy per external tool were already real,
+existing capability (`avishkar_integration`'s `RateLimit`/`RetryPolicy`)
+and are reused as-is, not duplicated -- Directive D's "rate limits"
+ask is judged satisfied by that existing infrastructure.
+
+The real, previously-open gap Directive D Part XV names explicitly --
+"Never allow a runaway autonomous loop to consume unlimited
+resources" -- was found in `ProactiveEngine.evaluate()`: it dispatched
+*every* `ACTION_ACT`-level trigger from *every* registered evaluator
+with no cap at all. A custom evaluator (or several) returning many ACT
+triggers in one tick would cause unboundedly many real
+`act_callback` invocations -- and since `act_callback` is always wired
+to the real `handle_event()` pipeline (never a bypass, §... Proactive
+Engine), that is unboundedly many real LLM calls per single
+`Scheduler` tick, with zero throttling.
+
+Fixed with an additive `max_act_triggers_per_evaluate` constructor
+parameter on `ProactiveEngine`, default `5`: `evaluate()` now tracks
+how many ACT-level triggers it has actually dispatched this call, and
+once the cap is reached, every further ACT trigger is recorded via the
+real `AuditLogger` as `layla.proactive.act_throttled` (never silently
+dropped) instead of being dispatched. Non-ACT triggers
+(OBSERVE/SUGGEST/ASK/URGENTLY_ALERT) are never throttled, since none
+of those cause a real LLM call on their own. `max_act_triggers_per_evaluate=None`
+restores the prior unbounded behavior explicitly, for any caller with
+a specific reason to want it. The default of `5` was chosen after
+confirming, by inspection of every built-in and Directive-D-added
+evaluator, that no existing evaluator emits more than 1-2 ACT triggers
+per call -- so the default cap changes no existing behavior and only
+throttles pathological cases.
+
+## §57. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,

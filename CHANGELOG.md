@@ -884,5 +884,24 @@ its first consumer.
   locked frameworks or new cross-cutting infrastructure. 7 new tests
   -- 569 total for Layla, up from 562, zero regressions. CONTRACT.md
   SS54, README.md updated; ADR-0041 recorded in DECISIONS.md.
+- Mission Layla Directive D, Part XV -- real Cost/Resource Management
+  (`ProactiveEngine` ACT-trigger throttle, ADR-0042). Rate limits/
+  retry policy and cost tracking were already real, separate
+  functionality (avishkar_integration.RateLimit/RetryPolicy, Router
+  cost tracking) -- the real remaining gap was Directive D's own
+  explicitly-named risk: "Never allow a runaway autonomous loop to
+  consume unlimited resources." Found: ProactiveEngine.evaluate()
+  dispatched every ACTION_ACT-level trigger from every evaluator with
+  no cap, meaning unboundedly many real handle_event() calls per
+  single Scheduler tick. Fixed with an additive
+  max_act_triggers_per_evaluate parameter (default 5, confirmed via
+  inspection to change no existing evaluator's behavior); triggers
+  past the cap are recorded via the real AuditLogger as
+  layla.proactive.act_throttled, never silently dropped. None
+  restores the prior unbounded behavior explicitly. Hard token/task
+  budget ceilings and explicit max-concurrent-task limits are honestly
+  disclosed as not covered. 5 new tests -- 574 total for Layla, up
+  from 569, zero regressions. CONTRACT.md SS56, README.md updated;
+  ADR-0042 recorded in DECISIONS.md.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

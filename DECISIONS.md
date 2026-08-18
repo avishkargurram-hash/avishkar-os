@@ -3166,3 +3166,77 @@ nothing combines these into one call.
 `avishkar_layla/__init__.py`'s top-level exports), 7 new tests, 569
 total for Layla, up from 562, zero regressions. No pyproject extra
 needed -- pure Python over existing real components.
+
+## ADR-0042: Mission Layla Directive D, Part XV (Cost/Resource Management) — closing a real "runaway autonomous loop" gap in ProactiveEngine, reusing existing rate-limit infrastructure for everything else
+
+**Context:** Directive D Part XV asks for rate limits, retry policy,
+cost tracking/budgets, concurrency limits, and explicitly: "Never
+allow a runaway autonomous loop to consume unlimited resources."
+Per-tool rate limits and retry policy are already real, existing,
+separate capability (`avishkar_integration`'s `RateLimit`/
+`RetryPolicy`) and cost tracking already exists (`Router`'s real
+`cost_usd`/`request_id`, aggregated by `BusinessIntelligenceEngine`).
+Directive D's own explicitly-named risk -- a runaway autonomous loop --
+was a genuine, previously-open gap: `ProactiveEngine.evaluate()`
+dispatched *every* `ACTION_ACT`-level trigger from *every* registered
+evaluator, with no cap at all. Since `act_callback` is always wired to
+the real `handle_event()` pipeline (never a bypass -- see the Proactive
+Engine section of README.md), a single evaluator returning many ACT
+triggers in one `evaluate()` call (one `Scheduler` tick) could cause
+unboundedly many real LLM-backed `handle_event()` calls with zero
+throttling.
+
+**Decision:**
+1. Added an additive `max_act_triggers_per_evaluate: Optional[int] = 5`
+   constructor parameter to `ProactiveEngine`. `evaluate()` now tracks
+   how many ACT-level triggers it has actually dispatched (i.e.
+   actually reached `act_callback`) this call; once the cap is hit,
+   every further ACT trigger is recorded via the existing
+   `AuditLogger` as `layla.proactive.act_throttled` (trigger id,
+   description, source, and the configured cap all included in the
+   payload) instead of being dispatched -- never silently dropped.
+   Non-ACT triggers (OBSERVE/SUGGEST/ASK/URGENTLY_ALERT) are never
+   throttled, since none of those cause a real LLM call by themselves.
+2. The default of `5`, not `0` or an unbounded default, was chosen
+   after confirming by inspection that no built-in evaluator, and no
+   evaluator added anywhere else in Directive D (stuck-task escalation,
+   repeated-delegation-failure, environmental-threshold, relationship-
+   staleness), ever emits more than 1-2 ACT triggers per call --  so
+   the new default changes no existing behavior for any real caller
+   and only throttles pathological or adversarial cases (e.g. a
+   misbehaving custom evaluator).
+3. `max_act_triggers_per_evaluate=None` is an explicit, intentional
+   escape hatch restoring the exact prior unbounded behavior, for a
+   caller with a specific, deliberate reason to want it -- the fix
+   closes an unsafe *default*, not a capability.
+4. Token/task hard-budget ceilings and explicit max-concurrent-task
+   limits are honestly disclosed as NOT covered by this pass (see
+   README.md's Cost/Resource Management section) -- `Router` and
+   `BusinessIntelligenceEngine` already track and aggregate real cost,
+   but nothing yet enforces a hard ceiling that blocks further
+   execution once crossed, and `Scheduler`/`ExecutiveRuntime` place no
+   explicit cap on concurrently EXECUTING tasks.
+
+**Alternatives considered:**
+- *Throttle at the `Scheduler` tick level instead of inside
+  `ProactiveEngine.evaluate()`* -- rejected: the risk is specifically
+  about how many real actions one `evaluate()` call can trigger, not
+  about tick frequency (which `Scheduler` already controls via job
+  intervals); throttling at the source of the ACT dispatch is the
+  correct, minimal fix.
+- *Default the cap to `0` (opt-in dispatch only)* -- rejected: would
+  silently change behavior for every existing caller that already
+  relies on ACT dispatch working (e.g. the personal-model/proactive
+  end-to-end scenario), turning a safety fix into a breaking change.
+- *Build full token/task budget enforcement and concurrency limits in
+  this same pass* -- rejected for now: both are real, legitimate
+  future work, but neither is the specific, named "runaway autonomous
+  loop" risk Directive D calls out, and `avishkar_integration`'s
+  existing `RateLimit`/`RetryPolicy` was judged sufficient reuse for
+  this directive's general "rate limits" ask. Documented as real,
+  specific future work rather than attempted here.
+
+**Consequences:** `proactive.py` gains one additive constructor
+parameter (default-safe, backward compatible) and audit-recorded
+throttling; 5 new tests in `test_proactive.py` (14 total in that file,
+up from 9), 574 tests total for Layla, up from 569, zero regressions.
