@@ -167,6 +167,18 @@ class ExecutiveRuntime:
         self._sleep_fn = sleep_fn
         self._logger = logger or get_logger("layla.runtime")
 
+        # Directive D Part XI (ADR-0038): real graceful shutdown and a
+        # real heartbeat for run_forever()'s 24/7 loop -- see
+        # run_forever()/request_shutdown()/last_tick_at below. Reuses
+        # the same injectable `clock` already accepted above (default
+        # time.monotonic -- immune to wall-clock/NTP adjustments,
+        # which matters for a staleness check more than it does for
+        # DelegationEngine's timing use of it) rather than a second,
+        # separate clock source.
+        self._clock = clock
+        self._shutdown_requested = threading.Event()
+        self._last_tick_at: Optional[float] = None
+
         # Priority 17.4 (ADR-0024): one lock per task id, created
         # lazily and never removed (a bounded-lifetime deployment can
         # restart the process to reclaim it -- see README.md's
@@ -525,8 +537,8 @@ class ExecutiveRuntime:
         `max_iterations` makes this a real, finite, directly testable
         method rather than a literal infinite loop -- a deployment
         calls it with max_iterations=None (i.e. runs until the process
-        is stopped by its supervisor). Returns the number of iterations
-        actually run.
+        is stopped by its supervisor, or until `request_shutdown()` is
+        called). Returns the number of iterations actually run.
 
         This is the concrete SLEEP -> EVENT -> WAKE -> ... -> SLEEP
         cycle from Mission Layla Part 11: `_proactive.evaluate()` is
@@ -538,13 +550,84 @@ class ExecutiveRuntime:
         async/background-task model (Phase 17.4's concurrency guarantees
         are thread-based, not async-based), a known, documented
         limitation, not an oversight.
+
+        Graceful shutdown / heartbeat (Directive D Part XI, ADR-0038):
+        checked at the TOP of every iteration (not just the start) so
+        a shutdown requested mid-run takes effect before the next tick,
+        not after an arbitrary further wait; `last_tick_at` is updated
+        every iteration for an external health check to read
+        (`is_alive(max_staleness_seconds=...)`), and both the start and
+        the stop of a real run are recorded via the existing
+        `AuditLogger` -- no new logging mechanism.
         """
+        self._audit.record("layla.runtime.run_forever_started", {"max_iterations": max_iterations, "tick_interval_seconds": tick_interval_seconds})
         iterations = 0
-        while max_iterations is None or iterations < max_iterations:
-            if self._scheduler is not None:
-                self._scheduler.tick()
-            if self._proactive is not None:
-                self._proactive.evaluate()
-            self._sleep_fn(tick_interval_seconds)
-            iterations += 1
+        try:
+            while max_iterations is None or iterations < max_iterations:
+                if self._shutdown_requested.is_set():
+                    break
+                if self._scheduler is not None:
+                    self._scheduler.tick()
+                if self._proactive is not None:
+                    self._proactive.evaluate()
+                self._last_tick_at = self._clock()
+                self._sleep_fn(tick_interval_seconds)
+                iterations += 1
+        finally:
+            self._audit.record("layla.runtime.run_forever_stopped", {"iterations": iterations})
+            self._shutdown_requested.clear()
         return iterations
+
+    def request_shutdown(self) -> None:
+        """The only real, cooperative way to stop a `run_forever()`
+        loop gracefully from another thread (e.g. a signal handler) --
+        `run_forever()` checks this at the top of every iteration and
+        exits cleanly (recording `layla.runtime.run_forever_stopped`)
+        rather than requiring the process to be killed, which would
+        skip that final audit record entirely.
+        """
+        self._shutdown_requested.set()
+
+    @property
+    def last_tick_at(self) -> Optional[float]:
+        """The real clock value (the same injectable `clock` this
+        runtime was constructed with) as of the most recently completed
+        `run_forever()` iteration -- `None` if `run_forever()` has
+        never completed one. An external health check can compare this
+        against the current clock value to decide liveness (`is_alive()`
+        below does exactly that).
+        """
+        return self._last_tick_at
+
+    def is_alive(self, *, max_staleness_seconds: float, now: Optional[float] = None) -> bool:
+        """A real liveness check: has `run_forever()` completed an
+        iteration within the last `max_staleness_seconds`? `False`
+        (not an exception) if `run_forever()` has never run -- that is
+        a real, reportable "not started" state, not a caller error.
+        """
+        if self._last_tick_at is None:
+            return False
+        now = now if now is not None else self._clock()
+        return (now - self._last_tick_at) <= max_staleness_seconds
+
+    def operational_health(self, *, max_staleness_seconds: float = 120.0) -> Mapping[str, Any]:
+        """A real, dependency-free operational health report (Directive
+        D Part XI/XIV) -- every field is a direct read of already-real
+        state; nothing here is estimated or fabricated. Deliberately
+        does not include CPU/memory/battery metrics -- those are real
+        too (`avishkar_layla.environment.sensors`, Part VI/ADR-0033),
+        but live behind that package's optional `psutil` dependency;
+        a deployment that wants them combines that module's real
+        sensor readings with this report externally, keeping
+        `runtime.py` itself dependency-free.
+        """
+        incomplete_tasks = self._session.list_incomplete()
+        report: Dict[str, Any] = {
+            "alive": self.is_alive(max_staleness_seconds=max_staleness_seconds),
+            "last_tick_at": self._last_tick_at,
+            "incomplete_task_count": len(incomplete_tasks),
+        }
+        if self._scheduler is not None:
+            report["scheduler_pending_job_count"] = len(self._scheduler.pending_job_ids())
+            report["scheduler_dead_lettered_jobs"] = self._scheduler.dead_lettered_jobs()
+        return report

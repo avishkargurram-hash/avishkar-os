@@ -1261,7 +1261,56 @@ Approval policy -> Send -> Record outcome -> Update memory."
   adapter confirms delivery (a real `message_id`) -- never before, and
   never for a contact `PersonalModel` has no existing record of.
 
-## §47. Errors
+## §48. 24/7 Operation (Mission Layla Directive D, Part XI)
+
+Real hardening of the existing `Scheduler`/`ExecutiveRuntime.run_forever()`
+loop -- no new persistent-runtime mechanism, per Directive D's own
+"Layla should be the continuously-running intelligence... specialist
+agents wake only when required" (already true: Chief Domain Agents are
+only ever invoked via `DelegationEngine`, never run continuously).
+
+- **Scheduler failure isolation & dead-letter** (scheduler.py) -- a
+  real gap found by reading `tick()`'s existing implementation: a
+  scheduled job's callback was called with NO exception handling at
+  all, so one failing job (e.g. a flaky `SensorMonitor.check()`
+  recurring job, §38) would crash `tick()` and therefore
+  `run_forever()`'s entire loop. Now every callback is isolated
+  (verified: a raising job never prevents other due jobs in the same
+  tick from running, and never propagates out of `tick()`); an
+  optional `max_consecutive_failures` dead-letters a job that keeps
+  failing (a real `cancel()`, not merely a flag) rather than retrying
+  it forever -- a real, bounded retry-storm guard. Omitting both new
+  constructor parameters preserves every prior behavior exactly (the
+  isolation itself is unconditional; only escalation to dead-letter is
+  opt-in).
+- **Graceful shutdown** (`ExecutiveRuntime.request_shutdown()`) -- a
+  real, cooperative `threading.Event` checked at the top of every
+  `run_forever()` iteration; a deployment's signal handler calls it to
+  stop the loop cleanly (a real `layla.runtime.run_forever_stopped`
+  audit record, via the existing `AuditLogger` -- no new logging
+  mechanism) instead of requiring the process to be killed, which
+  would skip that record entirely.
+- **Heartbeat / liveness** (`ExecutiveRuntime.last_tick_at`/`is_alive()`)
+  -- `last_tick_at` is updated with the real injected `clock()` value
+  at the end of every completed iteration; `is_alive(max_staleness_seconds=...)`
+  is a real, direct staleness check an external health probe can call.
+- **Operational health report** (`ExecutiveRuntime.operational_health()`)
+  -- a real, dependency-free aggregation: liveness, last tick,
+  `SessionManager.list_incomplete()`'s real count (stuck tasks),
+  and (when a `Scheduler` is configured) its real pending-job count
+  and dead-lettered-job map. Deliberately does not include CPU/
+  memory/battery metrics -- those are real too
+  (`avishkar_layla.environment.sensors`, §38/ADR-0033) but live behind
+  that package's optional `psutil` dependency; a deployment combines
+  them externally rather than `runtime.py` itself acquiring that
+  dependency.
+- Real crash recovery -- already covered by Priority 17.3's resume-in-
+  place (`SessionManager.list_incomplete()`/`ExecutiveRuntime.resume()`,
+  ADR-0023) and Priority 17.5's durable `ApprovalManager`; not
+  rebuilt, cross-referenced here since it's exactly what "restart
+  recovery" means for this runtime.
+
+## §49. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,

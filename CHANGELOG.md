@@ -807,5 +807,26 @@ its first consumer.
   remain existing `LifeOS` functionality, not rebuilt. 11 new tests
   -- 516 total for Layla, up from 505, zero regressions. CONTRACT.md
   SS46, README.md updated; ADR-0037 recorded in DECISIONS.md.
+- Mission Layla Directive D, Part XI -- real 24/7 Operation hardening
+  (ADR-0038) of the existing Scheduler/ExecutiveRuntime.run_forever()
+  loop -- no new persistent-runtime mechanism. Found and fixed a real,
+  previously-undiscovered bug: Scheduler.tick() called a job's
+  callback with no exception handling at all, so one failing recurring
+  job could crash the entire 24/7 loop; now every callback is
+  unconditionally isolated. Added two new, fully optional Scheduler
+  parameters: max_consecutive_failures (real dead-letter escalation --
+  a real cancel(), not a flag) and on_job_error (a real, self-protected
+  callback). ExecutiveRuntime gained real graceful shutdown
+  (request_shutdown(), a real threading.Event checked every
+  run_forever() iteration), a real heartbeat (last_tick_at, using the
+  runtime's own injectable clock), a real liveness check
+  (is_alive(max_staleness_seconds=...)), real start/stop audit records
+  via the existing AuditLogger, and a real, dependency-free
+  operational_health() aggregation (liveness, incomplete-task count
+  via SessionManager, scheduler pending/dead-letter state). CPU/
+  memory/battery metrics are deliberately left to environment.sensors
+  (Part VI) rather than coupling runtime.py to psutil. 21 new tests --
+  537 total for Layla, up from 516, zero regressions. CONTRACT.md
+  SS48, README.md updated; ADR-0038 recorded in DECISIONS.md.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

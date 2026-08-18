@@ -34,12 +34,36 @@ from .types import ScheduledJob, new_id
 
 
 class Scheduler:
-    def __init__(self, *, clock: Callable[[], float] = time.monotonic) -> None:
+    def __init__(
+        self, *, clock: Callable[[], float] = time.monotonic,
+        max_consecutive_failures: Optional[int] = None,
+        on_job_error: Optional[Callable[[str, BaseException], None]] = None,
+    ) -> None:
+        """`max_consecutive_failures`/`on_job_error` are additive
+        (Directive D Part XI, ADR-0038): a job whose
+        callback keeps raising is real-world 24/7-operation risk (a
+        crashed job used to take the whole `tick()` loop -- and
+        therefore `ExecutiveRuntime.run_forever()` -- down with it,
+        since `callback()` was called with no exception handling at
+        all). Now every job's callback is always isolated (one
+        failing job never prevents the rest of `tick()`'s due jobs
+        from running, and never propagates out of `tick()`), and if
+        `max_consecutive_failures` is set, a job that keeps failing
+        past that count is dead-lettered (via a real `cancel()` call
+        -- it stops being rescheduled) rather than retried forever --
+        a real, bounded retry-storm guard. Omitting both parameters
+        preserves every existing behavior exactly (the isolation is
+        unconditional; only the dead-letter escalation is opt-in).
+        """
         self._clock = clock
         self._heap: List[Tuple[float, str]] = []
         self._jobs: Dict[str, ScheduledJob] = {}
         self._callbacks: Dict[str, Callable[[], None]] = {}
         self._lock = threading.Lock()
+        self._max_consecutive_failures = max_consecutive_failures
+        self._on_job_error = on_job_error
+        self._failure_counts: Dict[str, int] = {}
+        self._dead_letter: Dict[str, str] = {}
 
     def schedule_once(self, at: float, callback: Callable[[], None]) -> str:
         job_id = new_id("job")
@@ -76,6 +100,22 @@ class Scheduler:
         with self._lock:
             return tuple(self._jobs.keys())
 
+    def dead_lettered_jobs(self) -> Dict[str, str]:
+        """job_id -> the real error message from the failure that
+        crossed `max_consecutive_failures` and got it cancelled. Empty
+        if dead-lettering isn't configured or nothing has ever crossed
+        the threshold.
+        """
+        with self._lock:
+            return dict(self._dead_letter)
+
+    def failure_count(self, job_id: str) -> int:
+        """Current consecutive-failure count for a job (0 if it has
+        never failed, or has succeeded since its last failure).
+        """
+        with self._lock:
+            return self._failure_counts.get(job_id, 0)
+
     def tick(self, now: Optional[float] = None) -> Tuple[str, ...]:
         """Runs every job whose run_at <= now, rescheduling recurring
         jobs for their next interval. Returns the ids that fired.
@@ -87,6 +127,16 @@ class Scheduler:
         `_jobs` (both use the same lock). Each individual job's due-check
         + pop + callback-lookup + reschedule/cleanup is atomic; the
         callback itself runs unlocked (see module docstring).
+
+        Failure isolation (Directive D Part XI, ADR-0038): a callback
+        that raises is caught here, unconditionally -- one failing job
+        must never prevent the rest of this tick's due jobs from
+        running, and must never propagate out of `tick()` (which would
+        otherwise crash `ExecutiveRuntime.run_forever()`'s entire 24/7
+        loop over a single bad job). If `max_consecutive_failures` was
+        configured and this job's consecutive-failure count reaches
+        it, the job is dead-lettered (a real `cancel()` -- it stops
+        being rescheduled) rather than retried forever.
         """
         now = now if now is not None else self._clock()
         fired = []
@@ -107,6 +157,28 @@ class Scheduler:
                     del self._jobs[job_id]
                     del self._callbacks[job_id]
 
-            callback()  # deliberately outside the lock -- see module docstring
+            try:
+                callback()  # deliberately outside the lock -- see module docstring
+            except Exception as exc:  # noqa: BLE001 -- isolation is the point; see docstring
+                self._handle_job_failure(job_id, exc)
+            else:
+                with self._lock:
+                    self._failure_counts.pop(job_id, None)  # a real success resets the streak
             fired.append(job_id)
         return tuple(fired)
+
+    def _handle_job_failure(self, job_id: str, exc: BaseException) -> None:
+        dead_lettered = False
+        with self._lock:
+            count = self._failure_counts.get(job_id, 0) + 1
+            self._failure_counts[job_id] = count
+            if self._max_consecutive_failures is not None and count >= self._max_consecutive_failures:
+                self._dead_letter[job_id] = str(exc)
+                dead_lettered = True
+        if dead_lettered:
+            self.cancel(job_id)  # real: stops future rescheduling -- called outside the lock (non-reentrant)
+        if self._on_job_error is not None:
+            try:
+                self._on_job_error(job_id, exc)
+            except Exception:  # noqa: BLE001 -- a broken error handler must not compound the original failure
+                pass

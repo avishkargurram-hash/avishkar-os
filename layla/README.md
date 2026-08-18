@@ -61,7 +61,7 @@ layla/
 │   ├── end_to_end_scenario.py       Part IX's real, narrated demonstration
 │   ├── crash_recovery_scenario.py   resume-in-place demonstration (Priority 17.3)
 │   └── personal_model_and_proactive_scenario.py  Mission Layla Parts 1/2/11
-└── python/tests/                   516 tests (as of Directive D Part X; 1 live-gated, skipped by default)
+└── python/tests/                   537 tests (as of Directive D Part XI; 1 live-gated, skipped by default)
 ```
 
 ## Naming Standards
@@ -842,6 +842,20 @@ CONTRACT.md §46.
 | Full chain integration | 🟢 GREEN | A real `ProactiveEngine` end-to-end test: a stale `PersonalModel` relationship → a real `ACTION_SUGGEST` trigger → a real `Notification`. |
 | Draft generation / send | — | Deliberately NOT reimplemented here — this is exactly what the unchanged `ExecutiveRuntime.handle_event()` pipeline already does (real risk classification, real approval, real Chief-Domain-Agent drafting, real Part V channel sending) when a suggestion is acted on. Duplicating it here would violate "Avishkar OS remains the foundation." |
 
+# 24/7 Operation (Directive D, Part XI, ADR-0038)
+
+Real hardening of the existing `Scheduler`/`ExecutiveRuntime.run_forever()`
+loop — no new persistent-runtime mechanism. See CONTRACT.md §48.
+
+| Component | Status | Notes |
+|---|---|---|
+| Scheduler failure isolation | 🟢 GREEN | A real gap found by reading `tick()`'s own code: a job callback was called with NO exception handling — one failing job could crash the entire 24/7 loop. Now isolated unconditionally; 6/6 real tests, including that a raising job never blocks other due jobs in the same tick. |
+| Scheduler dead-letter | 🟢 GREEN | Optional `max_consecutive_failures` — a real `cancel()` after a job keeps failing, not merely a flag; 3/3 real tests, including that the default (`None`) preserves prior retry-forever behavior exactly. |
+| Graceful shutdown | 🟢 GREEN | A real `threading.Event`-based `request_shutdown()`, checked at the top of every `run_forever()` iteration; a real `layla.runtime.run_forever_stopped` audit record via the existing `AuditLogger`. |
+| Heartbeat / liveness | 🟢 GREEN | `last_tick_at`/`is_alive(max_staleness_seconds=...)` — real, using the runtime's own injectable clock. |
+| Operational health report | 🟢 GREEN | `operational_health()` — real liveness, real incomplete-task count (`SessionManager`), real scheduler pending/dead-letter state when a scheduler is configured. Deliberately excludes CPU/memory/battery (real, but behind `environment.sensors`'s optional `psutil` dependency — combined externally, not force-coupled into `runtime.py`). |
+| Crash recovery | — | Already real via Priority 17.3's resume-in-place (`SessionManager.list_incomplete()`/`ExecutiveRuntime.resume()`) — not rebuilt. |
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
@@ -927,7 +941,7 @@ already covers it — extending that list requires an ADR.
 
 # Testing Guide
 
-516 tests as of Directive D Part X (Personal Executive Communication) (119
+537 tests as of Directive D Part XI (24/7 Operation) (119
 Phase 16 + 30 Priority 17.1 + 21 Priority 17.2 + 8 Priority 17.3 + 11
 Priority 17.4 + 1 Priority 17.5 + 30 Mission Layla 1 [PersonalModel/
 ProactiveEngine] + 82 Mission Layla continuation [Prediction/Skills/
@@ -959,8 +973,11 @@ real fail-safe triggering/real state verification/real end-to-end
 EmbodimentController approval gating, all without physical hardware] +
 11 Directive D Part X [real relationship-staleness detection/real
 follow-up eligibility filtering/real retry-storm-safe dedup/real
-outcome recording/full real ProactiveEngine end-to-end integration]),
-514 running offline and passing, 2 live/environment-gated and skipped by
+outcome recording/full real ProactiveEngine end-to-end integration] +
+21 Directive D Part XI [real scheduler failure isolation/real
+dead-letter escalation/real graceful shutdown/real heartbeat-liveness/
+real operational health aggregation]), 535 running offline and
+passing, 2 live/environment-gated and skipped by
 default (`test_live_anthropic_integration.py` — see
 `docs/live-integration-guide.md` to actually run it; plus one OCR
 availability test that only runs on a machine WITHOUT tesseract

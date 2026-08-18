@@ -2827,3 +2827,92 @@ evaluator + 3 outcome-recording, plus 1 already counted in the
 end-to-end integration test), 516 total for Layla, up from 505, zero
 regressions. No pyproject extra needed -- pure Python over existing
 `PersonalModel`/`proactive` primitives.
+
+## ADR-0038: Mission Layla Directive D, Part XI (24/7 Operation) — a real, previously-undiscovered scheduler crash bug fixed, plus real graceful shutdown, heartbeat, and operational health reporting, all additive to the existing Scheduler/ExecutiveRuntime
+
+**Context:** Directive D Part XI asks for a persistent process with
+graceful startup/shutdown, restart recovery, retry management, dead-
+letter handling, health checks, heartbeat, resource monitoring, and
+crash recovery, with an explicit constraint: "Layla should be the
+continuously-running intelligence. Do NOT run every Chief Domain Agent
+continuously." That constraint is already satisfied by the existing
+architecture (Chief Domain Agents are only ever invoked through
+`DelegationEngine`, never run in a loop of their own); this part's
+real work is hardening the existing `Scheduler`/
+`ExecutiveRuntime.run_forever()` loop itself, not building a second
+persistent-runtime mechanism.
+
+**Decision:**
+1. Reading `Scheduler.tick()`'s existing implementation while
+   assessing this part surfaced a real, previously-undiscovered bug:
+   a scheduled job's `callback()` was invoked with NO exception
+   handling at all. A single failing recurring job (a realistic case
+   -- e.g. a flaky `SensorMonitor.check()` job from Part VI) would
+   raise straight out of `tick()`, which `ExecutiveRuntime.run_forever()`
+   also called with no handling of its own -- crashing the entire 24/7
+   loop over one bad job. Fixed unconditionally: every callback is now
+   isolated in `tick()`, verified with real tests that a raising job
+   neither prevents other due jobs in the same tick from running nor
+   propagates out of `tick()` itself. This is disclosed as a real
+   defect found and fixed, not merely a feature added -- the kind of
+   finding Directive D Part XVIII's forensic-audit spirit exists to
+   surface, found here incidentally while implementing Part XI rather
+   than waiting for that later pass.
+2. `Scheduler` gained two new, fully optional constructor parameters:
+   `max_consecutive_failures` (dead-letters -- a real `cancel()`, not
+   a flag -- a job whose failures cross the threshold) and
+   `on_job_error` (a real callback invoked with the job id and the
+   real exception, itself protected so a broken handler can't
+   compound the original failure). Omitting both preserves every
+   prior behavior exactly, verified by a real test
+   (`test_without_max_consecutive_failures_a_job_is_retried_forever`).
+3. `ExecutiveRuntime` gained real graceful shutdown
+   (`request_shutdown()` -- a `threading.Event` checked at the top of
+   every `run_forever()` iteration, so a shutdown requested mid-run
+   takes effect before the next tick), a real heartbeat
+   (`last_tick_at`, updated every completed iteration using the
+   runtime's own already-injectable `clock()` -- reused rather than
+   adding a second clock source), a real liveness check
+   (`is_alive(max_staleness_seconds=...)`), and real start/stop audit
+   records (`layla.runtime.run_forever_started`/`_stopped`, via the
+   existing `AuditLogger` -- no new logging mechanism). A process
+   killed outright still loses these records (unavoidable), but a
+   deployment that wires a signal handler to `request_shutdown()` now
+   gets a genuinely clean stop with a durable trail of it.
+4. `ExecutiveRuntime.operational_health()` is a real, dependency-free
+   aggregation: liveness, last tick, `SessionManager.list_incomplete()`'s
+   real count (stuck tasks -- the "crash recovery" signal an external
+   health check would want), and, when a `Scheduler` is configured,
+   its real pending-job count and dead-lettered-job map. Deliberately
+   excludes CPU/memory/battery metrics: those are real too
+   (`environment.sensors`, ADR-0033) but live behind that package's
+   optional `psutil` dependency -- combining them is left to a
+   deployment rather than making `runtime.py` itself depend on an
+   optional extra.
+
+**Alternatives considered:**
+- *Add a background thread inside `ExecutiveRuntime` that runs
+  `run_forever()` automatically* -- rejected: `run_forever()` already
+  is the real 24/7 entry point a deployment's process supervisor
+  calls; adding an internal thread would create a second, competing
+  notion of "the loop" and complicate `request_shutdown()`'s
+  semantics for no real benefit.
+- *Make dead-lettering the default (some non-`None` failure
+  threshold)* -- rejected: a deployment's tolerance for a flaky job
+  varies (some jobs are safe to retry forever, e.g. a best-effort
+  connectivity probe; others genuinely should stop after a few
+  failures) -- defaulting to `None` (retry forever, matching prior
+  behavior) and letting a deployment opt into a threshold is the
+  conservative choice for a change made to an existing, already-relied-
+  on component.
+- *Fold `operational_health()`'s resource metrics directly into
+  `runtime.py` by importing `environment.sensors`* -- rejected: that
+  would make the cognitive core depend on `psutil` (an optional
+  extra), and CONTRACT.md §0 identifies the cognitive core's contract-
+  only status as deliberate; a deployment that wants both simply reads
+  both real reports and merges them itself.
+
+**Consequences:** `scheduler.py` and `runtime.py` both modified
+additively (no removed/renamed public API); 21 new tests (9 scheduler
++ 12 runtime), 537 total for Layla, up from 516, zero regressions. No
+pyproject extra needed.

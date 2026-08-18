@@ -901,6 +901,29 @@ foundation."
 CONTRACT.md §46, DECISIONS.md ADR-0037, README.md Personal Executive
 Communication section.
 
+## Mission Layla Directive D, Part XI — 24/7 Operation (ADR-0038, 2026-08-16)
+
+Real hardening of the existing `Scheduler`/`ExecutiveRuntime.run_forever()`
+loop — no new persistent-runtime mechanism.
+
+**Real bug found and fixed** (not just a feature added): `Scheduler.tick()`
+called a job's callback with no exception handling at all — one
+failing recurring job could crash the entire 24/7 loop. Now
+unconditionally isolated.
+
+**Real, fully-working**: optional dead-letter escalation
+(`max_consecutive_failures`, a real `cancel()` after repeated
+failures), real graceful shutdown (`request_shutdown()`, a real
+`threading.Event`), real heartbeat/liveness (`last_tick_at`/
+`is_alive()`, using the runtime's own injectable clock), real
+start/stop audit records, and a real `operational_health()`
+aggregation (liveness, incomplete-task count, scheduler pending/dead-
+letter state).
+
+21 new tests — 537 total for Layla, zero regressions. Full detail:
+CONTRACT.md §48, DECISIONS.md ADR-0038, README.md 24/7 Operation
+section.
+
 ## How this roadmap changes
 
 A phase only moves to 🚧 when someone is actively working it, and only to
