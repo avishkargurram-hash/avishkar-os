@@ -943,6 +943,22 @@ recovery/rollback/DEVELOPMENT→TEST→STAGING→PRODUCTION profiles).
 | `layla/Dockerfile` (base runtime image) | 🟡 WRITTEN, NOT BUILD-VERIFIED | Mirrors the exact `PYTHONPATH` composition every test/example script in this repo already uses. Honestly disclosed external-dependency gap: no Docker daemon is running in this sandboxed environment (CLI present, daemon not started), so `docker build`/`docker run` were not verified end to end here — the underlying Python entrypoint IS real and smoke-tested independently. |
 | Monitoring/alerting push integration (Prometheus/Datadog/PagerDuty, etc.) | 🔴 NOT COVERED | `/health/report` is real, structured JSON meant to be polled/scraped by an external system — no push-based integration is built. Honestly disclosed future work. |
 
+# Final Forensic Audit (Directive D, Part XVIII, ADR-0045)
+
+A real, independent whole-platform sweep — not trusting each prior
+part's own self-report. Full detail: [`docs/directive-d-forensic-report.md`](../docs/directive-d-forensic-report.md).
+
+| Check | Result |
+|---|---|
+| Full Layla test suite (583 tests) | 🟢 `Ran 583 tests ... OK (skipped=2)` |
+| `docs/final-integration-verify.py` (whole-platform, 9-system, real end-to-end run) | 🟢 passed — confirms Directive D's 17 parts left the rest of the platform's cross-framework integration intact |
+| Repository-wide secret scan (whole monorepo, not just `layla/`) | 🟢 29 findings, all pre-existing known test/doc fixtures, zero real secrets |
+| Whole-platform import sweep (all 13 real Python packages) | 🟢 zero broken imports, zero circular dependencies |
+| `layla/` dead-code sweep | 🟢→🟢 FOUND AND FIXED: 2 genuinely unused imports in `identity.py` (pre-existing since Priority 17.1), removed, zero behavior change, verified via full re-run |
+| Locked-framework dead-code sweep (informational) | 🟡 FOUND, disclosed, NOT fixed | 3 unused imports in `agent-factory`/`prompt-factory`, outside Directive D's authorized locked-framework boundary — disclosed for those frameworks' own maintainers, not modified here |
+| Fake/placeholder implementation sweep (`TODO`/`FIXME`/`NotImplementedError`) | 🟢 only legitimate abstract-provider base-class contracts found, no fake capability |
+| ADR numbering (ADR-0028–ADR-0044) / `CONTRACT.md` section numbers | 🟢 sequential, zero gaps, zero duplicates (the known, previously-disclosed §Errors-renumbering cosmetic drift is unchanged, deliberately not retroactively fixed) |
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,

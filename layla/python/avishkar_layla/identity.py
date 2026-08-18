@@ -11,9 +11,7 @@ platform doesn't need yet.
 from __future__ import annotations
 
 import dataclasses
-from typing import FrozenSet, Optional, Tuple
-
-from .types import new_id
+from typing import Optional, Tuple
 
 # --- Permission vocabulary ---------------------------------------------
 # A fixed, small set -- not an open-ended RBAC string namespace. Adding a

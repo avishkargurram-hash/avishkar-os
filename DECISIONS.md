@@ -3402,3 +3402,85 @@ backed up `FileMemoryPolicy`'s real on-disk state.
 `layla/deploy/run_production.py`, new `layla/Dockerfile`, new
 `layla/OPERATIONS.md`. 9 new tests — 583 total for Layla, up from 574,
 zero regressions.
+
+## ADR-0045: Mission Layla Directive D, Part XVIII (Final Forensic Audit) — a real, independent whole-platform sweep, one genuine defect found and fixed, three more found and honestly left to their own locked frameworks
+
+**Context:** Directive D Part XVIII asks for a fresh, whole-platform
+audit — every framework/factory/agent/Layla subsystem — covering dead
+code, duplicate abstractions, broken imports, circular dependencies,
+fake/placeholder implementations, credential leaks, and more, with
+actual execution of important paths, not source inspection alone.
+Every individual Directive D part (I-XVII) already self-audited its
+own work as it went (lint, targeted tests, secret scans); the genuine
+remaining question was whether an independent, whole-platform pass —
+not trusting each part's own self-report — would find anything those
+per-part passes missed, and whether the platform beyond Layla (which
+Directive D never modified) still holds together.
+
+**Decision:**
+1. Ran real, executable checks rather than source-only inspection: the
+   full 583-test Layla suite; the platform's own pre-existing
+   `docs/final-integration-verify.py` whole-system smoke test (all
+   nine named systems, one real workflow); a repository-wide (not just
+   `layla/`) `scan_repository_for_secrets(".")`; a real import sweep of
+   all 13 Python packages in the monorepo; and a comprehensive
+   `flake8` dead-code sweep of all of `layla/python/avishkar_layla/`
+   plus an informational-only sweep of every locked framework.
+2. Found and fixed one small, real, pre-existing defect: two genuinely
+   unused imports in `identity.py` (predates Mission Layla, from
+   Priority 17.1), confirmed dead before removal, zero behavior
+   change, `test_auth.py`'s 15 tests re-run and still pass, full suite
+   re-run afterward and still green.
+3. Found three more unused imports in locked frameworks
+   (`agent-factory`, `prompt-factory`) outside anything Directive D
+   touched. Deliberately did NOT fix them: the 20 Critical Rules'
+   locked-framework discipline permits touching a locked framework
+   only as a narrow, ADR-documented exception when a directive
+   explicitly names that framework as an audit/harden target (the
+   precedent Phase 17.4 set for `core`'s `EventBus`). Directive D
+   Part XVIII's "every framework" audit language is read as
+   audit-and-disclose for frameworks Directive D itself never owned,
+   not license to modify them on sight for a zero-risk lint finding —
+   disclosed in `docs/directive-d-forensic-report.md` for that
+   framework's own maintainers instead.
+4. Whole-platform import sweep and the real end-to-end integration
+   script both passed cleanly — confirming Directive D's 17 parts,
+   entirely confined to `layla/` and root docs per the standing
+   constraint, left the rest of the platform's cross-framework
+   integration completely intact, verified by actually running it
+   rather than assuming it from "we never touched those files."
+5. Repository-wide secret scan (29 findings, whole monorepo, not just
+   `layla/`) matched every prior per-part scan's conclusion: all
+   pre-existing, known, intentional test/documentation fixtures, zero
+   real secrets — now confirmed at full-repository scope for the
+   first time this session, not just per-directory as each part
+   checked its own changes.
+6. Scoped this audit honestly rather than re-doing Phase 16/17's own
+   forensic passes: a full independent line-by-line re-audit of all 12
+   other factories' internals was judged out of proportion for a
+   Directive-D-focused final audit, since Directive D never modified
+   any of them — disclosed explicitly in the report rather than
+   silently implied as covered.
+
+**Alternatives considered:**
+- *Skip the identity.py fix since it predates this directive* --
+  rejected: Part XVIII's own mandate is to find and report real
+  defects wherever they are within Layla (freely modifiable, unlike
+  the other frameworks); a trivial, safe, verified-zero-behavior-
+  change cleanup found by a real sweep is exactly the kind of finding
+  this part exists to catch and fix, not merely note.
+- *Fix the locked-framework findings too, since they're equally
+  trivial* -- rejected: extends this session's edit surface beyond
+  what the 20 Critical Rules authorize without an explicit per-
+  framework directive naming it as a target, the same reasoning
+  Phase 17.4 already established as this platform's precedent.
+- *Re-audit every other factory line-by-line "to be thorough"* --
+  rejected: would duplicate Phase 16/17's own forensic work rather
+  than auditing what Directive D actually changed; disclosed as
+  explicitly out of scope instead of silently skipped.
+
+**Consequences:** `layla/python/avishkar_layla/identity.py` loses two
+dead imports (zero behavior change, all 583 tests still pass). New
+`docs/directive-d-forensic-report.md`. No new tests needed (a
+consolidation/verification pass, not new capability) -- 583 total for
+Layla, unchanged.

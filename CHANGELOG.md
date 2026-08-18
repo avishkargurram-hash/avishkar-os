@@ -939,5 +939,21 @@ its first consumer.
   tests -- 583 total for Layla, up from 574, zero regressions.
   CONTRACT.md SS60, README.md updated; ADR-0044 recorded in
   DECISIONS.md.
+- Mission Layla Directive D, Part XVIII -- real Final Forensic Audit
+  (ADR-0045, docs/directive-d-forensic-report.md). A real, independent
+  whole-platform sweep: full 583-test Layla suite, the platform's own
+  docs/final-integration-verify.py (all nine systems, one real
+  end-to-end run, passed), a repository-wide (not just layla/) secret
+  scan (29 findings, all pre-existing known fixtures, zero real
+  secrets), a whole-platform import sweep (all 13 real Python
+  packages, zero broken imports/circular dependencies), and a
+  comprehensive dead-code sweep. Found and fixed: 2 genuinely unused
+  imports in identity.py (pre-existing since Priority 17.1), zero
+  behavior change, full suite re-run and still green. Found and
+  honestly disclosed, not fixed: 3 unused imports in locked frameworks
+  (agent-factory, prompt-factory) outside Directive D's authorized
+  boundary. No new fake integration, security defect, or fabricated
+  "production-ready" claim found. README.md updated; ADR-0045 recorded
+  in DECISIONS.md.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

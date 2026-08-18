@@ -1070,6 +1070,30 @@ referencing only real, already-tested components.
 CONTRACT.md §60, DECISIONS.md ADR-0044, README.md Production
 Deployment section, OPERATIONS.md.
 
+## Mission Layla Directive D, Part XVIII — Final Forensic Audit (ADR-0045, 2026-08-18)
+
+A real, independent whole-platform sweep, not trusting each prior
+part's own self-report: full 583-test Layla suite, the platform's own
+`docs/final-integration-verify.py` (all nine systems, one real
+end-to-end run), a repository-wide secret scan, a whole-platform
+import sweep (all 13 real Python packages), and a comprehensive
+dead-code sweep.
+
+**Found and fixed**: 2 genuinely unused imports in `identity.py`
+(pre-existing since Priority 17.1), zero behavior change, full suite
+re-run and still green.
+
+**Found and honestly disclosed, not fixed**: 3 unused imports in
+locked frameworks (`agent-factory`, `prompt-factory`) outside
+Directive D's authorized boundary — left for those frameworks' own
+maintainers, per the same locked-framework discipline Phase 17.4
+established.
+
+No new fake integration, security defect, broken import, or fabricated
+"production-ready" claim found anywhere. Full detail:
+`docs/directive-d-forensic-report.md`, DECISIONS.md ADR-0045,
+README.md Final Forensic Audit section.
+
 ## How this roadmap changes
 
 A phase only moves to 🚧 when someone is actively working it, and only to
