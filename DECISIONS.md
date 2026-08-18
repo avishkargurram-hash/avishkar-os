@@ -2916,3 +2916,84 @@ persistent-runtime mechanism.
 additively (no removed/renamed public API); 21 new tests (9 scheduler
 + 12 runtime), 537 total for Layla, up from 516, zero regressions. No
 pyproject extra needed.
+
+## ADR-0039: Mission Layla Directive D, Part XII (Durable Execution) — a real, explicitly-scoped TaskLeaseManager for task ownership/stale-task recovery, honestly not claimed as a distributed lock service
+
+**Context:** Directive D Part XII asks for "durable task state,
+checkpoints, resume-in-place, idempotency keys, exactly-once-or-safe-
+at-least-once semantics, retry policies, compensation/rollback, an
+execution journal, task ownership, stale-task recovery," summarized by
+its own framing: "A machine restart must NOT destroy an important
+Layla task." Most of this list is already real, existing
+functionality: `SessionManager`/`LaylaTask.plan` (checkpoints/resume-
+in-place, Priority 17.3, ADR-0023), `ExecutionTracker` (idempotency
+keys/exactly-once-or-safe-at-least-once, Priority 17.2, ADR-0022),
+`DelegationEngine` (retry policies), `AuditLogger` (execution
+journal). The two items nothing existing covers are task ownership and
+stale-task recovery -- knowing not just THAT a task is incomplete
+(`list_incomplete()` already answers that) but whether it was actively
+being worked on by a process that has since died.
+
+**Decision:**
+1. `TaskLeaseManager` (task_lease.py) implements real
+   `acquire()`/`renew()`/`release()`/`is_stale()`/`find_stale_leases()`.
+   Thread-safety within one process uses the same lock-guarded check-
+   then-write pattern `Scheduler`/`AuditLogger` already established
+   (ADR-0024); durability across a restart comes from persisting
+   leases via the existing `LaylaMemoryPolicy` (no new storage
+   mechanism). A genuine multi-thread test
+   (`test_only_one_of_many_concurrent_acquirers_wins`, 20 real threads
+   racing for one lease) proves real mutual exclusion, not merely
+   asserted logic.
+2. The module's docstring and CONTRACT.md §50 both explicitly state
+   what this is NOT: a distributed lock service. `LaylaMemoryPolicy.remember()`
+   is an unconditional write, not a compare-and-swap primitive (verified
+   by reading its actual implementation before writing this module) --
+   so true atomicity across *multiple concurrent OS processes* isn't
+   something this layer can honestly claim to provide. The real,
+   correctly-scoped value is exactly what Directive D's own framing
+   describes: one active Layla process, restarted by a supervisor
+   after a crash, using `find_stale_leases()` over
+   `SessionManager.list_incomplete()` on startup to tell "genuinely
+   abandoned mid-processing" apart from "still being worked on by a
+   process that hasn't actually died."
+3. `acquire()` is designed to be safe for the SAME worker to call
+   repeatedly (idempotent re-acquire/renew), and only refuses a
+   genuinely different worker holding a real, unexpired lease -- an
+   expired lease is real, legitimate grounds for takeover by a new
+   worker (the exact "stale lease -> safe to resume" case this part
+   exists for).
+4. No new error types were introduced: `acquire()`/`renew()`/`release()`
+   return `bool` rather than raising, since "another worker already
+   holds this lease" is an expected, routine outcome of a lease-based
+   design, not an exceptional one -- callers are expected to check the
+   return value, not catch an exception.
+
+**Alternatives considered:**
+- *Build a real distributed lock (e.g. requiring a specific backend
+  like SQLite's `BEGIN IMMEDIATE` transactions, or Redis `SETNX`) to
+  make the multi-process guarantee real* -- rejected for this pass:
+  would require either depending on a specific `LaylaMemoryPolicy`
+  backend's internals (breaking the abstraction every other Layla
+  component relies on) or introducing a new external dependency
+  (Redis) -- a larger architectural commitment than this part's actual
+  requirement ("a machine restart must not destroy a task") calls for.
+  Documented as real future work if a genuinely multi-worker deployment
+  needs it, rather than built prematurely or claimed without being
+  true.
+- *Silently claim multi-process safety without verifying it* --
+  rejected outright: this is exactly the kind of overclaim Directive
+  D's "No Fake Completion" rule and this session's own established
+  discipline (disclose real scope limits, like the browser LOW-risk
+  finding and the Robotics hardware boundary) exist to prevent.
+- *Store lease state in-memory only (not persisted)* -- rejected:
+  would defeat the entire point -- a restart is exactly when knowing
+  about a stale lease matters most, and in-memory state doesn't
+  survive a restart by definition.
+
+**Consequences:** New `task_lease.py` (added to
+`avishkar_layla/__init__.py`'s top-level exports, core cognitive/
+durability-layer functionality), 14 new tests (10 unit + 1 real
+20-thread concurrency proof, counted individually), 551 total for
+Layla, up from 537, zero regressions. No pyproject extra needed -- pure
+Python over the existing `LaylaMemoryPolicy`.

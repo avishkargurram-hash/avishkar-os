@@ -151,6 +151,7 @@ from .skills import (
 )
 from .state_machine import ALLOWED_TRANSITIONS, StateMachine
 from .synthesis import ConflictResolver, ExecutiveSynthesizer, ResultValidator
+from .task_lease import TaskLease, TaskLeaseManager
 from .types import (
     RISK_HIGH,
     RISK_LOW,
@@ -330,5 +331,7 @@ __all__ = [
     "RelationshipContact",
     "StaleRelationshipEvaluator",
     "record_contact_outcome",
+    "TaskLease",
+    "TaskLeaseManager",
     "__version__",
 ]

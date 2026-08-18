@@ -828,5 +828,22 @@ its first consumer.
   (Part VI) rather than coupling runtime.py to psutil. 21 new tests --
   537 total for Layla, up from 516, zero regressions. CONTRACT.md
   SS48, README.md updated; ADR-0038 recorded in DECISIONS.md.
+- Mission Layla Directive D, Part XII -- real Durable Execution
+  additions (`avishkar_layla.task_lease`, ADR-0039). Most of "durable
+  execution" was already real (checkpoints/resume-in-place, idempotency
+  keys, retry policies, an execution journal) -- not rebuilt.
+  TaskLeaseManager adds the two items nothing existing covered: real,
+  thread-safe, durable task ownership (acquire()/renew()/release(),
+  persisted via the existing LaylaMemoryPolicy) and real stale-task
+  recovery (is_stale()/find_stale_leases(), intended for
+  find_stale_leases(t.id for t in session_manager.list_incomplete())
+  on process startup). A genuine 20-real-thread concurrency test proves
+  exactly one thread wins a contested lease. Explicitly, honestly NOT
+  claimed as a distributed lock service -- true multi-process atomicity
+  depends on the underlying memory backend's own guarantees, which
+  this layer doesn't provide; documented as a real scope limit rather
+  than papered over. 14 new tests -- 551 total for Layla, up from 537,
+  zero regressions. CONTRACT.md SS50, README.md updated; ADR-0039
+  recorded in DECISIONS.md.
 
 [Unreleased]: https://github.com/avishkar-labs/avishkar-os/compare/HEAD

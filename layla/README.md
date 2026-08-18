@@ -48,7 +48,7 @@ ExecutiveRuntime (event loop: IDLE -> EVENT -> INGEST -> UNDERSTAND ->
 layla/
 ├── CONTRACT.md              language-agnostic contract
 ├── README.md                  this file
-├── python/avishkar_layla/       reference implementation (42 modules)
+├── python/avishkar_layla/       reference implementation (43 modules)
 │   ├── channels/                   communication channel adapters (6 real transports, Directive D Part V, ADR-0032)
 │   ├── environment/                 environmental awareness (Directive D Part VI, ADR-0033)
 │   ├── voice/                      voice subsystem (Directive D Part I, ADR-0028)
@@ -56,12 +56,13 @@ layla/
 │   ├── mqtt/                        real MQTT bridge (Directive D Part VIII, ADR-0035)
 │   ├── robotics/                    real robot safety layer (Directive D Part IX, ADR-0036)
 │   ├── executive_communication.py   real stale-relationship follow-up chain (Directive D Part X, ADR-0037)
+│   ├── task_lease.py                real task ownership/stale-task recovery (Directive D Part XII, ADR-0039)
 │   └── executors/                  real EmbodimentController executors (Directive D Parts III-IV/VII-VIII, ADR-0030/0031/0034/0035)
 ├── examples/
 │   ├── end_to_end_scenario.py       Part IX's real, narrated demonstration
 │   ├── crash_recovery_scenario.py   resume-in-place demonstration (Priority 17.3)
 │   └── personal_model_and_proactive_scenario.py  Mission Layla Parts 1/2/11
-└── python/tests/                   537 tests (as of Directive D Part XI; 1 live-gated, skipped by default)
+└── python/tests/                   551 tests (as of Directive D Part XII; 1 live-gated, skipped by default)
 ```
 
 ## Naming Standards
@@ -856,6 +857,21 @@ loop — no new persistent-runtime mechanism. See CONTRACT.md §48.
 | Operational health report | 🟢 GREEN | `operational_health()` — real liveness, real incomplete-task count (`SessionManager`), real scheduler pending/dead-letter state when a scheduler is configured. Deliberately excludes CPU/memory/battery (real, but behind `environment.sensors`'s optional `psutil` dependency — combined externally, not force-coupled into `runtime.py`). |
 | Crash recovery | — | Already real via Priority 17.3's resume-in-place (`SessionManager.list_incomplete()`/`ExecutiveRuntime.resume()`) — not rebuilt. |
 
+# Durable Execution (Directive D, Part XII, ADR-0039)
+
+Most of "durable execution" is already real, existing functionality
+(checkpoints/resume-in-place, idempotency keys, retry policies, an
+execution journal) — not rebuilt. `task_lease.py` adds the two items
+Directive D Part XII names that nothing existing covered: task
+ownership and stale-task recovery. See CONTRACT.md §50.
+
+| Component | Status | Notes |
+|---|---|---|
+| `TaskLeaseManager` acquire/renew/release | 🟢 GREEN | Real, thread-safe (lock-guarded), durable across a restart (persisted via `LaylaMemoryPolicy`). 10/10 real tests. |
+| Real concurrency proof | 🟢 GREEN | A genuine multi-thread test: 20 real threads race to acquire the same lease — exactly one wins, verified. |
+| Stale-lease detection | 🟢 GREEN | `is_stale()`/`find_stale_leases()` — real expiry comparison against the manager's own injectable clock; intended real usage: `find_stale_leases(t.id for t in session_manager.list_incomplete())` on process startup. |
+| Multi-process distributed locking | 🔴 NOT CLAIMED | Explicitly documented scope limit, not a gap papered over: true atomicity across *multiple concurrent OS processes* depends on the underlying `LaylaMemoryPolicy` backend's own guarantees (`remember()` is an unconditional write, not a compare-and-swap), which this layer does not itself provide. Correctly scoped for the deployment model Directive D actually describes (one active process, restarted after a crash) — not oversold as a distributed lock service. |
+
 # Permission Model
 
 **Status: IMPLEMENTED.** `risk.classify_risk()` is a real,
@@ -941,7 +957,7 @@ already covers it — extending that list requires an ADR.
 
 # Testing Guide
 
-537 tests as of Directive D Part XI (24/7 Operation) (119
+551 tests as of Directive D Part XII (Durable Execution) (119
 Phase 16 + 30 Priority 17.1 + 21 Priority 17.2 + 8 Priority 17.3 + 11
 Priority 17.4 + 1 Priority 17.5 + 30 Mission Layla 1 [PersonalModel/
 ProactiveEngine] + 82 Mission Layla continuation [Prediction/Skills/
@@ -976,7 +992,9 @@ follow-up eligibility filtering/real retry-storm-safe dedup/real
 outcome recording/full real ProactiveEngine end-to-end integration] +
 21 Directive D Part XI [real scheduler failure isolation/real
 dead-letter escalation/real graceful shutdown/real heartbeat-liveness/
-real operational health aggregation]), 535 running offline and
+real operational health aggregation] + 14 Directive D Part XII [real
+thread-safe task-lease acquire/renew/release/real 20-thread concurrency
+proof/real stale-lease detection]), 549 running offline and
 passing, 2 live/environment-gated and skipped by
 default (`test_live_anthropic_integration.py` — see
 `docs/live-integration-guide.md` to actually run it; plus one OCR

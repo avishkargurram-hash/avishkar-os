@@ -1310,7 +1310,39 @@ only ever invoked via `DelegationEngine`, never run continuously).
   rebuilt, cross-referenced here since it's exactly what "restart
   recovery" means for this runtime.
 
-## §49. Errors
+## §50. Durable Execution (Mission Layla Directive D, Part XII)
+
+Most of "durable execution" is already real, existing functionality,
+not rebuilt here: durable task state and checkpoints
+(`SessionManager`/`LaylaTask.plan`, §16/ADR-0023), idempotency keys
+and exactly-once-or-safe-at-least-once semantics (`ExecutionTracker`,
+§15/ADR-0022), retry policies (`DelegationEngine`, §5), an execution
+journal (`AuditLogger`, §9). `task_lease.py`'s real, new contribution
+is the two items Directive D Part XII names that nothing existing
+covered: task ownership and stale-task recovery.
+
+`TaskLeaseManager` -- thread-safe within one process (the same
+lock-guarded check-then-write pattern `Scheduler`/`AuditLogger` use)
+and durable across a restart (leases persist via the real
+`LaylaMemoryPolicy`). `acquire()`/`renew()`/`release()`/`is_stale()`/
+`find_stale_leases()` are all real: a genuine multi-thread test
+(`test_only_one_of_many_concurrent_acquirers_wins`) proves exactly one
+of 20 real, concurrently-racing threads wins a contested lease.
+
+**Explicitly documented scope limit** (not a claim of more than is
+real): this is NOT a distributed lock service. True atomicity across
+*multiple concurrent OS processes* racing for the same lease depends
+on the underlying `LaylaMemoryPolicy` backend's own guarantees
+(`remember()` is an unconditional write, not a compare-and-swap) --
+this layer does not itself provide that. The intended, correctly-
+scoped real usage matches Directive D's own actual framing ("a machine
+restart must NOT destroy an important Layla task"): one active Layla
+process, restarted by a supervisor after a crash, calling
+`find_stale_leases(t.id for t in session_manager.list_incomplete())`
+on startup to distinguish tasks genuinely abandoned mid-processing
+from ones a still-live process may legitimately be working on.
+
+## §51. Errors
 
 `LaylaError` (base), `InvalidTransitionError`,
 `MemoryPolicyViolationError`, `UnknownCapabilityError`,
@@ -1343,7 +1375,10 @@ connectivity failures raise the stdlib `ConnectionError`);
 stdlib `ValueError` for an unknown contact (deliberately not a new
 `LaylaError` subclass -- "the caller passed a contact id PersonalModel
 has never heard of" is a plain programmer-error/bad-input case, not a
-Layla-domain error condition); every channel transport raises the
-existing `avishkar_integration.ProtocolInvocationError` (no new
-channel-specific error types were introduced) -- all following the
+Layla-domain error condition); `task_lease.py` deliberately raises no
+custom errors at all -- `acquire()`/`renew()`/`release()` return `bool`,
+since "another worker already holds this lease" is an expected, normal
+outcome for a lease-based design, not an exceptional one; every
+channel transport raises the existing `avishkar_integration.ProtocolInvocationError`
+(no new channel-specific error types were introduced) -- all following the
 same locally-scoped convention as §22-§28's errors.

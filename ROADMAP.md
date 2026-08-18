@@ -924,6 +924,27 @@ letter state).
 CONTRACT.md §48, DECISIONS.md ADR-0038, README.md 24/7 Operation
 section.
 
+## Mission Layla Directive D, Part XII — Durable Execution (ADR-0039, 2026-08-16)
+
+Most of "durable execution" was already real (checkpoints/resume-in-
+place, idempotency keys, retry policies, an execution journal) — not
+rebuilt. `TaskLeaseManager` adds the two items nothing existing
+covered: task ownership and stale-task recovery.
+
+**Real, fully-working**: thread-safe, durable `acquire()`/`renew()`/
+`release()`/`is_stale()`/`find_stale_leases()`, with a genuine 20-real-
+thread concurrency test proving exactly one wins a contested lease.
+
+**Explicitly, honestly scoped**: NOT a distributed lock service — true
+multi-process atomicity depends on the underlying memory backend's own
+guarantees, which this layer doesn't provide. Correctly scoped for
+Directive D's own actual framing ("a machine restart must not destroy
+a task"), not oversold.
+
+14 new tests — 551 total for Layla, zero regressions. Full detail:
+CONTRACT.md §50, DECISIONS.md ADR-0039, README.md Durable Execution
+section.
+
 ## How this roadmap changes
 
 A phase only moves to 🚧 when someone is actively working it, and only to
