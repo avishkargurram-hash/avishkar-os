@@ -37,11 +37,11 @@ def inbox(agent):
     return call(agent, {"verb": "inbox"}, timeout=20)
 
 
-def report(agent, kind, title, body, severity="info"):
+def report(agent, kind, title, body, severity="info", tg_body=None):
     payload = {"verb": "report", "kind": kind, "title": title[:120], "body": body[:4000], "severity": severity}
     try:  # also surface to the owner's Telegram (digest or instant alert); never blocks the report
         from . import telegram
-        telegram.collect(agent, kind, title, body, severity)
+        telegram.collect(agent, kind, title, body if tg_body is None else tg_body, severity)
     except Exception:  # noqa: BLE001
         pass
     code, out = call(agent, payload)

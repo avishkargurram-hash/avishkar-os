@@ -103,16 +103,21 @@ def send_digest():
 
 
 # ---------------- approvals (Naina write, etc.) ----------------
-def request_approval(summary, detail, cb, ttl=24 * 3600):
+def request_approval(summary, detail, cb, ttl=24 * 3600, aid=None, send=True):
     """Send an Allow/Deny card; cb(allowed: bool) runs when the owner decides. Returns the approval id."""
-    aid = "ap" + str(int(time.time() * 1000))[-9:]
+    aid = aid or "ap" + str(int(time.time() * 1000))[-9:]
     with _lock:
         _approvals[aid] = {"cb": cb, "summary": summary, "at": time.time(), "ttl": ttl, "done": False}
     text = f"\U0001F510 <b>Approval needed</b>\n{_esc(summary)}\n\n{_esc(detail)[:1500]}\n\n<i>id {aid}</i>"
     buttons = [[{"text": "✅ Allow", "callback_data": f"ap:{aid}:1"},
                 {"text": "❌ Deny", "callback_data": f"ap:{aid}:0"}]]
     # approvals bypass quiet hours? Owner said no alerts in quiet hours; an approval can wait, so respect quiet.
-    threading.Thread(target=_send, args=(text, buttons), daemon=True).start()
+    if send:
+        if quiet_now():   # owner wants silence 05:00-14:00: hold the card, poll() sends it when quiet ends
+            with _lock:
+                _approvals[aid]["unsent"] = (text, buttons)
+        else:
+            threading.Thread(target=_send, args=(text, buttons), daemon=True).start()
     return aid
 
 
@@ -148,6 +153,13 @@ def poll():
     """Read the owner's taps and typed commands. Never raises. Called every tick."""
     if not enabled():
         return
+    if not quiet_now():
+        with _lock:
+            held = [(k, v["unsent"]) for k, v in _approvals.items() if v.get("unsent") and not v["done"]]
+            for k, _ in held:
+                _approvals[k]["unsent"] = None
+        for _, (text, buttons) in held:
+            _send(text, buttons)
     try:
         out = _api("getUpdates", {"offset": _offset[0] + 1, "timeout": 0, "limit": 20}, timeout=25)
     except Exception:  # noqa: BLE001

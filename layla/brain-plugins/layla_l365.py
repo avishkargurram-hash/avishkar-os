@@ -68,6 +68,7 @@ ACTIONS = {
     "weather.now":       ("get_weather", {"place": ("str", False, 60)}),
     # Priya owns the Almanac (through Layla's bridge; vaults are never reachable)
     "almanac.summary":   ("almanac_today", {}),
+    "almanac.changes":   ("almanac_changes", {"since": ("int", False, (0, 10 ** 12))}),
     "almanac.add":       ("almanac_add", {"kind": ("enum", True, ("reminder", "event", "shopping", "expense", "note", "alarm")),
                                           "title": ("str", True, 120), "date": ("str", False, 10), "time": ("str", False, 8),
                                           "repeat": ("enum", False, ("none", "daily")), "qty": ("str", False, 8),
@@ -81,7 +82,7 @@ _COMMON = ["web.search", "memory.recall", "memory.remember"]
 DEFAULT_ALLOW = {
     "naina": _COMMON, "megha": _COMMON, "veda": _COMMON, "shruti": _COMMON, "maya": _COMMON, "kavya": _COMMON,
     "priya": _COMMON + ["calendar.today", "email.important", "weather.now",
-                        "almanac.summary", "almanac.add", "almanac.done"],
+                        "almanac.summary", "almanac.changes", "almanac.add", "almanac.done"],
     "lydia": _COMMON + ["email.important", "almanac.summary"],
     "nitya": ["memory.recall", "memory.remember", "home.state", "home.light.status", "home.light.control",
               "home.fan.status", "home.fan.control"],

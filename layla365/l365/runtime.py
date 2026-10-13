@@ -88,6 +88,11 @@ class Runner:
                 self.last_error = f"{name}: {type(e).__name__}: {e}"
                 traceback.print_exc()
         self.process_approvals()
+        try:  # Naina's approved code changes -> branch + pull request
+            from . import github_flow
+            github_flow.tick()
+        except Exception as e:  # noqa: BLE001
+            self.last_error = f"github_flow: {type(e).__name__}: {e}"
         try:  # owner's Telegram window: read his taps/commands, send the hourly digest
             from . import telegram
             telegram.poll()

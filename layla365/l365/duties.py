@@ -47,8 +47,8 @@ def _think(agent, prompt, max_tokens=320):
         return re.sub(r"<think>.*?</think>", "", agent.think(prompt, system=sys_, max_tokens=max_tokens), flags=re.S).strip()
 
 
-def _report(agent, title, body, kind="note", severity="info"):
-    code, _ = gateway.report(agent.name, kind, title, body, severity)
+def _report(agent, title, body, kind="note", severity="info", tg_body=None):
+    code, _ = gateway.report(agent.name, kind, title, body, severity, tg_body=tg_body)
     return code == 200
 
 
@@ -89,6 +89,53 @@ def priya_evening(agent):
                          "night. Never diagnose anything.\n\nALMANAC: " + alm[:1800])
     _report(agent, "Evening wellness check", note)
     return {"chars": len(note)}
+
+
+def priya_almanac_watch(agent):
+    """Every 5 min, cheap: ask Layla's gateway what changed in the Almanac since the last seen revision.
+    Only when something changed does the local model run. Telegram gets titles only (note bodies stay private)."""
+    _, last = _last_run(agent, "duty:almanac_watch")
+    rev = last.get("rev")
+    first = rev is None
+    out = _req(agent, "almanac.changes", {"since": 10 ** 12 if first else int(rev)})
+    if out is None:
+        return {"rev": rev, "unavailable": True}
+    try:
+        feed = json.loads(out)
+        new_rev = int(feed.get("rev") or 0)
+    except Exception:  # noqa: BLE001
+        return {"rev": rev, "bad_feed": True}
+    if first or new_rev < int(rev):      # first run = baseline (don't replay history); lower = server was reset
+        return {"rev": new_rev, "baseline": True}
+    items = feed.get("items") or []
+    if new_rev == int(rev) or not (items or feed.get("deleted")):
+        return {"rev": new_rev, "changes": 0}
+    lines = []
+    for it in items:
+        bit = f"{it['kind']}: {it.get('title') or '(untitled)'}"
+        extra = ", ".join(f"{k} {it[k]}" for k in ("date", "time", "amount", "category", "location") if it.get(k))
+        if extra:
+            bit += f" ({extra})"
+        if it.get("done"):
+            bit += " [done]"
+        if it.get("text"):
+            bit += f" | note text: {it['text']}"
+        lines.append("- " + bit)
+    more = feed.get("more") or 0
+    titles = "; ".join(f"{it['kind']}: {it.get('title') or '(untitled)'}" for it in items[:8])
+    ctx = " ; ".join(lines)[:3200]
+    ans = _think(agent, "Avishkar's Almanac just changed. In at most 80 words, say what changed and whether anything "
+                        "needs his attention or care (health, reminders that clash, a missed medicine, a person to "
+                        "call). Do not repeat private note text more than needed. If it is routine, say so in one "
+                        "sentence. CHANGES: " + ctx)
+    n = len(items) + more
+    _report(agent, f"Almanac update: {n} change{'s' if n != 1 else ''}", ans, tg_body=titles or "entries removed")
+    for it in items:
+        if it["kind"] == "note" and it.get("text"):
+            slug = re.sub(r"[^a-z0-9]+", "_", (it.get("title") or "note").lower())[:30]
+            _req(agent, "memory.remember", {"key": "almanac_note_" + slug,
+                                            "value": f"{it.get('title', '')}: {it['text']}"[:600]})
+    return {"rev": new_rev, "changes": n, "deleted": feed.get("deleted", 0)}
 
 
 def nitya_watch(agent):
@@ -164,6 +211,26 @@ def naina_watch(agent):
     return {"ok": bool(res)}
 
 
+def naina_sitemon(agent):
+    """Black-box HTTP/TLS/latency probe of the owner's public domains (sitemon.py). No LLM, no server access."""
+    from . import sitemon
+    rows, alerts = sitemon.run()
+    for sev, title, body in alerts:
+        _report(agent, title, body, kind="alert" if sev != "info" else "note", severity=sev)
+    return {"checked": len(rows), "up": sum(1 for _, r in rows if r["ok"]), "alerts": len(alerts)}
+
+
+def naina_site_report(agent):
+    from . import sitemon
+    lines, bad = sitemon.daily_summary()
+    if not lines:
+        return {"lines": 0}
+    nl = chr(10)
+    _report(agent, "Site health (last 24 h)", f"{len(lines)} sites watched, {bad} need attention." + nl + nl.join(lines),
+            severity="warn" if bad else "info")
+    return {"lines": len(lines), "bad": bad}
+
+
 def shruti_plan(agent):
     inst = "piano" if _dt.datetime.now(IST).weekday() % 2 == 0 else "guitar"
     plan = _think(agent, f"Give Avishkar a focused 15-minute {inst} practice plan for today in at most 90 words: a "
@@ -192,12 +259,14 @@ def kavya_idea(agent):
 # All owner-facing duties run AFTER 14:00 IST (he sleeps 05:00-14:00). nitya's home watch stays 24/7
 # because it is silent unless there is a real alert (and alerts are suppressed in quiet hours anyway).
 DUTIES = {
-    "priya": [Duty("day_plan", priya_morning, at=(14, 0)), Duty("evening_wellness", priya_evening, at=(21, 0))],
+    "priya": [Duty("day_plan", priya_morning, at=(14, 0)), Duty("evening_wellness", priya_evening, at=(21, 0)),
+              Duty("almanac_watch", priya_almanac_watch, every_min=5)],
     "nitya": [Duty("home_watch", nitya_watch, every_min=30)],
     "megha": [Duty("research_digest", megha_digest, at=(14, 30))],
     "veda": [Duty("daily_invention", veda_invent, at=(15, 30))],
     "lydia": [Duty("finance_check", lydia_check, at=(19, 0))],
-    "naina": [Duty("tech_watch", naina_watch, at=(15, 0))],
+    "naina": [Duty("tech_watch", naina_watch, at=(15, 0)), Duty("site_monitor", naina_sitemon, every_min=5),
+              Duty("site_report", naina_site_report, at=(15, 20))],
     "shruti": [Duty("practice_plan", shruti_plan, at=(16, 0))],
     "maya": [Duty("lead_scout", maya_leads, at=(16, 30), weekdays_only=True)],
     "kavya": [Duty("content_idea", kavya_idea, at=(17, 0))],
