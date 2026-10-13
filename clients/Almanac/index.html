@@ -1,0 +1,1628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Almanac</title>
+<meta name="theme-color" content="#F6F4EE">
+<style>
+:root{
+  --bg:#F6F4EE;
+  --surface:#FFFFFF;
+  --surface-2:#FBFAF6;
+  --ink:#1B1D1A;
+  --ink-soft:#4B4E48;
+  --muted:#8C8F85;
+  --line:#E4E1D5;
+  --line-2:#EDEAE0;
+  --pine:#28503F;
+  --pine-dark:#1C3A2D;
+  --pine-tint:#E3ECE6;
+  --gold:#A97A2E;
+  --gold-tint:#F3E7D3;
+  --clay:#AD5A3F;
+  --clay-tint:#F5E3DC;
+  --r-s:10px;
+  --r-m:16px;
+  --r-l:22px;
+  --shadow:0 1px 2px rgba(27,29,26,.05), 0 10px 26px -14px rgba(27,29,26,.18);
+  --serif:Georgia,'Iowan Old Style','Palatino Linotype',Palatino,serif;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans);
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  overscroll-behavior-y:none; -webkit-user-select:none; user-select:none;
+}
+input,textarea,[contenteditable]{-webkit-user-select:text; user-select:text;}
+button{font-family:inherit; -webkit-user-select:none;}
+::-webkit-scrollbar{display:none;}
+h1,h2,h3{margin:0; font-family:var(--serif); font-weight:400; color:var(--ink);}
+p{margin:0;}
+button{border:none; background:none; cursor:pointer; color:inherit;}
+input,textarea{font-family:inherit; border:none; outline:none; background:transparent; color:inherit;}
+a{color:inherit;}
+
+#app{max-width:520px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; position:relative;}
+
+/* ---------- Header ---------- */
+.topbar{padding:22px 20px 14px; display:flex; align-items:flex-end; justify-content:space-between;}
+.topbar .greet{font-size:26px; line-height:1.15;}
+.topbar .date{font-size:13px; color:var(--muted); margin-top:4px; letter-spacing:.2px;}
+.topbar .mark{width:38px;height:38px;border-radius:50%;background:var(--pine);display:flex;align-items:center;justify-content:center;flex:none;}
+.topbar .mark svg{width:18px;height:18px;stroke:#fff;}
+.topbar .mark{position:relative;cursor:pointer;}
+.sync-dot{position:absolute;right:-2px;bottom:-2px;width:12px;height:12px;border-radius:50%;border:2px solid var(--bg);background:var(--line);}
+.sync-dot.ok{background:#3F8F5F;}
+.sync-dot.syncing,.sync-dot.pending{background:var(--gold);}
+.sync-dot.error{background:var(--clay);}
+.sync-dot.offline{background:var(--muted);}
+
+/* ---------- Views ---------- */
+.view{display:none; flex:1; padding:0 20px 110px; animation:fadein .22s ease;}
+.view.active{display:block;}
+@keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+@media (prefers-reduced-motion:reduce){.view{animation:none;}}
+
+.section-title{font-size:13px; text-transform:none; letter-spacing:.2px; color:var(--muted); margin:22px 0 10px; display:flex; align-items:center; justify-content:space-between;}
+.section-title span.link{color:var(--pine); font-size:13px;}
+
+/* ---------- Cards / lists ---------- */
+.card{background:var(--surface); border:1px solid var(--line-2); border-radius:var(--r-m); box-shadow:var(--shadow);}
+.row{display:flex; align-items:center; gap:12px; padding:14px 16px;}
+.row + .row{border-top:1px solid var(--line-2);}
+.pill{display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:99px; font-size:12.5px; background:var(--pine-tint); color:var(--pine-dark);}
+.pill.gold{background:var(--gold-tint); color:var(--gold);}
+.muted{color:var(--muted);}
+.empty{padding:26px 16px; text-align:center; color:var(--muted); font-size:14px;}
+
+.icon{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none;}
+.icon-lg{width:26px;height:26px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;}
+
+/* Home hero cards */
+.hero-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px;}
+.hero-card{background:var(--surface); border:1px solid var(--line-2); border-radius:var(--r-l); box-shadow:var(--shadow); padding:16px; display:flex; flex-direction:column; gap:8px; min-height:118px;}
+.hero-card .h-label{font-size:12.5px; color:var(--muted);}
+.hero-card .h-value{font-size:22px; font-family:var(--serif);}
+.hero-card.wide{grid-column:1/-1; flex-direction:row; align-items:center; justify-content:space-between;}
+.ring-mini{width:46px;height:46px; flex:none;}
+
+.quick-row{display:flex; gap:10px; margin-top:14px;}
+.quick-btn{flex:1; background:var(--surface); border:1px solid var(--line-2); border-radius:var(--r-m); padding:14px 8px; display:flex; flex-direction:column; align-items:center; gap:6px; box-shadow:var(--shadow); font-size:12px; color:var(--ink-soft);}
+.quick-btn .icon{color:var(--pine);}
+
+/* ---------- Bottom nav ---------- */
+.tabbar{position:fixed; left:0; right:0; bottom:0; max-width:520px; margin:0 auto; background:rgba(251,250,246,.92); backdrop-filter:blur(10px); border-top:1px solid var(--line-2); display:flex; padding:8px 6px calc(8px + env(safe-area-inset-bottom,0px)); z-index:40;}
+.tab{flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 2px; color:var(--muted); font-size:10.5px; border-radius:12px; transition:color .15s;}
+.tab.active{color:var(--pine);}
+.tab .icon{width:21px;height:21px;}
+
+/* ---------- FAB ---------- */
+.fab{position:fixed; right:calc(50% - 260px + 22px); bottom:calc(78px + env(safe-area-inset-bottom,0px)); width:54px; height:54px; border-radius:50%; background:var(--pine); box-shadow:0 10px 24px -8px rgba(28,58,45,.55); display:flex; align-items:center; justify-content:center; z-index:41;}
+.fab svg{width:22px;height:22px; stroke:#fff; stroke-width:1.8;}
+@media (max-width:560px){.fab{right:22px;}}
+
+/* ---------- Buttons ---------- */
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:12px 18px; border-radius:99px; font-size:14.5px; font-weight:500;}
+.btn-primary{background:var(--pine); color:#fff;}
+.btn-ghost{background:var(--surface); border:1px solid var(--line);}
+.btn-block{width:100%;}
+.btn-danger{color:var(--clay);}
+
+/* ---------- Modal / sheet ---------- */
+.overlay{position:fixed; inset:0; background:rgba(20,22,19,.42); display:none; align-items:flex-end; z-index:80;}
+.overlay.show{display:flex;}
+.sheet{background:var(--surface-2); width:100%; max-width:520px; margin:0 auto; border-radius:24px 24px 0 0; padding:14px 20px calc(24px + env(safe-area-inset-bottom,0px)); max-height:88vh; overflow-y:auto; animation:sheetup .25s ease;}
+@keyframes sheetup{from{transform:translateY(18px); opacity:.6;} to{transform:translateY(0); opacity:1;}}
+.sheet-handle{width:38px; height:4px; background:var(--line); border-radius:4px; margin:4px auto 14px;}
+.sheet h3{font-size:19px; margin-bottom:14px;}
+.field{margin-bottom:12px;}
+.field label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px;}
+.field input, .field textarea, .field select{width:100%; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 13px; font-size:15px; color:var(--ink);}
+.field textarea{min-height:70px; resize:vertical;}
+.field-row{display:flex; gap:10px;}
+.field-row .field{flex:1;}
+.chip-select{display:flex; gap:8px; flex-wrap:wrap;}
+.chip-opt{padding:9px 14px; border-radius:99px; border:1px solid var(--line); font-size:13.5px; background:var(--surface);}
+.chip-opt.sel{background:var(--pine); border-color:var(--pine); color:#fff;}
+.sheet-actions{display:flex; gap:10px; margin-top:16px;}
+.sheet-actions .btn{flex:1;}
+
+/* ---------- Segmented control ---------- */
+.segment{display:flex; background:var(--line-2); border-radius:12px; padding:3px; margin-top:16px;}
+.segment button{flex:1; padding:9px 4px; border-radius:9px; font-size:13px; color:var(--muted);}
+.segment button.active{background:var(--surface); color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.08);}
+
+/* ---------- Schedule ---------- */
+.day-group{margin-top:18px;}
+.day-label{font-size:12.5px; color:var(--muted); margin-bottom:8px; padding-left:2px;}
+.event-row{display:flex; gap:12px; padding:13px 16px; align-items:flex-start;}
+.event-time{width:52px; flex:none; font-size:12.5px; color:var(--pine); font-weight:600; padding-top:2px;}
+.event-body b{font-size:14.5px; font-weight:600;}
+.event-body .loc{font-size:12.5px; color:var(--muted); margin-top:2px;}
+.rem-check{width:22px;height:22px; border-radius:50%; border:1.6px solid var(--line); flex:none; display:flex; align-items:center; justify-content:center;}
+.rem-check.done{background:var(--pine); border-color:var(--pine);}
+.rem-check svg{width:12px;height:12px; stroke:#fff; stroke-width:2.4; display:none;}
+.rem-check.done svg{display:block;}
+.row-x{margin-left:auto; color:var(--muted); padding:4px;}
+
+/* ---------- Wellness ---------- */
+.preset-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px;}
+.preset-card{background:var(--surface); border:1px solid var(--line-2); border-radius:var(--r-l); box-shadow:var(--shadow); padding:16px; text-align:left;}
+.preset-card b{display:block; font-size:15px; margin-bottom:4px;}
+.preset-card span{font-size:12.5px; color:var(--muted);}
+.timer-wrap{display:flex; flex-direction:column; align-items:center; padding-top:30px;}
+.breath-circle{width:210px; height:210px; border-radius:50%; background:radial-gradient(circle at 32% 28%, var(--pine-tint), var(--pine) 78%); display:flex; align-items:center; justify-content:center; color:#fff; transition:transform 3.6s ease-in-out; box-shadow:0 20px 50px -18px rgba(28,58,45,.5);}
+.breath-circle .phase{font-size:17px; font-family:var(--serif);}
+.timer-count{font-size:44px; font-family:var(--serif); margin-top:26px;}
+.timer-sub{color:var(--muted); font-size:13px; margin-top:4px;}
+.timer-ctrls{display:flex; gap:12px; margin-top:30px;}
+.timer-ctrls .btn{padding:13px 26px;}
+.log-row{display:flex; gap:12px; align-items:center; padding:12px 16px;}
+.log-badge{width:34px; height:34px; border-radius:10px; background:var(--pine-tint); display:flex; align-items:center; justify-content:center; flex:none;}
+.log-badge .icon{width:17px;height:17px; color:var(--pine-dark);}
+.stat-strip{display:flex; gap:10px; margin-top:14px;}
+.stat{flex:1; background:var(--surface); border:1px solid var(--line-2); border-radius:14px; padding:12px; text-align:center;}
+.stat b{display:block; font-size:20px; font-family:var(--serif);}
+.stat span{font-size:11.5px; color:var(--muted);}
+
+/* ---------- Notes ---------- */
+.notes-list-item{display:flex; align-items:center; gap:12px; padding:13px 16px;}
+.notes-list-item .n-icn{width:30px; height:30px; border-radius:9px; background:var(--gold-tint); display:flex; align-items:center; justify-content:center; flex:none; font-size:14px;}
+.notes-list-item b{font-size:14.5px; font-weight:600;}
+.notes-list-item .sub{font-size:12px; color:var(--muted); margin-top:1px;}
+.crumbs{display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); margin:16px 0 4px;}
+.page-title{width:100%; font-size:25px; font-family:var(--serif); border:none; outline:none; background:transparent; margin:10px 0 16px; padding:0;}
+.block{position:relative; margin-bottom:2px; padding:5px 2px 5px 0; display:flex; gap:8px; align-items:flex-start;}
+.block .grip{width:18px; flex:none; color:var(--line); font-size:13px; padding-top:6px; text-align:center;}
+.block-content{flex:1; min-height:24px; outline:none; font-size:15.5px; line-height:1.55; padding:3px 2px;}
+.block-content:empty:before{content:attr(data-ph); color:var(--muted);}
+.block.heading .block-content{font-family:var(--serif); font-size:20px;}
+.block.todo{align-items:flex-start;}
+.block.todo .tchk{width:19px;height:19px; border-radius:6px; border:1.6px solid var(--line); flex:none; margin-top:5px;}
+.block.todo .tchk.done{background:var(--pine); border-color:var(--pine);}
+.block.todo .tchk svg{width:11px;height:11px; stroke:#fff; stroke-width:2.6; display:none;}
+.block.todo .tchk.done svg{display:block;}
+.block.todo.checked .block-content{color:var(--muted); text-decoration:line-through;}
+.block.toggle .tog-head{display:flex; gap:8px; align-items:center; flex:1;}
+.tog-arrow{width:16px; flex:none; transition:transform .15s; color:var(--muted);}
+.tog-arrow.open{transform:rotate(90deg);}
+.tog-body{margin-left:26px; padding:4px 2px 4px; font-size:14.5px; color:var(--ink-soft); outline:none; min-height:20px; display:none;}
+.tog-body.open{display:block;}
+.block-del{width:22px; flex:none; color:var(--muted); opacity:.5; padding-top:5px;}
+.add-block-row{display:flex; gap:10px; margin-top:10px;}
+.add-block-row button{display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); padding:6px 10px; border-radius:8px; background:var(--surface); border:1px solid var(--line-2);}
+
+/* ---------- Recordings ---------- */
+.rec-hero{display:flex; flex-direction:column; align-items:center; padding:40px 0 20px;}
+.rec-btn{width:86px; height:86px; border-radius:50%; background:var(--clay); display:flex; align-items:center; justify-content:center; box-shadow:0 16px 34px -14px rgba(173,90,63,.6); transition:transform .12s;}
+.rec-btn.on{background:var(--pine); animation:pulse 1.4s infinite;}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(40,80,63,.4);}70%{box-shadow:0 0 0 16px rgba(40,80,63,0);}100%{box-shadow:0 0 0 0 rgba(40,80,63,0);}}
+.rec-btn svg{width:26px;height:26px; fill:#fff; stroke:none;}
+.rec-time{font-family:var(--serif); font-size:26px; margin-top:16px;}
+.rec-hint{color:var(--muted); font-size:13px; margin-top:4px;}
+.rec-row{display:flex; align-items:center; gap:12px; padding:13px 16px;}
+.play-btn{width:36px;height:36px; border-radius:50%; background:var(--pine-tint); display:flex; align-items:center; justify-content:center; flex:none;}
+.play-btn svg{width:15px;height:15px; fill:var(--pine-dark); stroke:none;}
+.rec-info b{font-size:14.5px; font-weight:600; display:block;}
+.rec-info span{font-size:12px; color:var(--muted);}
+
+/* ---------- Water ---------- */
+.water-hero{display:flex; flex-direction:column; align-items:center; padding-top:20px;}
+.ring-big{width:210px; height:210px;}
+.ring-big-wrap{position:relative;}
+.ring-center{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;}
+.ring-center b{font-size:30px; font-family:var(--serif);}
+.ring-center span{font-size:12.5px; color:var(--muted); margin-top:2px;}
+.water-quick{display:flex; gap:10px; margin-top:26px; flex-wrap:wrap; justify-content:center;}
+.wbtn{padding:11px 18px; border-radius:99px; background:var(--surface); border:1px solid var(--line-2); font-size:14px; box-shadow:var(--shadow);}
+.week-chart{display:flex; align-items:flex-end; gap:10px; height:90px; margin-top:8px;}
+.week-col{flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; height:100%; justify-content:flex-end;}
+.week-bar{width:100%; background:var(--pine-tint); border-radius:6px 6px 3px 3px; min-height:4px;}
+.week-bar.today{background:var(--pine);}
+.week-col span{font-size:10.5px; color:var(--muted);}
+
+.sr-only{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);}
+</style>
+<link rel="stylesheet" href="css/modules.css">
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar">
+    <div>
+      <h1 class="greet" id="greetTxt">Good evening</h1>
+      <div class="date" id="dateTxt"></div>
+    </div>
+    <div class="mark" id="syncBtn" onclick="openSyncSheet()" role="button" tabindex="0" aria-label="Layla sync settings">
+      <svg viewBox="0 0 24 24"><path d="M4 12c2-5 6-8 8-8 0 4-1 6-3 8 2 0 4 1 4 4-3 1-6 0-8-2-1 3 0 5 2 7-4 0-7-3-8-7-1-1-1-2 0-2Z"/></svg>
+      <span class="sync-dot off" id="syncDot"></span>
+    </div>
+  </div>
+
+  <!-- ================= HOME ================= -->
+  <div class="view active" id="view-home">
+    <div class="hero-grid">
+      <div class="hero-card wide" onclick="go('water')">
+        <div>
+          <div class="h-label">Water today</div>
+          <div class="h-value" id="homeWaterVal">0 ml</div>
+        </div>
+        <svg class="ring-mini" viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="none" stroke="#EDEAE0" stroke-width="4"/><circle id="homeWaterRing" cx="20" cy="20" r="16" fill="none" stroke="#28503F" stroke-width="4" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="100" transform="rotate(-90 20 20)"/></svg>
+      </div>
+      <div class="hero-card" onclick="go('schedule')">
+        <div class="h-label">Next up</div>
+        <div class="h-value" id="homeNextVal" style="font-size:15px; font-family:var(--sans); line-height:1.4;">Nothing scheduled</div>
+      </div>
+      <div class="hero-card" onclick="go('wellness')">
+        <div class="h-label">This week</div>
+        <div class="h-value" id="homeWellnessVal">0 sessions</div>
+      </div>
+    </div>
+
+    <div class="section-title">Quick actions</div>
+    <div class="quick-row">
+      <button class="quick-btn" onclick="go('wellness');switchWellTab('breathe')"><svg class="icon" viewBox="0 0 24 24"><path d="M12 3c2 3 2 6 0 9-2-3-2-6 0-9Z"/><path d="M5 14c3-1 6-1 9 1"/><path d="M5 18c4-1 9-1 13 1"/></svg>Breathe</button>
+      <button class="quick-btn" onclick="openNewNote()"><svg class="icon" viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5V4Z"/><path d="M9 10h6M9 14h6M9 18h3"/></svg>New note</button>
+      <button class="quick-btn" onclick="go('recordings')"><svg class="icon" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Record</button>
+    </div>
+
+    <div id="homeMods"></div>
+
+    <div class="section-title">Today <span class="link" onclick="go('schedule')">All</span></div>
+    <div class="card" id="homeTodayList"></div>
+  </div>
+
+  <!-- ================= SCHEDULE ================= -->
+  <div class="view" id="view-schedule">
+    <h2 style="font-size:22px; margin-top:6px;">Schedule</h2>
+    <div class="segment">
+      <button class="active" data-seg="routine" onclick="switchSchedTab('routine')">Routine</button>
+      <button data-seg="events" onclick="switchSchedTab('events')">Events</button>
+      <button data-seg="reminders" onclick="switchSchedTab('reminders')">Reminders</button>
+    </div>
+    <div id="schedRoutine"></div>
+    <div id="schedEvents" style="display:none;"></div>
+    <div id="schedReminders" style="display:none;"></div>
+  </div>
+
+  <!-- ================= WELLNESS ================= -->
+  <div class="view" id="view-wellness">
+    <h2 style="font-size:22px; margin-top:6px;">Wellness</h2>
+    <div class="segment">
+      <button class="active" data-wt="breathe" onclick="switchWellTab('breathe')">Breathe</button>
+      <button data-wt="meditate" onclick="switchWellTab('meditate')">Meditate</button>
+      <button data-wt="move" onclick="switchWellTab('move')">Move</button>
+    </div>
+
+    <div id="wellPresets"></div>
+
+    <div class="stat-strip" id="wellStats"></div>
+    <div class="section-title">Recent sessions</div>
+    <div class="card" id="wellLog"></div>
+  </div>
+
+  <!-- Timer full view (breathe/meditate) -->
+  <div class="view" id="view-timer">
+    <div class="timer-wrap">
+      <div class="breath-circle" id="breathCircle"><div class="phase" id="breathPhase">Ready</div></div>
+      <div class="timer-count" id="timerCount">00:00</div>
+      <div class="timer-sub" id="timerSub"></div>
+      <div class="timer-ctrls">
+        <button class="btn btn-ghost" onclick="stopTimer(false)">Cancel</button>
+        <button class="btn btn-primary" id="timerToggleBtn" onclick="toggleTimer()">Start</button>
+        <button class="btn btn-primary" id="timerDoneBtn" style="display:none; background:var(--gold);" onclick="finishTimer()">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= NOTES ================= -->
+  <div class="view" id="view-notes">
+    <h2 style="font-size:22px; margin-top:6px; display:flex; justify-content:space-between; align-items:center;">Notes
+      <button class="btn btn-ghost" style="padding:8px 14px; font-size:13px;" onclick="openNewNote()">+ Page</button>
+    </h2>
+    <div class="card" id="notesList" style="margin-top:14px;"></div>
+  </div>
+
+  <div class="view" id="view-page">
+    <div class="crumbs" id="pageCrumbs"></div>
+    <input class="page-title" id="pageTitleInput" placeholder="Untitled">
+    <div id="pageBlocks"></div>
+    <div class="add-block-row">
+      <button onclick="addBlock('text')">＋ Text</button>
+      <button onclick="addBlock('heading')">＋ Heading</button>
+      <button onclick="addBlock('todo')">＋ To-do</button>
+      <button onclick="addBlock('toggle')">＋ Toggle</button>
+      <button onclick="addSubpage()">＋ Subpage</button>
+    </div>
+    <div style="margin-top:26px;"><button class="btn btn-danger" onclick="deleteCurrentPage()">Delete page</button></div>
+  </div>
+
+  <!-- ================= RECORDINGS ================= -->
+  <div class="view" id="view-recordings">
+    <h2 style="font-size:22px; margin-top:6px;">Recordings</h2>
+    <div class="rec-hero">
+      <button class="rec-btn" id="recBtn" onclick="toggleRecording()">
+        <svg id="recIcon" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>
+      </button>
+      <div class="rec-time" id="recTime">00:00</div>
+      <div class="rec-hint" id="recHint">Tap to start recording</div>
+    </div>
+    <div class="section-title">Saved</div>
+    <div class="card" id="recList"></div>
+  </div>
+
+  <!-- ================= WATER ================= -->
+  <div class="view" id="view-water">
+    <h2 style="font-size:22px; margin-top:6px; display:flex; justify-content:space-between; align-items:center;">Water
+      <button class="btn btn-ghost" style="padding:7px 13px; font-size:12.5px;" onclick="editGoal()">Goal</button>
+    </h2>
+    <div class="water-hero">
+      <div class="ring-big-wrap">
+        <svg class="ring-big" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="#EDEAE0" stroke-width="9"/>
+          <circle id="waterRing" cx="50" cy="50" r="42" fill="none" stroke="#28503F" stroke-width="9" stroke-linecap="round" stroke-dasharray="264" stroke-dashoffset="264" transform="rotate(-90 50 50)"/>
+        </svg>
+        <div class="ring-center"><b id="waterMlTxt">0</b><span id="waterGoalTxt">of 2500 ml</span></div>
+      </div>
+      <div class="water-quick">
+        <button class="wbtn" onclick="addWater(150)">+150ml</button>
+        <button class="wbtn" onclick="addWater(250)">+250ml</button>
+        <button class="wbtn" onclick="addWater(500)">+500ml</button>
+        <button class="wbtn" onclick="addWater(0,true)">Custom</button>
+        <button class="wbtn" onclick="undoWater()">Undo</button>
+      </div>
+    </div>
+    <div class="section-title">Last 7 days</div>
+    <div class="week-chart" id="weekChart"></div>
+  </div>
+
+  <!-- ================= MORE (module hub) + MODULE HOST ================= -->
+  <div class="view" id="view-more"><div id="moreBody"></div></div>
+  <div class="view" id="view-mod"><div id="modBody"></div></div>
+
+</div>
+
+<!-- Bottom nav -->
+<div class="tabbar">
+  <button class="tab active" data-tab="home" onclick="go('home')">
+    <svg class="icon" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7"/><path d="M6 10v10h12V10"/></svg>Home</button>
+  <button class="tab" data-tab="schedule" onclick="go('schedule')">
+    <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>Schedule</button>
+  <button class="tab" data-tab="wellness" onclick="go('wellness')">
+    <svg class="icon" viewBox="0 0 24 24"><path d="M12 4c2 3 2 6 0 9-2-3-2-6 0-9Z"/><path d="M5 14c3-1 6-1 9 1M5 18c4-1 9-1 13 1"/></svg>Wellness</button>
+  <button class="tab" data-tab="notes" onclick="go('notes')">
+    <svg class="icon" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5V4Z"/><path d="M9 10h7M9 14h7M9 18h4"/></svg>Notes</button>
+  <button class="tab" data-tab="more" onclick="go('more')">
+    <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg>More</button>
+</div>
+
+<div class="fab" id="fab" onclick="fabAction()">
+  <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+</div>
+
+<!-- Generic sheet modal -->
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeSheet()">
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<script src="almanac.config.js"></script>
+<script src="js/vault-crypto.js"></script>
+<script src="js/m-core.js"></script>
+<script src="js/m-planning.js"></script>
+<script src="js/m-vaults.js"></script>
+<script src="js/m-infra.js"></script>
+<script>
+/* ========================= STORAGE ========================= */
+const DB_KEY = 'almanac_v1';
+function loadDB(){
+  try{
+    const raw = localStorage.getItem(DB_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return {
+    events:[], reminders:[], wellnessLog:[],
+    notes:{pages:{}, order:[]},
+    water:{goal:2500, days:{}, entries:{}},
+    recMeta:[], routineDone:{}, routineOverrides:{},
+    mod:{prj:{}, chk:{}, shop:{}, exp:{}, alm:{}},
+    vault:{vmeta:null, vh:{}, vd:{}, vp:{}},
+    fam:{fshop:{}, fev:{}}
+  };
+}
+let DB = loadDB();
+DB.routineDone = DB.routineDone || {}; /* migrate older saves */
+DB.routineOverrides = DB.routineOverrides || {};
+DB.mod = DB.mod || {}; ['prj','chk','shop','exp','alm'].forEach(k=>{ DB.mod[k] = DB.mod[k] || {}; });
+DB.vault = DB.vault || {}; if(DB.vault.vmeta === undefined) DB.vault.vmeta = null; ['vh','vd','vp'].forEach(k=>{ DB.vault[k] = DB.vault[k] || {}; });
+DB.fam = DB.fam || {}; ['fshop','fev'].forEach(k=>{ DB.fam[k] = DB.fam[k] || {}; });
+function save(){
+  try{ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }catch(e){ console.error('Save failed', e); }
+  try{ syncSoon('main'); syncSoon('fam'); }catch(e){}
+  try{ ALM.saved(); }catch(e){}
+}
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function pad(n){ return n<10?'0'+n:''+n; }
+
+/* ========================= NAV ========================= */
+let currentView = 'home';
+function go(view){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+view).classList.add('active');
+  const tabOf = ['more','mod','recordings','water'].includes(view) ? 'more' : view;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===tabOf));
+  currentView = view;
+  updateFab();
+  if(view==='home') renderHome();
+  if(view==='schedule') renderSchedule();
+  if(view==='wellness') renderWellness();
+  if(view==='notes') renderNotesList();
+  if(view==='recordings') renderRecordings();
+  if(view==='water') renderWater();
+  if(view==='more') ALM.renderMore();
+  if(view==='mod') ALM.renderMod();
+  window.scrollTo(0,0);
+}
+function showView(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+}
+function updateFab(){
+  const fab = document.getElementById('fab');
+  fab.style.display = ['home','notes','page','timer','more','mod'].includes(currentView) ? 'none' : 'flex';
+}
+function fabAction(){
+  if(currentView==='schedule'){
+    const seg = document.querySelector('.segment [data-seg].active')?.dataset.seg || 'events';
+    seg==='events' ? openEventSheet() : openReminderSheet();
+  } else if(currentView==='wellness'){ /* presets act as add */ }
+  else if(currentView==='water'){ addWater(0,true); }
+}
+
+/* ========================= SHEET HELPERS ========================= */
+function openSheet(html){
+  document.getElementById('sheet').innerHTML = '<div class="sheet-handle"></div>'+html;
+  document.getElementById('overlay').classList.add('show');
+}
+function closeSheet(){ document.getElementById('overlay').classList.remove('show'); }
+
+/* ========================= GREETING/DATE ========================= */
+function renderHeader(){
+  const h = new Date().getHours();
+  document.getElementById('greetTxt').textContent = h<5?'Still up':h<12?'Good morning':h<17?'Good afternoon':h<22?'Good evening':'Still up';
+  document.getElementById('dateTxt').textContent = new Date().toLocaleDateString('en-US',{weekday:'long', day:'numeric', month:'long'});
+}
+
+/* ========================= HOME ========================= */
+function renderHome(){
+  const goal = DB.water.goal;
+  const ml = DB.water.days[todayStr()] || 0;
+  document.getElementById('homeWaterVal').textContent = ml+' / '+goal+' ml';
+  const pct = Math.min(1, ml/goal);
+  const circ = 100;
+  document.getElementById('homeWaterRing').setAttribute('stroke-dashoffset', circ - pct*circ);
+
+  const upcoming = [...DB.events.filter(e=>e.date>=todayStr()), ...DB.reminders.filter(r=>!r.done)]
+    .sort((a,b)=> (a.date||todayStr()+a.time).localeCompare(b.date||todayStr()+b.time));
+  const next = upcoming[0];
+  document.getElementById('homeNextVal').textContent = next ? (next.title + (next.time? ' · '+next.time:'')) : 'Nothing scheduled';
+
+  const weekAgo = Date.now()-7*86400000;
+  const wc = DB.wellnessLog.filter(l=>l.ts>weekAgo).length;
+  document.getElementById('homeWellnessVal').textContent = wc+' session'+(wc===1?'':'s');
+
+  const list = document.getElementById('homeTodayList');
+  const todays = DB.events.filter(e=>e.date===todayStr()).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+  if(!todays.length){ list.innerHTML='<div class="empty">Nothing on the calendar today.</div>'; }
+  else{
+    list.innerHTML = todays.map(e=>`<div class="row"><div class="event-time">${e.time||''}</div><div class="event-body"><b>${esc(e.title)}</b>${e.location?`<div class="loc">${esc(e.location)}</div>`:''}</div></div>`).join('');
+  }
+  try{ ALM.afterHome(); }catch(e){}
+}
+function esc(s){ return (s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ========================= SCHEDULE ========================= */
+let schedDate = todayStr();
+const ROUTINE_TEMPLATE = [
+  {id:'t0', time:'11:00 AM – 11:30 AM', title:'Wake & Hydrate', desc:'1L water, sunlight exposure, eye reset'},
+  {id:'t1', time:'11:30 AM – 12:15 PM', title:'Low-Impact Movement', desc:'Flat walk & spine-safe rehab stretches'},
+  {id:'t2', time:'12:30 PM – 01:30 PM', title:'Meal 1 (High Protein)', desc:'Chicken + measured rice + raw salad'},
+  {id:'t3', time:'01:30 PM – 03:00 PM', title:'Household & Calm', desc:'Downtime, errands, zero domestic friction'},
+  {id:'t4', time:'03:00 PM – 04:00 PM', title:'Sacred Spine Decompression', desc:'Flat rest / nap, cortisol reset'},
+  {id:'t5', time:'04:00 PM – 06:00 PM', title:'Tryvanta Sprint 1', desc:'Proposals, client pitches, advance terms'},
+  {id:'t6', time:'06:00 PM – 08:00 PM', title:'Tryvanta Sprint 2', desc:'Firmware testing & electrician wiring plans'},
+  {id:'t7', time:'08:00 PM – 09:30 PM', title:'Family & Meal 2', desc:'Chicken dinner, quality time with elder son'},
+  {id:'t8', time:'09:30 PM – 01:30 AM', title:'Deep Focus / Cash Runway', desc:'Systems engineering & freelance scout'},
+  {id:'t9', time:'01:30 AM – 02:30 AM', title:'Night Wind-Down', desc:'Prescription meds, hot shower, screen off'},
+  {id:'t10', time:'03:00 AM – 11:00 AM', title:'Sober Rest', desc:'8 hours uninterrupted sleep'}
+];
+const MONDAY_ROUTINE = [
+  {id:'m0', time:'All Day', title:'Weekly Review & Flexible Buffer', desc:'Rest, adjust schedules, and plan ahead'}
+];
+function switchSchedTab(t){
+  document.querySelectorAll('.segment [data-seg]').forEach(b=>b.classList.toggle('active', b.dataset.seg===t));
+  document.getElementById('schedRoutine').style.display = t==='routine'?'block':'none';
+  document.getElementById('schedEvents').style.display = t==='events'?'block':'none';
+  document.getElementById('schedReminders').style.display = t==='reminders'?'block':'none';
+}
+function isMondayDate(dateStr){ return new Date(dateStr+'T00:00').getDay()===1; }
+function dateNavHtml(){
+  const d = new Date(schedDate+'T00:00');
+  const isToday = schedDate===todayStr();
+  const weekday = d.toLocaleDateString('en-US',{weekday:'long'});
+  const md = d.toLocaleDateString('en-US',{day:'numeric', month:'short'});
+  return `<div class="card" style="margin-top:14px; padding:10px 14px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+    <button class="btn btn-ghost" style="padding:8px 13px;" onclick="shiftSchedDate(-1)">‹</button>
+    <div style="text-align:center; flex:1;">
+      <div style="display:flex; align-items:baseline; justify-content:center; gap:6px;">
+        <b style="font-size:15px;">${weekday}</b><span class="muted" style="font-size:12.5px;">${md}</span>
+      </div>
+      <div style="font-size:11.5px; color:var(--muted); margin-top:1px;">${isToday?'Today':'<span style="cursor:pointer;color:var(--pine);" onclick="jumpSchedToday()">Jump to today</span>'}</div>
+    </div>
+    <button class="btn btn-ghost" style="padding:8px 13px;" onclick="shiftSchedDate(1)">›</button>
+  </div>
+  <input type="date" id="schedDateInput" value="${schedDate}" onchange="pickSchedDate(this.value)" style="position:absolute; opacity:0; pointer-events:none; height:0;">
+  <button class="btn btn-ghost btn-block" style="margin-top:8px; font-size:12.5px; padding:8px;" onclick="document.getElementById('schedDateInput').showPicker ? document.getElementById('schedDateInput').showPicker() : document.getElementById('schedDateInput').click()">Open calendar</button>`;
+}
+function shiftSchedDate(delta){
+  const d = new Date(schedDate+'T00:00');
+  d.setDate(d.getDate()+delta);
+  schedDate = d.toISOString().slice(0,10);
+  renderScheduleRoutine();
+}
+function pickSchedDate(val){
+  if(!val) return;
+  schedDate = val;
+  renderScheduleRoutine();
+}
+function jumpSchedToday(){ schedDate = todayStr(); renderScheduleRoutine(); }
+
+/* Per-day routine: editable, stored as an override once touched; falls back to the default template */
+function getRoutineBlocks(date){
+  if(DB.routineOverrides[date]) return DB.routineOverrides[date];
+  return isMondayDate(date) ? MONDAY_ROUTINE : ROUTINE_TEMPLATE;
+}
+function ensureRoutineOverride(date){
+  if(!DB.routineOverrides[date]){
+    const base = isMondayDate(date) ? MONDAY_ROUTINE : ROUTINE_TEMPLATE;
+    DB.routineOverrides[date] = base.map(b=>({...b}));
+  }
+  return DB.routineOverrides[date];
+}
+function toggleRoutine(id){
+  DB.routineDone[schedDate] = DB.routineDone[schedDate] || {};
+  DB.routineDone[schedDate][id] = !DB.routineDone[schedDate][id];
+  save();
+  renderScheduleRoutine();
+}
+function openRoutineEdit(id){
+  const b = getRoutineBlocks(schedDate).find(x=>x.id===id) || {id, time:'', title:'', desc:''};
+  openSheet(`
+    <h3>Edit block</h3>
+    <div class="field"><label>Time range</label><input id="rbTime" value="${esc(b.time)}" placeholder="e.g. 11:00 AM – 11:30 AM"></div>
+    <div class="field"><label>Title</label><input id="rbTitle" value="${esc(b.title)}" placeholder="Block title"></div>
+    <div class="field"><label>Description</label><textarea id="rbDesc" placeholder="Optional">${esc(b.desc)}</textarea></div>
+    <div class="sheet-actions">
+      <button class="btn btn-ghost" onclick="closeSheet()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRoutineBlock('${id}')">Save</button>
+    </div>
+    <div style="margin-top:10px;"><button class="btn btn-danger btn-block" onclick="deleteRoutineBlock('${id}')">Remove from ${schedDate===todayStr()?'today':'this day'}</button></div>
+  `);
+}
+function saveRoutineBlock(id){
+  const time = document.getElementById('rbTime').value.trim();
+  const title = document.getElementById('rbTitle').value.trim();
+  const desc = document.getElementById('rbDesc').value.trim();
+  if(!title) return;
+  const blocks = ensureRoutineOverride(schedDate);
+  let b = blocks.find(x=>x.id===id);
+  if(!b){ b = {id}; blocks.push(b); }
+  b.time = time; b.title = title; b.desc = desc;
+  save(); closeSheet(); renderScheduleRoutine();
+}
+function deleteRoutineBlock(id){
+  const blocks = ensureRoutineOverride(schedDate);
+  DB.routineOverrides[schedDate] = blocks.filter(x=>x.id!==id);
+  save(); closeSheet(); renderScheduleRoutine();
+}
+function addRoutineBlock(){ openRoutineEdit(uid()); }
+function resetRoutineDay(){
+  if(!confirm('Reset this day back to the default routine?')) return;
+  delete DB.routineOverrides[schedDate];
+  save(); renderScheduleRoutine();
+}
+function routineBlockHtml(block, doneMap){
+  const done = !!doneMap[block.id];
+  return `<div class="row" style="align-items:flex-start;">
+    <button class="rem-check ${done?'done':''}" onclick="toggleRoutine('${block.id}')"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <div style="flex:1" onclick="openRoutineEdit('${block.id}')">
+      <div style="font-size:12px; color:var(--pine); font-weight:600; margin-bottom:2px;">${esc(block.time)}</div>
+      <b style="font-size:14.5px; font-weight:600; ${done?'text-decoration:line-through;color:var(--muted);':''}">${esc(block.title)}</b>
+      <div class="loc" style="font-size:12.5px; color:var(--muted); margin-top:2px;">${esc(block.desc)}</div>
+    </div>
+  </div>`;
+}
+function renderScheduleRoutine(){
+  const box = document.getElementById('schedRoutine');
+  const monday = isMondayDate(schedDate);
+  const list = getRoutineBlocks(schedDate);
+  const doneMap = DB.routineDone[schedDate] || {};
+  const doneCount = list.filter(b=>doneMap[b.id]).length;
+  const overridden = !!DB.routineOverrides[schedDate];
+  let html = dateNavHtml();
+  html += `<div class="section-title" style="margin:18px 0 8px;"><span>${monday?'Weekly review day':"Today's routine"}${overridden?' · edited':''}</span><span>${doneCount}/${list.length}</span></div>`;
+  html += `<div class="card">` + (list.length ? list.map(b=>routineBlockHtml(b,doneMap)).join('') : '<div class="empty">All blocks removed for this day.</div>') + `</div>`;
+  html += `<div class="sheet-actions" style="margin-top:12px;">
+    <button class="btn btn-ghost" style="flex:1;" onclick="addRoutineBlock()">+ Add block</button>
+    ${overridden ? `<button class="btn btn-ghost" style="flex:1; color:var(--clay);" onclick="resetRoutineDay()">Reset day</button>` : ''}
+  </div>`;
+  box.innerHTML = html;
+}
+function renderSchedule(){
+  renderScheduleRoutine();
+  const ev = document.getElementById('schedEvents');
+  const upcoming = DB.events.slice().sort((a,b)=> (a.date+a.time).localeCompare(b.date+b.time));
+  const groups = {};
+  upcoming.forEach(e=>{ (groups[e.date]=groups[e.date]||[]).push(e); });
+  let html = `<div style="margin-top:14px;"><button class="btn btn-primary btn-block" onclick="openEventSheet()">+ Add event</button></div>`;
+  if(!upcoming.length){ html += '<div class="empty">No events yet. Add your first one.</div>'; }
+  Object.keys(groups).sort().forEach(date=>{
+    const d = new Date(date+'T00:00');
+    const label = date===todayStr() ? 'Today' : d.toLocaleDateString('en-US',{weekday:'short', day:'numeric', month:'short'});
+    html += `<div class="day-group"><div class="day-label">${label}</div><div class="card">`;
+    html += groups[date].map(e=>`
+      <div class="event-row">
+        <div class="event-time">${e.time||'—'}</div>
+        <div class="event-body" style="flex:1" onclick="openEventSheet('${e.id}')"><b>${esc(e.title)}</b>${e.location?`<div class="loc">${esc(e.location)}</div>`:''}</div>
+        <button class="row-x" onclick="delEvent('${e.id}')">✕</button>
+      </div>`).join('');
+    html += `</div></div>`;
+  });
+  ev.innerHTML = html;
+
+  const rm = document.getElementById('schedReminders');
+  const rs = DB.reminders.slice().sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+  let rhtml = `<div style="margin-top:14px;"><button class="btn btn-primary btn-block" onclick="openReminderSheet()">+ Add reminder</button></div>`;
+  if(!rs.length){ rhtml += '<div class="empty">No reminders set.</div>'; }
+  else{
+    rhtml += '<div class="card" style="margin-top:12px;">' + rs.map(r=>`
+      <div class="row">
+        <button class="rem-check ${r.done?'done':''}" onclick="toggleReminder('${r.id}')"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div style="flex:1" onclick="openReminderSheet('${r.id}')">
+          <b style="font-size:14.5px; font-weight:600; ${r.done?'text-decoration:line-through;color:var(--muted)':''}">${esc(r.title)}</b>
+          <div class="loc" style="font-size:12.5px;color:var(--muted)">${r.time||''}${r.repeat==='daily'?' · Daily':''}</div>
+        </div>
+        <button class="row-x" onclick="delReminder('${r.id}')">✕</button>
+      </div>`).join('') + '</div>';
+  }
+  rm.innerHTML = rhtml;
+}
+function openEventSheet(id){
+  const e = id ? DB.events.find(x=>x.id===id) : {id:'', title:'', date:todayStr(), time:'', location:'', notes:''};
+  openSheet(`
+    <h3>${id?'Edit event':'New event'}</h3>
+    <div class="field"><label>Title</label><input id="fTitle" value="${esc(e.title)}" placeholder="Meeting with..."></div>
+    <div class="field-row">
+      <div class="field"><label>Date</label><input id="fDate" type="date" value="${e.date}"></div>
+      <div class="field"><label>Time</label><input id="fTime" type="time" value="${e.time}"></div>
+    </div>
+    <div class="field"><label>Location</label><input id="fLoc" value="${esc(e.location||'')}" placeholder="Optional"></div>
+    <div class="field"><label>Notes</label><textarea id="fNotes" placeholder="Optional">${esc(e.notes||'')}</textarea></div>
+    <div class="sheet-actions">
+      <button class="btn btn-ghost" onclick="closeSheet()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEvent('${id||''}')">Save</button>
+    </div>`);
+}
+function saveEvent(id){
+  const title = document.getElementById('fTitle').value.trim();
+  if(!title) return;
+  const data = {title, date:document.getElementById('fDate').value||todayStr(), time:document.getElementById('fTime').value, location:document.getElementById('fLoc').value.trim(), notes:document.getElementById('fNotes').value.trim()};
+  if(id){ Object.assign(DB.events.find(x=>x.id===id), data); }
+  else{ DB.events.push({id:uid(), ...data}); }
+  save(); closeSheet(); renderSchedule(); renderHome();
+}
+function delEvent(id){ DB.events = DB.events.filter(e=>e.id!==id); save(); renderSchedule(); renderHome(); }
+
+function openReminderSheet(id){
+  const r = id ? DB.reminders.find(x=>x.id===id) : {id:'', title:'', time:'', repeat:'none', done:false};
+  openSheet(`
+    <h3>${id?'Edit reminder':'New reminder'}</h3>
+    <div class="field"><label>Title</label><input id="rTitle" value="${esc(r.title)}" placeholder="Drink water, call mom..."></div>
+    <div class="field"><label>Time</label><input id="rTime" type="time" value="${r.time}"></div>
+    <div class="field"><label>Repeat</label>
+      <div class="chip-select">
+        <button class="chip-opt ${r.repeat==='none'?'sel':''}" onclick="pickChip(this,'repeat','none')">Once</button>
+        <button class="chip-opt ${r.repeat==='daily'?'sel':''}" onclick="pickChip(this,'repeat','daily')">Daily</button>
+      </div>
+    </div>
+    <input type="hidden" id="rRepeat" value="${r.repeat}">
+    <div class="sheet-actions">
+      <button class="btn btn-ghost" onclick="closeSheet()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveReminder('${id||''}')">Save</button>
+    </div>`);
+}
+function pickChip(el, field, val){
+  el.parentElement.querySelectorAll('.chip-opt').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('r'+field.charAt(0).toUpperCase()+field.slice(1)).value = val;
+}
+function saveReminder(id){
+  const title = document.getElementById('rTitle').value.trim();
+  if(!title) return;
+  const data = {title, time:document.getElementById('rTime').value, repeat:document.getElementById('rRepeat').value, done:false};
+  if(id){ Object.assign(DB.reminders.find(x=>x.id===id), data); }
+  else{ DB.reminders.push({id:uid(), ...data}); }
+  save(); closeSheet(); renderSchedule(); renderHome();
+}
+function toggleReminder(id){ const r=DB.reminders.find(x=>x.id===id); r.done=!r.done; save(); renderSchedule(); }
+function delReminder(id){ DB.reminders = DB.reminders.filter(r=>r.id!==id); save(); renderSchedule(); }
+
+/* ========================= WELLNESS ========================= */
+let wellTab = 'breathe';
+const PRESETS = {
+  breathe:[
+    {id:'478', name:'4-7-8 Breathing', desc:'Calm the nervous system', pattern:[{p:'Inhale',s:4},{p:'Hold',s:7},{p:'Exhale',s:8}], cycles:6},
+    {id:'box', name:'Box Breathing', desc:'Focus & steady the mind', pattern:[{p:'Inhale',s:4},{p:'Hold',s:4},{p:'Exhale',s:4},{p:'Hold',s:4}], cycles:6},
+    {id:'sigh', name:'Physiological Sigh', desc:'Double inhale, long exhale · de-stress (2-3 min)', pattern:[{p:'Inhale',s:2},{p:'Inhale again',s:1},{p:'Exhale slowly',s:6}], cycles:16},
+    {id:'resonant', name:'Resonant Breathing', desc:'5.5s in, 5.5s out · steady heart rate (10 min)', pattern:[{p:'Inhale',s:5.5},{p:'Exhale',s:5.5}], cycles:55},
+    {id:'morning', name:'Morning Awakening', desc:'Rhythmic energizing breath (3 min)', pattern:[{p:'Inhale',s:1},{p:'Exhale',s:1}], cycles:90},
+    {id:'custom', name:'Custom', desc:'Set your own duration', pattern:null}
+  ],
+  meditate:[
+    {id:'body', name:'Whole Body Relaxation', desc:'12 minute scan', dur:12*60},
+    {id:'sit', name:'Silent Sit', desc:'10 minutes', dur:10*60},
+    {id:'nsdr', name:'Non-Sleep Deep Rest', desc:'Guided spine reset, rests the nervous system (25 min)', dur:25*60},
+    {id:'ocd', name:'Obsessive Loop Detachment', desc:'Open awareness & thought labeling (10 min)', dur:10*60},
+    {id:'nerve', name:'Nerve Calming Body Scan', desc:'Somatic soothing for extremities (15 min)', dur:15*60},
+    {id:'custom', name:'Custom length', desc:'Choose your time', dur:null}
+  ],
+  move:[
+    {id:'quick', name:'Quick Session', desc:'Log a workout you just did', quick:true},
+    {id:'spine', name:'Spine & Core Bracing', desc:'Glute bridges, bird-dogs & pelvic tilts (12 min)', dur:12*60},
+    {id:'zone2', name:'Zone-2 Walking Pacer', desc:'Steady low-impact cardio (35 min)', dur:35*60},
+    {id:'glides', name:'Nerve Glides & Mobility', desc:'Gentle sciatic & knee decompression (10 min)', dur:10*60},
+    {id:'plank', name:'Plank', desc:'Hold with timer', stopwatch:true},
+    {id:'pushups', name:'Push-ups', desc:'Timed set', stopwatch:true},
+    {id:'crunches', name:'Crunches', desc:'Timed set', stopwatch:true},
+    {id:'squats', name:'Squats', desc:'Timed set', stopwatch:true},
+    {id:'timer', name:'Timed Workout', desc:'Free timer, log when done', stopwatch:true}
+  ]
+};
+function switchWellTab(t){
+  wellTab = t;
+  document.querySelectorAll('.segment [data-wt]').forEach(b=>b.classList.toggle('active', b.dataset.wt===t));
+  renderWellness();
+}
+function renderWellness(){
+  document.querySelectorAll('.segment [data-wt]').forEach(b=>b.classList.toggle('active', b.dataset.wt===wellTab));
+  const box = document.getElementById('wellPresets');
+  box.innerHTML = '<div class="preset-grid">' + PRESETS[wellTab].map(p=>`
+    <button class="preset-card" onclick="startPreset('${wellTab}','${p.id}')"><b>${p.name}</b><span>${p.desc}</span></button>
+  `).join('') + '</div>';
+
+  const weekAgo = Date.now()-7*86400000;
+  const logs = DB.wellnessLog.filter(l=>l.cat===wellTab);
+  const weekLogs = logs.filter(l=>l.ts>weekAgo);
+  const totalMin = Math.round(weekLogs.reduce((a,l)=>a+l.dur,0)/60);
+  const hyMl = DB.water.days[todayStr()] || 0;
+  document.getElementById('wellStats').innerHTML = `
+    <div class="stat"><b>${weekLogs.length}</b><span>this week</span></div>
+    <div class="stat"><b>${totalMin}</b><span>minutes</span></div>
+    <div class="stat" onclick="go('water')" style="cursor:pointer;"><b>${hyMl}</b><span>ml water today</span></div>`;
+
+  const logBox = document.getElementById('wellLog');
+  const recent = logs.slice().reverse().slice(0,8);
+  if(!recent.length){ logBox.innerHTML = '<div class="empty">No sessions logged yet.</div>'; }
+  else{
+    logBox.innerHTML = recent.map(l=>`
+      <div class="log-row">
+        <div class="log-badge"><svg class="icon" viewBox="0 0 24 24"><path d="M5 12l5 5L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div style="flex:1"><b style="font-size:14px;font-weight:600;">${esc(l.name)}</b><div class="loc" style="font-size:12px;color:var(--muted);">${new Date(l.ts).toLocaleDateString('en-US',{day:'numeric',month:'short'})} · ${Math.round(l.dur/60)} min</div></div>
+      </div>`).join('');
+  }
+}
+function logWellness(cat, name, dur){
+  DB.wellnessLog.push({id:uid(), cat, name, dur, ts:Date.now()});
+  save();
+}
+
+/* Timer engine (breathe + meditate + move-timed) */
+let timerState = null;
+function startPreset(cat, id){
+  const preset = PRESETS[cat].find(p=>p.id===id);
+  if(cat==='move' && preset.quick){
+    openSheet(`
+      <h3>Log a session</h3>
+      <div class="field"><label>Activity</label><input id="mvName" placeholder="e.g. Strength training"></div>
+      <div class="field"><label>Duration (minutes)</label><input id="mvDur" type="number" value="30"></div>
+      <div class="sheet-actions">
+        <button class="btn btn-ghost" onclick="closeSheet()">Cancel</button>
+        <button class="btn btn-primary" onclick="logQuickMove()">Save</button>
+      </div>`);
+    return;
+  }
+  let dur = preset.dur, pattern = preset.pattern, cycles = preset.cycles, name = preset.name, stopwatch = !!preset.stopwatch;
+  if(id==='custom'){
+    const mins = prompt(cat==='meditate' || cat==='move' ? 'Minutes:' : 'Cycles:', cat==='breathe' ? '6' : '10');
+    if(mins===null) return;
+    if(cat==='breathe'){ cycles = parseInt(mins)||6; pattern = [{p:'Inhale',s:4},{p:'Hold',s:2},{p:'Exhale',s:6}]; }
+    else{ dur = (parseInt(mins)||10)*60; }
+  }
+  timerState = {cat, name, dur, pattern, cycles, elapsed:0, running:false, phaseIdx:0, phaseTime:0, cycleCount:0, interval:null, stopwatch};
+  showView('view-timer');
+  document.getElementById('breathCircle').style.display = cat==='breathe' ? 'flex' : 'none';
+  document.getElementById('timerCount').textContent = (cat==='breathe' || stopwatch) ? '00:00' : fmtTime(dur);
+  document.getElementById('timerSub').textContent = name;
+  document.getElementById('timerToggleBtn').textContent = 'Start';
+  document.getElementById('timerDoneBtn').style.display = stopwatch ? 'inline-flex' : 'none';
+}
+function logQuickMove(){
+  const name = document.getElementById('mvName').value.trim() || 'Workout';
+  const mins = parseInt(document.getElementById('mvDur').value)||30;
+  logWellness('move', name, mins*60);
+  closeSheet(); renderWellness(); renderHome();
+}
+function fmtTime(s){ s=Math.max(0,Math.round(s)); return pad(Math.floor(s/60))+':'+pad(s%60); }
+function toggleTimer(){
+  if(!timerState) return;
+  if(timerState.running){ pauseTimer(); }
+  else{ runTimer(); }
+}
+function runTimer(){
+  timerState.running = true;
+  document.getElementById('timerToggleBtn').textContent = 'Pause';
+  timerState.interval = setInterval(tick, 1000);
+  if(timerState.cat==='breathe') doBreathPhase();
+}
+function pauseTimer(){
+  timerState.running = false;
+  document.getElementById('timerToggleBtn').textContent = 'Resume';
+  clearInterval(timerState.interval);
+}
+function tick(){
+  const t = timerState;
+  t.elapsed++;
+  if(t.stopwatch){
+    document.getElementById('timerCount').textContent = fmtTime(t.elapsed);
+  } else if(t.cat!=='breathe'){
+    document.getElementById('timerCount').textContent = fmtTime(t.dur - t.elapsed);
+    if(t.elapsed>=t.dur){ finishTimer(); }
+  } else {
+    document.getElementById('timerCount').textContent = fmtTime(t.elapsed);
+    t.phaseTime++;
+    const ph = t.pattern[t.phaseIdx];
+    if(t.phaseTime>=ph.s){
+      t.phaseTime=0; t.phaseIdx++;
+      if(t.phaseIdx>=t.pattern.length){ t.phaseIdx=0; t.cycleCount++;
+        if(t.cycleCount>=t.cycles){ finishTimer(); return; }
+      }
+      doBreathPhase();
+    }
+  }
+}
+function doBreathPhase(){
+  const t = timerState; const ph = t.pattern[t.phaseIdx];
+  document.getElementById('breathPhase').textContent = ph.p;
+  const circle = document.getElementById('breathCircle');
+  circle.style.transitionDuration = ph.s+'s';
+  circle.style.transform = ph.p.includes('Inhale') ? 'scale(1.15)' : ph.p.includes('Exhale') ? 'scale(0.82)' : circle.style.transform;
+  document.getElementById('timerSub').textContent = `Cycle ${t.cycleCount+1} of ${t.cycles}`;
+}
+function finishTimer(){
+  const t = timerState;
+  if(!t) return;
+  clearInterval(t.interval);
+  const dur = (t.cat==='breathe' || t.stopwatch) ? t.elapsed : t.dur;
+  if(dur>0) logWellness(t.cat, t.name, dur);
+  timerState = null;
+  go('wellness');
+}
+function stopTimer(logIt){
+  if(timerState){
+    clearInterval(timerState.interval);
+    if(logIt && timerState.elapsed>5){ logWellness(timerState.cat, timerState.name, timerState.elapsed); }
+    timerState = null;
+  }
+  go('wellness');
+}
+
+/* ========================= NOTES ========================= */
+let currentPageId = null;
+function renderNotesList(){
+  const roots = DB.notes.order.filter(id=>!DB.notes.pages[id].parentId);
+  const box = document.getElementById('notesList');
+  if(!roots.length){ box.innerHTML = '<div class="empty">No pages yet. Tap + Page to start writing.</div>'; return; }
+  box.innerHTML = roots.map(id=>notesRowHtml(id)).join('');
+}
+function notesRowHtml(id){
+  const p = DB.notes.pages[id];
+  const kids = DB.notes.order.filter(k=>DB.notes.pages[k].parentId===id);
+  return `<div class="notes-list-item" onclick="openPage('${id}')">
+    <div class="n-icn">${p.icon||'📄'}</div>
+    <div style="flex:1"><b>${esc(p.title)||'Untitled'}</b><div class="sub">${kids.length?kids.length+' subpage'+(kids.length===1?'':'s')+' · ':''}${new Date(p.updatedAt).toLocaleDateString('en-US',{day:'numeric',month:'short'})}</div></div>
+  </div>`;
+}
+function openNewNote(parentId){
+  const id = uid();
+  DB.notes.pages[id] = {id, parentId:parentId||null, title:'', icon: parentId?'📝':'📄', blocks:[{id:uid(),type:'text',text:''}], updatedAt:Date.now()};
+  DB.notes.order.push(id);
+  save();
+  openPage(id);
+}
+function addSubpage(){ openNewNote(currentPageId); }
+function openPage(id){
+  currentPageId = id;
+  const p = DB.notes.pages[id];
+  showView('view-page');
+  document.getElementById('pageTitleInput').value = p.title;
+  renderCrumbs(id);
+  renderBlocks();
+}
+function renderCrumbs(id){
+  const chain = [];
+  let p = DB.notes.pages[id];
+  while(p){ chain.unshift(p); p = p.parentId ? DB.notes.pages[p.parentId] : null; }
+  document.getElementById('pageCrumbs').innerHTML = `<span onclick="go('notes')" style="cursor:pointer;">Notes</span>` +
+    chain.slice(0,-1).map(c=>` / <span onclick="openPage('${c.id}')" style="cursor:pointer;">${esc(c.title)||'Untitled'}</span>`).join('');
+}
+document.getElementById('pageTitleInput').addEventListener('input', e=>{
+  if(!currentPageId) return;
+  const p = DB.notes.pages[currentPageId];
+  p.title = e.target.value; p.updatedAt = Date.now(); save();
+});
+function renderBlocks(){
+  const p = DB.notes.pages[currentPageId];
+  const box = document.getElementById('pageBlocks');
+  const subpages = DB.notes.order.filter(k=>DB.notes.pages[k].parentId===currentPageId);
+  box.innerHTML = p.blocks.map(b=>blockHtml(b)).join('') + subpages.map(id=>`
+    <div class="notes-list-item" style="margin:6px -2px; border:1px solid var(--line-2); border-radius:12px;" onclick="openPage('${id}')">
+      <div class="n-icn">${DB.notes.pages[id].icon||'📝'}</div><div style="flex:1"><b>${esc(DB.notes.pages[id].title)||'Untitled'}</b></div>
+    </div>`).join('');
+  p.blocks.forEach(b=>{
+    const el = document.getElementById('bc-'+b.id);
+    if(el) el.addEventListener('input', ()=>saveBlockText(b.id, el));
+    if(b.type==='toggle'){
+      const body = document.getElementById('tb-'+b.id);
+      if(body) body.addEventListener('input', ()=>{ b.body = body.innerHTML; touchPage(); });
+      const arrow = document.getElementById('ta-'+b.id);
+      if(arrow) arrow.addEventListener('click', ()=>toggleOpen(b.id));
+    }
+  });
+}
+function blockHtml(b){
+  if(b.type==='todo'){
+    return `<div class="block todo ${b.checked?'checked':''}">
+      <button class="tchk ${b.checked?'done':''}" onclick="toggleTodo('${b.id}')"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L19 7"/></svg></button>
+      <div class="block-content" id="bc-${b.id}" contenteditable data-ph="To-do">${b.text||''}</div>
+      <button class="block-del" onclick="delBlock('${b.id}')">✕</button>
+    </div>`;
+  }
+  if(b.type==='toggle'){
+    return `<div class="block toggle" style="flex-direction:column;">
+      <div style="display:flex;width:100%;">
+        <div class="tog-head">
+          <svg class="tog-arrow ${b.open?'open':''}" id="ta-${b.id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 6l6 6-6 6"/></svg>
+          <div class="block-content" id="bc-${b.id}" contenteditable data-ph="Toggle" onclick="event.stopPropagation()" style="flex:1;">${b.text||''}</div>
+        </div>
+        <button class="block-del" onclick="delBlock('${b.id}')">✕</button>
+      </div>
+      <div class="tog-body ${b.open?'open':''}" id="tb-${b.id}" contenteditable>${b.body||''}</div>
+    </div>`;
+  }
+  return `<div class="block ${b.type}">
+    <div class="block-content" id="bc-${b.id}" contenteditable data-ph="${b.type==='heading'?'Heading':'Write something...'}">${b.text||''}</div>
+    <button class="block-del" onclick="delBlock('${b.id}')">✕</button>
+  </div>`;
+}
+function toggleOpen(id){
+  const p = DB.notes.pages[currentPageId];
+  const b = p.blocks.find(x=>x.id===id);
+  b.open = !b.open;
+  document.getElementById('ta-'+id).classList.toggle('open', b.open);
+  document.getElementById('tb-'+id).classList.toggle('open', b.open);
+  touchPage();
+}
+function saveBlockText(id, el){
+  const p = DB.notes.pages[currentPageId];
+  const b = p.blocks.find(x=>x.id===id);
+  b.text = el.innerHTML;
+  touchPage();
+}
+function toggleTodo(id){
+  const p = DB.notes.pages[currentPageId];
+  const b = p.blocks.find(x=>x.id===id);
+  b.checked = !b.checked;
+  renderBlocks(); touchPage();
+}
+function delBlock(id){
+  const p = DB.notes.pages[currentPageId];
+  p.blocks = p.blocks.filter(b=>b.id!==id);
+  renderBlocks(); touchPage();
+}
+function addBlock(type){
+  const p = DB.notes.pages[currentPageId];
+  p.blocks.push({id:uid(), type, text:'', checked:false, open:true, body:''});
+  renderBlocks(); touchPage();
+  setTimeout(()=>{ const els = document.querySelectorAll('.block-content'); if(els.length) els[els.length-1].focus(); }, 30);
+}
+function touchPage(){ DB.notes.pages[currentPageId].updatedAt = Date.now(); save(); }
+function deleteCurrentPage(){
+  if(!confirm('Delete this page and its subpages?')) return;
+  const toDelete = [currentPageId];
+  let changed = true;
+  while(changed){
+    changed = false;
+    DB.notes.order.forEach(id=>{
+      if(DB.notes.pages[id] && toDelete.includes(DB.notes.pages[id].parentId) && !toDelete.includes(id)){ toDelete.push(id); changed=true; }
+    });
+  }
+  toDelete.forEach(id=>{ delete DB.notes.pages[id]; });
+  DB.notes.order = DB.notes.order.filter(id=>!toDelete.includes(id));
+  save();
+  go('notes');
+}
+
+/* ========================= RECORDINGS (IndexedDB) ========================= */
+let idb = null;
+const idbReq = indexedDB.open('almanac_rec', 1);
+idbReq.onupgradeneeded = e=>{ e.target.result.createObjectStore('clips'); };
+idbReq.onsuccess = e=>{ idb = e.target.result; renderRecordings(); };
+idbReq.onerror = ()=>{ document.getElementById('recHint') && (document.getElementById('recHint').textContent = 'Storage unavailable on this device'); };
+let mediaRecorder, recChunks=[], recStart=0, recTimerInt, mediaStream;
+function toggleRecording(){
+  if(mediaRecorder && mediaRecorder.state==='recording'){ mediaRecorder.stop(); return; }
+  navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+    mediaStream = stream;
+    recChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = e=>recChunks.push(e.data);
+    mediaRecorder.onstop = onRecStop;
+    mediaRecorder.start();
+    recStart = Date.now();
+    document.getElementById('recBtn').classList.add('on');
+    document.getElementById('recHint').textContent = 'Recording… tap to stop';
+    recTimerInt = setInterval(()=>{ document.getElementById('recTime').textContent = fmtTime((Date.now()-recStart)/1000); }, 500);
+  }).catch(()=>{ document.getElementById('recHint').textContent = 'Microphone permission needed'; });
+}
+function onRecStop(){
+  clearInterval(recTimerInt);
+  document.getElementById('recBtn').classList.remove('on');
+  document.getElementById('recTime').textContent = '00:00';
+  mediaStream.getTracks().forEach(t=>t.stop());
+  const blob = new Blob(recChunks, {type:'audio/webm'});
+  const dur = (Date.now()-recStart)/1000;
+  if(!idb){ document.getElementById('recHint').textContent = 'Storage not ready — try again in a moment'; return; }
+  const id = uid();
+  const tx = idb.transaction('clips','readwrite');
+  tx.objectStore('clips').put(blob, id);
+  tx.onerror = ()=>{ document.getElementById('recHint').textContent = 'Could not save recording'; };
+  document.getElementById('recHint').textContent = 'Tap to start recording';
+  DB.recMeta.push({id, name:'Recording '+new Date().toLocaleString('en-US',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}), dur, ts:Date.now()});
+  save();
+  renderRecordings();
+}
+function renderRecordings(){
+  const box = document.getElementById('recList');
+  const items = DB.recMeta.slice().reverse();
+  if(!items.length){ box.innerHTML = '<div class="empty">No recordings yet.</div>'; return; }
+  box.innerHTML = items.map(r=>`
+    <div class="rec-row">
+      <button class="play-btn" onclick="playRec('${r.id}', this)"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
+      <div class="rec-info" style="flex:1"><b>${esc(r.name)}</b><span>${fmtTime(r.dur)} · ${new Date(r.ts).toLocaleDateString('en-US',{day:'numeric',month:'short'})}</span></div>
+      <button class="row-x" onclick="delRec('${r.id}')">✕</button>
+    </div>`).join('');
+}
+let audioEl = null;
+function playRec(id, btn){
+  if(!idb) return;
+  const tx = idb.transaction('clips','readonly');
+  tx.objectStore('clips').get(id).onsuccess = e=>{
+    const blob = e.target.result;
+    if(!blob) return;
+    if(audioEl){ audioEl.pause(); }
+    audioEl = new Audio(URL.createObjectURL(blob));
+    audioEl.play();
+  };
+}
+function delRec(id){
+  DB.recMeta = DB.recMeta.filter(r=>r.id!==id);
+  save();
+  if(idb){ idb.transaction('clips','readwrite').objectStore('clips').delete(id); }
+  renderRecordings();
+}
+
+/* ========================= WATER ========================= */
+function renderWater(){
+  const goal = DB.water.goal;
+  const ml = DB.water.days[todayStr()] || 0;
+  document.getElementById('waterMlTxt').textContent = ml;
+  document.getElementById('waterGoalTxt').textContent = 'of '+goal+' ml';
+  const circ = 2*Math.PI*42;
+  const pct = Math.min(1, ml/goal);
+  document.getElementById('waterRing').setAttribute('stroke-dasharray', circ);
+  document.getElementById('waterRing').setAttribute('stroke-dashoffset', circ - pct*circ);
+
+  const chart = document.getElementById('weekChart');
+  let html='';
+  for(let i=6;i>=0;i--){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    const ds = d.toISOString().slice(0,10);
+    const val = DB.water.days[ds]||0;
+    const h = Math.max(4, Math.min(90, (val/goal)*90));
+    html += `<div class="week-col"><div class="week-bar ${ds===todayStr()?'today':''}" style="height:${h}px;"></div><span>${d.toLocaleDateString('en-US',{weekday:'narrow'})}</span></div>`;
+  }
+  chart.innerHTML = html;
+}
+function addWater(amount, custom){
+  if(custom){
+    const v = prompt('Amount in ml:', '300');
+    if(v===null) return;
+    amount = parseInt(v)||0;
+  }
+  if(amount<=0) return;
+  const d = todayStr();
+  DB.water.days[d] = (DB.water.days[d]||0) + amount;
+  DB.water.entries[d] = DB.water.entries[d]||[];
+  DB.water.entries[d].push(amount);
+  save(); renderWater(); renderHome();
+}
+function undoWater(){
+  const d = todayStr();
+  const entries = DB.water.entries[d];
+  if(!entries || !entries.length) return;
+  const last = entries.pop();
+  DB.water.days[d] = Math.max(0, (DB.water.days[d]||0) - last);
+  save(); renderWater(); renderHome();
+}
+function editGoal(){
+  const v = prompt('Daily goal (ml):', DB.water.goal);
+  if(v===null) return;
+  DB.water.goal = parseInt(v)||2500;
+  save(); renderWater();
+}
+
+/* ========================= LAYLA SYNC ========================= */
+/* Offline-first. Each logical item (event, reminder, note, project, vault record...) is one keyed record with its
+   own update time; the server keeps the newest write per key. save() just nudges syncSoon(), which diffs DB
+   against a hash shadow of what the server last agreed on.
+   Two independent spaces: 'main' (owner's own data) and 'fam' (shared family list/events, owner + members). */
+const SYNC_CFG_KEY = 'almanac_sync_cfg', MODE_KEY = 'almanac_mode';
+const KEY_OK = /^(?:(?:ev|rem|well|note|prj|chk|shop|exp|alm|vh|vd|vp):[A-Za-z0-9_-]{1,40}|(?:rd|ro|wd):\d{4}-\d{2}-\d{2}|goal|vmeta)$/;
+const FAM_KEY_OK = /^(?:fshop|fev):[A-Za-z0-9_-]{1,40}$/;
+const SPACES = {
+  main:{ store:'almanac_sync_v1',     keyOk:KEY_OK,     state:'/state',        sync:'/sync',        tpl:true  },
+  fam: { store:'almanac_sync_fam_v1', keyOk:FAM_KEY_OK, state:'/family/state', sync:'/family/sync', tpl:false }
+};
+const MOD_KINDS = ['prj','chk','shop','exp','alm'], VAULT_KINDS = ['vh','vd','vp'], FAM_KINDS = ['fshop','fev'];
+const KIND_NS = {}; MOD_KINDS.forEach(k=>KIND_NS[k]='mod'); VAULT_KINDS.forEach(k=>KIND_NS[k]='vault'); FAM_KINDS.forEach(k=>KIND_NS[k]='fam');
+const SYNC_MAX_VALUE = 500000, SYNC_BATCH_CHARS = 1000000, SYNC_BATCH_COUNT = 1500;
+let syncState = 'off', syncMsg = '';
+const RUN = {
+  main:{ chain:Promise.resolve(), queued:false, timer:null, fails:0, state:'off', msg:'' },
+  fam: { chain:Promise.resolve(), queued:false, timer:null, fails:0, state:'off', msg:'' }
+};
+
+function syncCfg(){
+  const base = (window.ALMANAC_CONFIG || {});
+  let own = {};
+  try{ own = JSON.parse(localStorage.getItem(SYNC_CFG_KEY) || '{}'); }catch(e){}
+  return { url: String(own.url || base.url || '').replace(/\/+$/, ''), token: String(own.token || base.token || '') };
+}
+function syncConfigured(){ const c = syncCfg(); return !!(c.token && c.url); }
+function syncLoad(spId){
+  try{
+    const s = JSON.parse(localStorage.getItem(SPACES[spId].store));
+    if(s && s.shadow) return s;
+  }catch(e){}
+  return { rev:0, shadow:{}, pend:{}, device:'d'+uid(), last:0 };
+}
+function syncStore(spId, S){ try{ localStorage.setItem(SPACES[spId].store, JSON.stringify(S)); }catch(e){} }
+function saveLocal(){ try{ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }catch(e){} }
+
+function setSyncStatus(state, msg){
+  syncState = state; syncMsg = msg || '';
+  const d = document.getElementById('syncDot');
+  if(d) d.className = 'sync-dot ' + state;
+}
+function setSpStatus(spId, state, msg){ RUN[spId].state = state; RUN[spId].msg = msg || ''; paintStatus(); }
+function paintStatus(){
+  if(!syncConfigured()){ setSyncStatus('off', 'Not connected'); return; }
+  const order = ['error','offline','syncing','pending','ok'];
+  let best = null;
+  for(const sp of ['main','fam']){
+    if(sp === 'main' && window.SYNC_MODE === 'member') continue;
+    const r = RUN[sp];
+    if(r.state === 'off') continue;
+    if(!best || order.indexOf(r.state) < order.indexOf(best.state)) best = r;
+  }
+  if(best) setSyncStatus(best.state, best.msg); else setSyncStatus('ok', 'Ready');
+}
+
+function cyrb(str){
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for(let i=0;i<str.length;i++){ const c = str.charCodeAt(i); h1 = Math.imul(h1^c, 2654435761); h2 = Math.imul(h2^c, 1597334677); }
+  h1 = Math.imul(h1^(h1>>>16), 2246822507) ^ Math.imul(h2^(h2>>>13), 3266489909);
+  h2 = Math.imul(h2^(h2>>>16), 2246822507) ^ Math.imul(h1^(h1>>>13), 3266489909);
+  return (4294967296*(2097151&h2)+(h1>>>0)).toString(36) + ':' + str.length;
+}
+function hashOf(v){ return cyrb(JSON.stringify(v)); }
+/* Sealed vault records are replaced, never mutated in place, so their hash is cached per object. */
+const sealHash = new WeakMap();
+function hashVal(k, v){
+  if(v && typeof v === 'object' && /^v[hdp]:/.test(k)){
+    let h = sealHash.get(v); if(!h){ h = hashOf(v); sealHash.set(v, h); } return h;
+  }
+  return hashOf(v);
+}
+
+/* ---- role of this token: 'owner' (full app) or 'member' (family only) ---- */
+function tokenFp(){ return cyrb(syncCfg().token); }
+function loadMode(){
+  try{
+    if(!syncCfg().token) return undefined;
+    const m = JSON.parse(localStorage.getItem(MODE_KEY));
+    if(m && m.t === tokenFp() && (m.m === 'owner' || m.m === 'member')) return m.m;
+  }catch(e){}
+  return undefined;
+}
+function setMode(m){
+  const changed = window.SYNC_MODE !== m;
+  window.SYNC_MODE = m;
+  try{ if(m) localStorage.setItem(MODE_KEY, JSON.stringify({ m, t: tokenFp() })); else localStorage.removeItem(MODE_KEY); }catch(e){}
+  if(!changed) return;
+  paintStatus();
+  try{
+    if(currentView === 'mod' && ALM.mods[ALM.cur] && !ALM.visible(ALM.mods[ALM.cur])) go('more');
+    else if(currentView === 'more' || currentView === 'mod') ALM.refresh();
+    renderHome();
+  }catch(e){}
+}
+window.SYNC_MODE = loadMode();
+
+/* DB -> { key: value } for one space */
+function syncFlatten(spId){
+  spId = spId || 'main';
+  const f = {}, ok = SPACES[spId].keyOk, put = (k, v)=>{ if(ok.test(k)) f[k] = v; };
+  const isObj = v=> v && typeof v === 'object';
+  if(spId === 'fam'){
+    FAM_KINDS.forEach(kind=> Object.entries((DB.fam && DB.fam[kind]) || {}).forEach(([id, v])=>{ if(isObj(v)) put(kind+':'+id, v); }));
+    return f;
+  }
+  (DB.events||[]).forEach(e=>{ if(e && e.id) put('ev:'+e.id, e); });
+  (DB.reminders||[]).forEach(r=>{ if(r && r.id) put('rem:'+r.id, r); });
+  (DB.wellnessLog||[]).forEach(w=>{ if(w && w.id) put('well:'+w.id, w); });
+  Object.entries((DB.notes && DB.notes.pages) || {}).forEach(([id, p])=>{ if(isObj(p)) put('note:'+id, p); });
+  const wat = DB.water || {}, days = wat.days || {}, ents = wat.entries || {};
+  new Set([...Object.keys(days), ...Object.keys(ents)]).forEach(d=> put('wd:'+d, { ml: days[d]||0, entries: ents[d]||[] }));
+  Object.entries(DB.routineDone||{}).forEach(([d, v])=>{ if(isObj(v)) put('rd:'+d, v); });
+  Object.entries(DB.routineOverrides||{}).forEach(([d, v])=>{ if(Array.isArray(v)) put('ro:'+d, v); });
+  const g = parseInt(wat.goal, 10);
+  if(g >= 1 && g <= 100000) f.goal = g;
+  MOD_KINDS.forEach(kind=> Object.entries((DB.mod && DB.mod[kind]) || {}).forEach(([id, v])=>{ if(isObj(v)) put(kind+':'+id, v); }));
+  VAULT_KINDS.forEach(kind=> Object.entries((DB.vault && DB.vault[kind]) || {}).forEach(([id, v])=>{ if(isObj(v)) put(kind+':'+id, v); }));
+  if(DB.vault && isObj(DB.vault.vmeta)) put('vmeta', DB.vault.vmeta);
+  return f;
+}
+
+/* Best guess at when an item was last changed, for items saved before sync existed. */
+function syncIntrinsic(key, v){
+  const now = Date.now(), cap = x=> (x > 1e12 && x <= now) ? x : null;
+  if(key === 'goal') return 0;
+  if(key === 'vmeta') return 1;
+  const kind = key.split(':')[0];
+  if(kind === 'note') return cap(v.updatedAt) || 1;
+  if(kind === 'well') return cap(v.ts) || 1;
+  if(/^(?:ev|rem|prj|chk|shop|exp|alm|vh|vd|vp|fshop|fev)$/.test(kind)){
+    const t = parseInt(key.split(':')[1].slice(0, 8), 36);
+    return cap(t) || 1;
+  }
+  const t = Date.parse(key.slice(3) + 'T23:59:59Z');
+  return Math.min(isNaN(t) ? 1 : t, now);
+}
+
+/* Compare DB to the shadow of what the server last agreed on; record what changed, and when. */
+function syncDiff(S, flat){
+  const now = Date.now();
+  for(const k of Object.keys(flat)){
+    const h = hashVal(k, flat[k]), sh = S.shadow[k], pn = S.pend[k];
+    if(k === 'goal' && !sh && flat[k] === 2500) continue;
+    if(sh && sh.h === h){ delete S.pend[k]; continue; }
+    if(pn && pn.h === h) continue;
+    S.pend[k] = { h, u: sh ? now : syncIntrinsic(k, flat[k]) };
+  }
+  for(const k of Object.keys(S.shadow)){
+    if(!(k in flat) && !(S.pend[k] && S.pend[k].t)) S.pend[k] = { t:1, u: now };
+  }
+  for(const k of Object.keys(S.pend)){
+    if(S.pend[k].t && (k in flat)) delete S.pend[k];
+  }
+}
+
+function syncTemplates(){
+  const slim = a=> a.map(b=>({ id:b.id, time:b.time, title:b.title, desc:b.desc||'' }));
+  return { default: slim(ROUTINE_TEMPLATE), monday: slim(MONDAY_ROUTINE) };
+}
+
+async function syncFetch(cfg, path, opts){
+  const ctl = new AbortController(), to = setTimeout(()=>ctl.abort(), 20000);
+  try{
+    const headers = Object.assign({ 'X-Layla-Secret': cfg.token }, (opts && opts.headers) || {});
+    const r = await fetch(cfg.url + '/api/almanac' + path, Object.assign({}, opts, { headers, signal: ctl.signal }));
+    if(r.status === 401) throw Object.assign(new Error('Token rejected'), { auth:true, status:401 });
+    if(!r.ok) throw Object.assign(new Error(r.status === 403 ? 'Only the Almanac owner can do that' : 'Server said ' + r.status), { status:r.status });
+    return await r.json();
+  }finally{ clearTimeout(to); }
+}
+
+/* Apply one remote record/tombstone to DB. */
+function syncSet(key, v){
+  const [kind, id] = key.split(':');
+  const upsert = (arr)=>{ const i = arr.findIndex(x=>x && x.id === id); if(i >= 0) arr[i] = v; else arr.push(v); };
+  if(key === 'goal'){ DB.water.goal = v; return; }
+  if(key === 'vmeta'){ DB.vault.vmeta = v; return; }
+  if(KIND_NS[kind]){ ((DB[KIND_NS[kind]] || (DB[KIND_NS[kind]] = {}))[kind] || (DB[KIND_NS[kind]][kind] = {}))[id] = v; return; }
+  if(kind === 'ev') upsert(DB.events);
+  else if(kind === 'rem') upsert(DB.reminders);
+  else if(kind === 'well') upsert(DB.wellnessLog);
+  else if(kind === 'note'){ DB.notes.pages[id] = v; if(!DB.notes.order.includes(id)) DB.notes.order.push(id); }
+  else if(kind === 'wd'){ DB.water.days[id] = v.ml || 0; DB.water.entries[id] = Array.isArray(v.entries) ? v.entries : []; }
+  else if(kind === 'rd') DB.routineDone[id] = v;
+  else if(kind === 'ro') DB.routineOverrides[id] = v;
+}
+function syncDel(key){
+  const [kind, id] = key.split(':');
+  const drop = (arr)=>{ const i = arr.findIndex(x=>x && x.id === id); if(i >= 0) arr.splice(i, 1); };
+  if(key === 'vmeta'){ DB.vault.vmeta = null; return; }
+  if(KIND_NS[kind]){ const st = DB[KIND_NS[kind]] && DB[KIND_NS[kind]][kind]; if(st) delete st[id]; return; }
+  if(kind === 'ev') drop(DB.events);
+  else if(kind === 'rem') drop(DB.reminders);
+  else if(kind === 'well') drop(DB.wellnessLog);
+  else if(kind === 'note'){ delete DB.notes.pages[id]; DB.notes.order = DB.notes.order.filter(x=>x !== id); }
+  else if(kind === 'wd'){ delete DB.water.days[id]; delete DB.water.entries[id]; }
+  else if(kind === 'rd') delete DB.routineDone[id];
+  else if(kind === 'ro') delete DB.routineOverrides[id];
+}
+
+/* Fold a server response into DB. An un-synced local edit is never overwritten unless the server's copy is newer.
+   Returns the list of record kinds that changed locally. */
+function syncApply(S, resp, pushed, spId){
+  const flat = syncFlatten(spId), now = Date.now(), ok = SPACES[spId].keyOk, kinds = new Set();
+  const kindOf = k=> k === 'goal' || k === 'vmeta' ? k : k.split(':')[0];
+  const localDirty = (k)=>{
+    const sh = S.shadow[k];
+    if(sh) return (k in flat) ? hashVal(k, flat[k]) !== sh.h : true;
+    return k in flat;
+  };
+  const localU = (k)=> S.pend[k] ? S.pend[k].u : (S.shadow[k] ? now : syncIntrinsic(k, flat[k]));
+  for(const [k, rec] of Object.entries(resp.records || {})){
+    if(!ok.test(k) || !rec || rec.v === null || (typeof rec.v !== 'object' && k !== 'goal')) continue;
+    const rh = hashVal(k, rec.v);
+    if(pushed[k] && pushed[k].u === rec.u){ S.shadow[k] = { h: pushed[k].h, u: rec.u }; delete S.pend[k]; continue; }
+    if(k in flat && hashVal(k, flat[k]) === rh){ S.shadow[k] = { h: rh, u: rec.u }; delete S.pend[k]; continue; }
+    if(localDirty(k) && localU(k) > rec.u) continue;
+    syncSet(k, rec.v); kinds.add(kindOf(k));
+    S.shadow[k] = { h: rh, u: rec.u }; delete S.pend[k];
+  }
+  for(const [k, u] of Object.entries(resp.tombstones || {})){
+    if(!ok.test(k)) continue;
+    if(pushed[k] && pushed[k].t){ delete S.shadow[k]; delete S.pend[k]; continue; }
+    if(localDirty(k) && localU(k) > u) continue;
+    if(k in flat){ syncDel(k); kinds.add(kindOf(k)); }
+    delete S.shadow[k]; delete S.pend[k];
+  }
+  return [...kinds];
+}
+
+function syncRefreshUI(){
+  const a = document.activeElement;
+  const typing = a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable);
+  if(typing || document.getElementById('overlay').classList.contains('show')) return;
+  const y = window.scrollY;
+  try{
+    if(currentView === 'home') renderHome();
+    else if(currentView === 'schedule') renderSchedule();
+    else if(currentView === 'wellness') renderWellness();
+    else if(currentView === 'notes') renderNotesList();
+    else if(currentView === 'water') renderWater();
+    else if(currentView === 'more' || currentView === 'mod') ALM.refresh();
+    window.scrollTo(0, y);
+  }catch(e){}
+}
+
+/* Runs fn after anything already queued for this space, so two syncs never interleave on one shadow. */
+function syncLock(spId, fn){
+  const R = RUN[spId];
+  const p = R.chain.then(fn).catch(e=>{ console.warn('Almanac sync:', e); });
+  R.chain = p; return p;
+}
+
+function syncFail(spId, e){
+  const R = RUN[spId]; R.fails++;
+  if(e && e.auth) setSpStatus(spId, 'error', 'Token rejected - check it in sync settings');
+  else if(e && (e.offline || e.name === 'TypeError' || e.name === 'AbortError')) setSpStatus(spId, 'offline', 'Offline - will retry');
+  else setSpStatus(spId, 'error', (e && e.message) || 'Sync failed');
+  console.warn('Almanac sync ' + spId + ':', e);
+}
+
+/* A 401 on the main space may just mean this is a family member's token. */
+async function probeMember(){
+  const cfg = syncCfg();
+  try{
+    const resp = await syncFetch(cfg, SPACES.fam.state + '?since=0', { method:'GET' });
+    if(resp && resp.me && resp.me.role === 'member'){ setMode('member'); return true; }
+  }catch(e){}
+  return false;
+}
+
+function syncNow(spId, opts){
+  spId = spId || 'main'; opts = opts || {};
+  const R = RUN[spId];
+  if(!syncConfigured()){ paintStatus(); return Promise.resolve(); }
+  if(spId === 'main' && window.SYNC_MODE === 'member') return Promise.resolve();
+  if(R.queued && !opts.force) return R.chain;
+  R.queued = true;
+  return syncLock(spId, ()=> syncRun(spId, opts));
+}
+
+async function syncRun(spId, opts){
+  const R = RUN[spId], sp = SPACES[spId], cfg = syncCfg();
+  R.queued = false;
+  if(spId === 'main' && window.SYNC_MODE === 'member') return;
+  try{
+    const S = syncLoad(spId); const kindsAll = new Set();
+    const flat = syncFlatten(spId);
+    syncDiff(S, flat); syncStore(spId, S);
+    if(!Object.keys(S.pend).length && !opts.force){
+      R.fails = 0; setSpStatus(spId, 'ok', 'Synced'); return;
+    }
+    if(navigator.onLine === false) throw Object.assign(new Error('Offline'), { offline:true });
+    setSpStatus(spId, 'syncing', 'Syncing...');
+
+    const batches = []; let cur = { records:{}, tombstones:{}, n:0, size:0 }, skipped = 0;
+    for(const k of Object.keys(S.pend)){
+      const p = S.pend[k], item = p.t ? null : JSON.stringify(flat[k]);
+      if(item && item.length > SYNC_MAX_VALUE){ skipped++; continue; }
+      const sz = item ? item.length : 40;
+      if(cur.n >= SYNC_BATCH_COUNT || cur.size + sz > SYNC_BATCH_CHARS){ batches.push(cur); cur = { records:{}, tombstones:{}, n:0, size:0 }; }
+      if(p.t) cur.tombstones[k] = p.u; else cur.records[k] = { u: p.u, v: flat[k] };
+      cur.n++; cur.size += sz;
+    }
+    batches.push(cur);
+
+    for(let i = 0; i < batches.length; i++){
+      const b = batches[i], pushed = {};
+      Object.entries(b.records).forEach(([k, r])=>{ pushed[k] = { u: r.u, h: S.pend[k].h }; });
+      Object.keys(b.tombstones).forEach(k=>{ pushed[k] = { u: b.tombstones[k], t: 1 }; });
+      const body = { since: S.rev, device: S.device, records: b.records, tombstones: b.tombstones };
+      if(sp.tpl && i === 0) body.templates = syncTemplates();
+      const resp = await syncFetch(cfg, sp.sync, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+      const nowFlat = syncFlatten(spId);
+      for(const [k, p] of Object.entries(pushed)){
+        if(p.t){ if(!(k in nowFlat)){ delete S.shadow[k]; delete S.pend[k]; } }
+        else if((k in nowFlat) && hashVal(k, nowFlat[k]) === p.h){ S.shadow[k] = { h: p.h, u: p.u }; delete S.pend[k]; }
+      }
+      syncApply(S, resp, pushed, spId).forEach(x=>kindsAll.add(x));
+      S.rev = resp.rev; S.last = Date.now(); syncStore(spId, S);
+    }
+    if(kindsAll.size){
+      saveLocal();
+      try{ ALM.afterSync([...kindsAll]); }catch(e){}
+      syncRefreshUI();
+    }
+    R.fails = 0;
+    setSpStatus(spId, 'ok', skipped ? `Synced (${skipped} oversized item${skipped>1?'s':''} skipped)` : 'Synced');
+  }catch(e){
+    if(e && e.auth && spId === 'main' && window.SYNC_MODE !== 'owner' && await probeMember()){ setSpStatus('main', 'ok', 'Family member'); return; }
+    syncFail(spId, e);
+  }
+}
+
+function syncSoon(spId){
+  if(!spId){ syncSoon('main'); syncSoon('fam'); return; }
+  if(!syncConfigured()){ paintStatus(); return; }
+  if(spId === 'main' && window.SYNC_MODE === 'member') return;
+  const R = RUN[spId];
+  if(R.state !== 'syncing') setSpStatus(spId, 'pending', 'Changes waiting');
+  clearTimeout(R.timer);
+  R.timer = setTimeout(()=>syncNow(spId), Math.min(1500 * Math.pow(2, Math.min(R.fails, 6)), 120000));
+}
+
+/* Pull what the server holds (and edits from other devices) without pushing. Truthy on success. */
+function syncPullState(spId){
+  spId = spId || 'main';
+  if(!syncConfigured()) return Promise.resolve(false);
+  if(spId === 'main' && window.SYNC_MODE === 'member') return Promise.resolve(false);
+  return syncLock(spId, async ()=>{
+    const sp = SPACES[spId], cfg = syncCfg();
+    try{
+      const S = syncLoad(spId);
+      const resp = await syncFetch(cfg, sp.state + '?since=' + S.rev, { method:'GET' });
+      if(spId === 'fam' && resp.me) setMode(resp.me.role === 'member' ? 'member' : 'owner');
+      syncDiff(S, syncFlatten(spId));
+      const kinds = syncApply(S, resp, {}, spId);
+      S.rev = resp.rev; S.last = Date.now(); syncStore(spId, S);
+      if(kinds.length){ saveLocal(); try{ ALM.afterSync(kinds); }catch(e){} syncRefreshUI(); }
+      try{ ALM.onState(spId, resp); }catch(e){}
+      return true;
+    }catch(e){
+      if(e && e.auth && spId === 'main' && window.SYNC_MODE !== 'owner' && await probeMember()) return false;
+      if(!(e && (e.offline || e.name === 'TypeError' || e.name === 'AbortError'))) console.warn('Almanac pull ' + spId + ':', e);
+      if(e && e.auth) syncFail(spId, e);
+      return false;
+    }
+  });
+}
+
+/* Startup: learn this token's role from the family space, then pull and push whatever each space owns. */
+async function syncHydrate(){
+  if(!syncConfigured()){ paintStatus(); return; }
+  await syncPullState('fam');
+  if(window.SYNC_MODE !== 'member'){
+    await syncPullState('main');
+    await syncNow('main');
+  }
+  await syncNow('fam');
+}
+
+/* Sync settings sheet (tap the leaf icon). */
+function openSyncSheet(){
+  const c = syncCfg();
+  const pend = Object.keys(syncLoad('main').pend).length + Object.keys(syncLoad('fam').pend).length;
+  const last = Math.max(syncLoad('main').last || 0, syncLoad('fam').last || 0);
+  const lastTxt = last ? new Date(last).toLocaleString() : 'never';
+  const role = window.SYNC_MODE === 'member' ? 'Family member (shared shopping, events and presence)' : window.SYNC_MODE === 'owner' ? 'Owner' : 'Unknown until first connection';
+  openSheet(`
+    <h3 style="margin:0 0 4px;">Layla sync</h3>
+    <p style="margin:0 0 14px;color:var(--muted);font-size:13px;">Keeps this app and Layla in step so she can see your routine, water, notes and plans. Works offline; changes sync when you are back online. Vaults are encrypted on this device before they leave it.</p>
+    <label for="syncUrl" style="font-size:12px;color:var(--muted);">Server</label>
+    <input class="field" id="syncUrl" type="url" value="${esc(c.url)}" placeholder="https://layla.tryvanta.in" autocomplete="off">
+    <label for="syncToken" style="font-size:12px;color:var(--muted);">Sync token</label>
+    <input class="field" id="syncToken" type="password" value="${esc(c.token)}" placeholder="Paste your Almanac token" autocomplete="off">
+    <p style="margin:4px 0 14px;font-size:13px;">Status: <b>${esc(syncMsg || (c.token ? 'Ready' : 'Not connected'))}</b><br>
+      <span style="color:var(--muted);">Access: ${esc(role)}<br>Last sync: ${esc(lastTxt)} &middot; ${pend} change${pend===1?'':'s'} waiting</span></p>
+    <div class="sheet-actions">
+      <button class="btn btn-ghost" onclick="closeSheet()">Close</button>
+      <button class="btn btn-primary" onclick="saveSyncSettings()">Save &amp; sync</button>
+    </div>`);
+}
+function saveSyncSettings(){
+  const url = document.getElementById('syncUrl').value.trim(), token = document.getElementById('syncToken').value.trim();
+  const before = syncCfg();
+  try{ localStorage.setItem(SYNC_CFG_KEY, JSON.stringify({ url, token })); }catch(e){}
+  closeSheet();
+  if(before.token !== token || before.url !== url){ window.SYNC_MODE = undefined; try{ localStorage.removeItem(MODE_KEY); }catch(e){} }
+  RUN.main.fails = RUN.fam.fails = 0;
+  try{ ALM.fire('config'); }catch(e){}
+  if(token) syncHydrate(); else paintStatus();
+}
+
+window.addEventListener('online', ()=>{ RUN.main.fails = RUN.fam.fails = 0; syncSoon(); });
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'visible') syncSoon(); });
+setInterval(()=>{
+  if(document.visibilityState !== 'visible' || navigator.onLine === false || !syncConfigured()) return;
+  if(window.SYNC_MODE !== 'member') syncNow('main', { force:true });
+  syncNow('fam', { force:true });
+}, 60000);
+document.getElementById('syncBtn').addEventListener('keydown', e=>{ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openSyncSheet(); } });
+
+/* ========================= MODULE HUB ENTRIES ========================= */
+/* Recordings and Water keep their own views; they get tiles here so everything lives under More. */
+ALM.reg({ id:'rec', title:'Voice recordings', icon:'file', desc:'Saved on this device', group:'app', go:'recordings', render(){} });
+ALM.reg({ id:'water', title:'Water', icon:'heart', desc:'Daily intake and goal', group:'app', go:'water', render(){} });
+
+/* ========================= INIT ========================= */
+function boot(){
+  renderHeader();
+  setInterval(renderHeader, 60000);
+  renderHome();
+  try{ ALM.boot(); }catch(e){ console.error(e); }
+  syncHydrate();
+}
+boot();
+</script>
+</body>
+</html>

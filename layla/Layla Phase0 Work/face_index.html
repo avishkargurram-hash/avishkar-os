@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Layla</title>
+<style>
+  :root{--ink:#e9edf4;--muted:#8790a1;--line:#1a2130;--teal:#35e0c8;--blue:#4a9eff}
+  *{box-sizing:border-box}
+  body{margin:0;padding:0;overflow:hidden;background:#000;font-family:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);user-select:none}
+  canvas{display:block;position:absolute;top:0;left:0;width:100vw;height:100vh;object-fit:contain}
+  #threeCanvas{z-index:2;pointer-events:none}
+  #loader{position:absolute;color:#0df;font-size:22px;text-align:center;width:100%;top:46%;z-index:10}
+  #loadText{font-size:15px;color:#aaa}
+  #hud-stub{position:absolute;opacity:0;pointer-events:none}
+  .brand{position:fixed;top:18px;left:0;right:0;text-align:center;z-index:6;font-weight:700;letter-spacing:.4em;font-size:13px;text-transform:uppercase;color:var(--teal);text-shadow:0 0 18px rgba(53,224,200,.5)}
+  .status{position:fixed;top:40px;left:0;right:0;text-align:center;z-index:6;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+  .caption{position:fixed;left:50%;bottom:140px;transform:translateX(-50%);width:min(720px,88vw);text-align:center;z-index:6;pointer-events:none}
+  .you{font-size:14px;color:var(--muted);min-height:20px;margin-bottom:8px;text-shadow:0 2px 10px #000}.you .live{color:var(--blue)}
+  .layla{font-size:19px;line-height:1.5;color:#fff;max-height:30vh;overflow-y:auto;scrollbar-width:none;text-shadow:0 2px 14px rgba(0,0,0,.85)}
+  .layla::-webkit-scrollbar{display:none}
+  /* Guaranteed-clickable fallback for open_url actions -- window.open() after
+     an await often loses the browser's user-activation window and gets
+     silently blocked, so a real link is always shown too (pointer-events
+     re-enabled here since .caption itself is pointer-events:none). */
+  .actionlinks{margin-top:10px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;pointer-events:auto}
+  .action-link{display:inline-block;background:rgba(53,224,200,.14);border:1px solid rgba(53,224,200,.4);color:#5be8c8;
+    padding:7px 15px;border-radius:999px;font-size:13px;text-decoration:none;backdrop-filter:blur(6px)}
+  .action-link:hover{background:rgba(53,224,200,.24)}
+  .dock{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);display:flex;align-items:center;gap:14px;z-index:7}
+  .mic{width:70px;height:70px;border-radius:50%;border:none;cursor:pointer;position:relative;background:radial-gradient(circle at 50% 35%,#16b8a4,#0c7d70);color:#02110e;box-shadow:0 8px 30px rgba(0,0,0,.6);transition:transform .15s}
+  .mic:hover{transform:scale(1.05)}
+  .mic.live{background:radial-gradient(circle at 50% 35%,#5aa8ff,#2d6fd0);animation:pulse 1.4s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(74,158,255,.45),0 8px 30px rgba(0,0,0,.6)}70%{box-shadow:0 0 0 18px rgba(74,158,255,0),0 8px 30px rgba(0,0,0,.6)}100%{box-shadow:0 0 0 0 rgba(74,158,255,0)}}
+  .mic svg{width:26px;height:26px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}
+  .composer{display:flex;align-items:center;background:rgba(10,14,22,.55);border:1px solid var(--line);border-radius:999px;padding:6px 6px 6px 18px;width:min(420px,72vw);backdrop-filter:blur(8px)}
+  .composer input{flex:1;background:transparent;border:none;outline:none;color:var(--ink);font-size:15px;font-family:inherit}
+  .composer input::placeholder{color:var(--muted)}
+  .composer button{background:var(--teal);color:#04120f;border:none;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:16px}
+  .home{position:fixed;bottom:12px;left:0;right:0;text-align:center;font-size:11px;color:#4a5364;z-index:6}.home a{color:var(--muted)}
+
+  /* ---- hamburger + drawer ---- */
+  .hamburger{position:fixed;top:16px;left:16px;z-index:8;width:42px;height:42px;border-radius:10px;border:1px solid var(--line);
+    background:rgba(10,14,22,.6);backdrop-filter:blur(6px);color:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .hamburger svg{width:20px;height:20px}
+  .hamburger:hover{border-color:var(--teal)}
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .25s;z-index:9}
+  .scrim.open{opacity:1;pointer-events:auto}
+  .drawer{position:fixed;top:0;left:0;bottom:0;width:min(380px,86vw);background:#0b0f16;border-right:1px solid var(--line);
+    z-index:10;transform:translateX(-100%);transition:transform .25s ease;display:flex;flex-direction:column;color:var(--ink);
+    font-size:14px}
+  .drawer.open{transform:translateX(0)}
+  .drawer-head{display:flex;align-items:center;justify-content:space-between;padding:18px 18px 14px;border-bottom:1px solid var(--line)}
+  .drawer-title{font-weight:700;letter-spacing:.18em;font-size:13px;color:var(--teal)}
+  .drawer-close{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;width:28px;height:28px}
+  .drawer-close:hover{color:var(--ink)}
+  .drawer-body{flex:1;overflow-y:auto;padding:8px 0 20px}
+  .drawer-loading{padding:24px 18px;color:var(--muted)}
+  .dsec{border-bottom:1px solid var(--line)}
+  .dsec-head{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;cursor:pointer}
+  .dsec-head:hover{background:rgba(255,255,255,.03)}
+  .dsec-title{display:flex;align-items:center;gap:9px;font-weight:600}
+  .dsec-caret{color:var(--muted);font-size:11px;transition:transform .18s}
+  .dsec.open .dsec-caret{transform:rotate(90deg)}
+  .dsec-body{max-height:0;overflow:hidden;transition:max-height .22s ease}
+  .dsec.open .dsec-body{max-height:600px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 18px 8px 32px}
+  .row-name{color:#c8ceda;font-size:13px}
+  .row-detail{color:var(--muted);font-size:11.5px;padding:0 18px 10px 32px;margin-top:-6px;line-height:1.4}
+  .pill{font-size:10.5px;letter-spacing:.03em;padding:3px 9px;border-radius:999px;white-space:nowrap;font-weight:600;border:1px solid transparent}
+  .pill.connected{color:#5be8c8;background:rgba(53,224,200,.12);border-color:rgba(53,224,200,.3)}
+  .pill.offline,.pill.disconnected{color:#8790a1;background:rgba(135,144,161,.1);border-color:rgba(135,144,161,.25)}
+  .pill.authentication_required,.pill.permission_required{color:#ffcf6b;background:rgba(255,178,62,.12);border-color:rgba(255,178,62,.3)}
+  .pill.error{color:#ff8f8f;background:rgba(255,90,90,.12);border-color:rgba(255,90,90,.3)}
+  .pill.disabled{color:#5b6270;background:rgba(90,96,110,.12);border-color:rgba(90,96,110,.25)}
+  .mini-stat{padding:8px 18px 8px 32px;color:var(--muted);font-size:12.5px}
+  .mini-stat b{color:var(--ink)}
+  .empty-note{padding:10px 18px 14px 32px;color:#5b6472;font-size:12.5px;font-style:italic}
+  .tool-chip{display:inline-block;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:6px;
+    padding:3px 8px;margin:3px 4px 0 0;font-size:11px;color:#b8c0cc;font-family:ui-monospace,monospace}
+  .drawer-foot{padding:12px 18px;border-top:1px solid var(--line)}
+  .refresh-btn{width:100%;background:rgba(53,224,200,.08);border:1px solid rgba(53,224,200,.3);color:var(--teal);
+    border-radius:8px;padding:9px;font-size:12.5px;cursor:pointer;letter-spacing:.03em}
+  .refresh-btn:hover{background:rgba(53,224,200,.15)}
+  .refresh-btn.spinning{opacity:.6;pointer-events:none}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+  <button class="hamburger" id="hamburger" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+  <div class="brand">Layla</div>
+  <div class="status" id="statusEl"></div>
+  <div id="loader">Waking Layla…<br><span id="loadText">Loading face…</span></div>
+  <canvas id="faceCanvas"></canvas>
+  <canvas id="threeCanvas"></canvas>
+  <!-- stubs face.js may reference (kept invisible) -->
+  <div id="hud-stub"><span id="g-status"></span><span id="g-state"></span><span id="g-network-icon"></span><span id="g-voice-icon"></span><span id="g-mic-icon"></span><span id="g-camera-icon"></span></div>
+
+  <div class="caption"><div class="you" id="you"></div><div class="layla" id="layla">Tap the mic to go hands-free, then just say “Hey Layla” — or type below.</div><div class="actionlinks" id="actionLinks"></div></div>
+  <div class="dock">
+    <button class="mic" id="mic" aria-label="Talk"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 15a3.5 3.5 0 0 0 3.5-3.5V6a3.5 3.5 0 1 0-7 0v5.5A3.5 3.5 0 0 0 12 15Z"/><path d="M18 11.5a6 6 0 0 1-12 0M12 17.5V21" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></button>
+    <form class="composer" id="composer"><input id="text" placeholder="Type a message…" autocomplete="off"><button type="submit">↑</button></form>
+  </div>
+  <div class="home"><a href="/">← home</a> · Layla · powered by Avishkar OS</div>
+
+  <div class="scrim" id="scrim"></div>
+  <aside class="drawer" id="drawer">
+    <div class="drawer-head">
+      <span class="drawer-title">☰ LAYLA</span>
+      <button class="drawer-close" id="drawerClose" aria-label="Close">✕</button>
+    </div>
+    <div class="drawer-body" id="drawerBody">
+      <div class="drawer-loading" id="drawerLoading">Reading live status…</div>
+    </div>
+    <div class="drawer-foot"><button class="refresh-btn" id="refreshState">↻ Refresh status</button></div>
+  </aside>
+
+  <!-- suppress face.js's own HUD drawing (it checks this flag, set by the old WS client) -->
+  <script>window.__genesis_ws_active = true;</script>
+  <!-- Genesis face engine (drives real-face render + emotion layers) -->
+  <script type="module" src="/face/face.js"></script>
+
+  <script>
+  /* ================= Layla driver — voice loop drives the Genesis face ================= */
+  const $=id=>document.getElementById(id);
+  const statusEl=$('statusEl'), youEl=$('you'), laylaEl=$('layla'), micBtn=$('mic');
+  function face(fn,arg){ try{ if(window[fn]) window[fn](arg); }catch(e){} }
+  const S={idle:['Idle','IDLE'],listening:['Listening','LISTENING'],thinking:['Thinking','THINKING'],speaking:['Speaking','SPEAKING']};
+  let state='idle';
+  function setState(s){ state=s; statusEl.textContent=S[s][0]; face('setState',S[s][1]); }
+
+  // hide loader once face.js has the face up (it flips #loader text / sets window.setState)
+  const loaderPoll=setInterval(()=>{ if(window.setState){ $('loader').style.display='none'; clearInterval(loaderPoll); setState('idle'); } },400);
+
+  /* ---- audio + lipsync ---- */
+  let audioCtx,activeAnalyser=null,freq=new Uint8Array(128),visemeTimer=0,muteUntil=0;
+  function ac(){audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
+  const OPEN=['A','O','U','E'];
+  function visemeFor(a){ if(a<0.05)return 'M'; if(a<0.13)return 'E'; if(a<0.26)return 'S'; return OPEN[(Math.random()*OPEN.length)|0]; }
+  function lipLoop(ts){ if(!activeAnalyser)return;
+    activeAnalyser.getByteFrequencyData(freq); let s=0;for(let i=0;i<freq.length;i++)s+=freq[i]; const amp=(s/freq.length)/255;
+    if(ts-visemeTimer>70){ visemeTimer=ts; face('setViseme',visemeFor(amp)); }
+    requestAnimationFrame(lipLoop);
+  }
+  // speak() is a real Promise now -- it resolves only when the audio actually
+  // finishes, so callers can `await` it and know Layla is truly done talking
+  // before anything else (a new recognition result, a chained camera-look)
+  // is allowed to proceed. This is what closes the double-voice bug: before,
+  // ask()/captureAndSee() fired speak() and moved on immediately, so a second
+  // response could start talking while the first was still playing.
+  function speak(text){
+    return new Promise(async (resolve)=>{
+      try{
+        const r=await fetch('/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+        if(!r.ok)throw 0; const buf=await r.arrayBuffer(); const ab=await ac().decodeAudioData(buf);
+        const src=ac().createBufferSource();src.buffer=ab;const an=ac().createAnalyser();an.fftSize=256;freq=new Uint8Array(an.frequencyBinCount);
+        src.connect(an);an.connect(ac().destination);
+        src.onended=()=>{activeAnalyser=null;face('setViseme','M');setState('idle');muteUntil=Date.now()+800;resolve();};
+        setState('speaking'); activeAnalyser=an; visemeTimer=0; requestAnimationFrame(lipLoop); src.start();
+      }catch(e){
+        try{const u=new SpeechSynthesisUtterance(text);u.onstart=()=>setState('speaking');
+          u.onend=()=>{setState('idle');muteUntil=Date.now()+800;resolve();};speechSynthesis.speak(u);}
+        catch(_){setState('idle');resolve();}
+      }
+    });
+  }
+
+  // true from the moment a request starts until Layla has fully finished
+  // responding (including a chained camera-look) -- ANY recognition result
+  // that arrives while this is true is ignored, not just while state=='speaking'.
+  let busy = false;
+
+  /* ---- browser actions Layla's brain asks the page to perform ---- */
+  const actionLinksEl = $('actionLinks');
+  function runActions(actions){
+    if(actionLinksEl) actionLinksEl.innerHTML = '';
+    if(!actions||!actions.length) return;
+    for(const a of actions){
+      if(a.type==='open_url'){
+        // A fixed target name (not '_blank') means the browser reuses the
+        // SAME tab for every open_url action instead of stacking a new one
+        // each time -- "open YouTube", then "search X", then "open Y" now
+        // all land in one Layla-driven tab instead of piling up 3 windows.
+        try{ window.open(a.url,'layla-browser-tab'); }catch(e){}
+        // window.open() above is frequently silently blocked here -- this
+        // runs after `await fetch('/ask')`, and by then the browser's
+        // transient user-activation from the original tap/click has often
+        // expired (voice-triggered requests never had one to begin with).
+        // There's no reliable way to detect a blocked popup after the fact,
+        // so always render a real, guaranteed-clickable link too.
+        if(actionLinksEl){
+          const link=document.createElement('a');
+          link.href=a.url; link.target='layla-browser-tab'; link.rel='noopener';
+          link.className='action-link';
+          try{ link.textContent='↗ Open '+new URL(a.url).hostname.replace(/^www\./,''); }
+          catch(e){ link.textContent='↗ Open link'; }
+          actionLinksEl.appendChild(link);
+        }
+      }
+    }
+  }
+  // Shared by both look_through_camera (/see, casual glance) and
+  // read_text_in_view (/ocr, accurate text reading) -- same webcam capture,
+  // different backend endpoint depending on which the brain asked for.
+  async function captureAndPerceive(question, endpoint){
+    let stream;
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({video:{width:480,height:360}});
+      const v = document.createElement('video'); v.srcObject = stream; v.playsInline = true;
+      await v.play();
+      await new Promise(r=>setTimeout(r,180));  // let exposure settle for one frame
+      const cv = document.createElement('canvas'); cv.width=v.videoWidth||480; cv.height=v.videoHeight||360;
+      cv.getContext('2d').drawImage(v,0,0,cv.width,cv.height);
+      const dataUrl = cv.toDataURL('image/jpeg',0.82);
+      stream.getTracks().forEach(t=>t.stop());  // camera light off immediately -- on-demand only
+      const b64 = dataUrl.split(',')[1];
+      const r = await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:b64,question})});
+      const d = await r.json();
+      const ans = d.answer || d.error || "I couldn't quite make that out.";
+      laylaEl.textContent = ans; await speak(ans);
+    }catch(e){
+      if(stream) try{stream.getTracks().forEach(t=>t.stop());}catch(_){}
+      const msg = "I don't have camera access — allow it in the browser and try again.";
+      laylaEl.textContent = msg; await speak(msg);
+    }
+  }
+
+  async function ask(text){
+    if(!text.trim() || busy) return;
+    busy = true;
+    youEl.innerHTML='“'+text+'”'; laylaEl.textContent='…'; setState('thinking');
+    try{
+      const r=await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text})});
+      if(r.status===401){ location.href='/auth/login'; return; }
+      const d=await r.json();
+      const a=d.answer||d.error||'(no answer)'; laylaEl.textContent=a;
+      const urlActions=(d.actions||[]).filter(x=>x.type==='open_url');
+      const seeActions=(d.actions||[]).filter(x=>x.type==='capture_and_see');
+      const ocrActions=(d.actions||[]).filter(x=>x.type==='capture_and_ocr');
+      runActions(urlActions);
+      await speak(a);  // she finishes "let me look..." completely before anything else happens
+      if(seeActions.length) await captureAndPerceive(seeActions[0].question, '/see');
+      else if(ocrActions.length) await captureAndPerceive(ocrActions[0].question, '/ocr');
+    }catch(e){ laylaEl.textContent='I could not reach my brain just now.'; setState('idle'); }
+    finally{ busy = false; }
+  }
+
+  /* ---- "Hey Layla" once → open conversation (Web Speech, no key, Chrome/Edge) ---- */
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const WAKE_RE=/\b(hey\s+|ok\s+|okay\s+|hi\s+)?(layla|leila|laila|lyla|lila|leela)\b/i;
+  const STOP_RE=/\b(stop listening|stop layla|go to sleep|that'?s all|that is all|good ?bye)\b/i;
+  let rec=null, wakeOn=false, convo=false;
+  function chime(up){ try{const c=ac();const o=c.createOscillator();const g=c.createGain();o.type='sine';
+    o.frequency.setValueAtTime(up?600:520,c.currentTime);o.frequency.exponentialRampToValueAtTime(up?980:360,c.currentTime+0.12);
+    o.connect(g);g.connect(c.destination);g.gain.setValueAtTime(0.0001,c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.13,c.currentTime+0.02);g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+0.28);
+    o.start();o.stop(c.currentTime+0.3);}catch(e){} }
+  // Real bug fixed here (2026-09-07): with r.continuous=true (below), a
+  // single spoken sentence ("I love you" / "what all you can control")
+  // arrives across SEVERAL onresult events, and Chrome's recognizer marks
+  // an early word ("I" / "what") isFinal=true while the rest of the
+  // sentence is still being recognized. The old code called handleFinal()
+  // the instant ANY fragment finalized, so once a conversation was open
+  // every short fragment got sent to ask() as its own complete message --
+  // real, live evidence: "I", "can", "Laila", "what" all landed in
+  // production as separate messages, each answered sensibly on its own
+  // but never as the sentence the owner actually said. continuous=true
+  // never fires onend between utterances, so (unlike a one-shot
+  // recognizer) there's no natural "the user is done" event to wait for --
+  // fixed with a short silence debounce instead: wait for
+  // CONVO_SILENCE_MS with no new finalized content before treating the
+  // accumulated speech as one complete utterance.
+  //
+  // Second real bug, found and fixed the same day from a live follow-up
+  // report: naively concatenating every event's newly-final text onto a
+  // running string double-counted words. First attempted fix assumed
+  // Chrome re-finalizes the SAME result index with a growing transcript
+  // (so overwriting index i in place would dedupe it) -- but a further
+  // live report ("how how are how are you...") proved that wrong: Chrome
+  // instead emits each growing restatement as a NEW result index, where
+  // each one already contains the ENTIRE sentence so far, not just its
+  // own new word. Fixed properly with prefix-aware merging: every newly
+  // finalized segment is folded into a single running `bestFinal` string,
+  // and mergeFinal() below recognizes when one string is a growing
+  // restatement of the other (one is a prefix of the other -> keep
+  // whichever is longer, since a restatement always contains everything
+  // said before it) versus genuinely new, disjoint content (neither is a
+  // prefix of the other -> concatenate) -- correct for both the observed
+  // cumulative-restatement pattern and a genuine multi-clause utterance.
+  function mergeFinal(current, incoming){
+    if(!current) return incoming;
+    if(!incoming) return current;
+    const a=current.toLowerCase(), b=incoming.toLowerCase();
+    if(b.startsWith(a)) return incoming;   // incoming = current + more -> it's the fuller restatement
+    if(a.startsWith(b)) return current;    // incoming is a shorter/older restatement -> keep what we have
+    return current+' '+incoming;           // genuinely new, disjoint content -> real delta, append it
+  }
+  let bestFinal = '', lastSeenFinal = '', convoTimer = null;
+  const CONVO_SILENCE_MS = 900;
+  function clearConvoBuffer(){ if(convoTimer){ clearTimeout(convoTimer); convoTimer=null; } bestFinal=''; lastSeenFinal=''; }
+  function flushConvoBuffer(){
+    const text = bestFinal.trim();
+    bestFinal=''; lastSeenFinal=''; convoTimer=null;
+    if(text) handleFinal(text);
+  }
+  function endConvo(){ convo=false; clearConvoBuffer(); if(state==='listening')setState('idle'); statusEl.textContent='Say “Hey Layla”'; youEl.textContent=''; }
+  function handleFinal(text){
+    if(busy) return;  // Layla is already mid-response (incl. a camera look) -- ignore anything caught meanwhile
+    if(convo){ if(STOP_RE.test(text)){ chime(false); endConvo(); return; } ask(text); return; }
+    // first time only: need the wake word to open the conversation
+    const m=text.match(WAKE_RE); if(!m) return;
+    convo=true; chime(true); statusEl.textContent='Conversation — just talk';
+    const idx=text.toLowerCase().indexOf(m[0].toLowerCase());
+    const after=text.slice(idx+m[0].length).replace(/^[\s,.:!?-]+/,'').trim();
+    if(after.length>1) ask(after);
+    else { setState('listening'); youEl.innerHTML='<span class="live">Listening…</span>'; }
+  }
+  function initRec(){ if(!SR)return null; const r=new SR(); r.continuous=true; r.interimResults=true; r.lang='en-US';
+    r.onresult=e=>{ if(state==='speaking'||state==='thinking'||Date.now()<muteUntil) return;
+      let interim='';
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        const t=e.results[i][0].transcript.trim();
+        if(e.results[i].isFinal){ if(t) bestFinal=mergeFinal(bestFinal,t); } else interim+=t;
+      }
+      if(bestFinal && bestFinal!==lastSeenFinal){
+        lastSeenFinal = bestFinal;
+        if(convoTimer) clearTimeout(convoTimer);
+        convoTimer = setTimeout(flushConvoBuffer, CONVO_SILENCE_MS);
+      }
+      if(convo && (bestFinal||interim)) youEl.innerHTML='<span class="live">'+(bestFinal+(interim?(' '+interim):''))+'</span>';
+    };
+    r.onerror=()=>{}; r.onend=()=>{ if(wakeOn){ try{r.start();}catch(e){ setTimeout(()=>{try{r.start();}catch(_){}} ,350);} } };
+    return r; }
+  function setWake(on){ wakeOn=on;
+    if(on){ if(!rec)rec=initRec();
+      if(!rec){ laylaEl.textContent='Hands-free needs Chrome or Edge — you can still type below.'; wakeOn=false; return; }
+      micBtn.classList.add('live'); statusEl.textContent='Say “Hey Layla”'; ac().resume&&ac().resume(); try{rec.start();}catch(e){}
+      if(state!=='speaking') setState('idle');
+    } else { micBtn.classList.remove('live'); convo=false; clearConvoBuffer();
+      try{rec&&rec.stop();}catch(e){} setState('idle'); statusEl.textContent='Idle'; }
+  }
+  micBtn.addEventListener('click',()=>setWake(!wakeOn));
+  $('composer').addEventListener('submit',e=>{e.preventDefault();const v=$('text').value;$('text').value='';if(v.trim())ask(v);});
+  addEventListener('pointerdown',function once(){removeEventListener('pointerdown',once);ac().resume&&ac().resume();},{once:true});
+
+  /* ============================ Hamburger drawer — real live state ============================ */
+  const PILL_LABEL = {connected:'Connected', disconnected:'Disconnected', offline:'Offline',
+    authentication_required:'Auth Required', permission_required:'Permission Required',
+    error:'Error', disabled:'Disabled', unknown:'Unknown'};
+  function pill(status){ const s=status||'unknown'; return `<span class="pill ${s}">${PILL_LABEL[s]||s}</span>`; }
+  function row(name, status, detail){
+    return `<div class="row"><span class="row-name">${name}</span>${pill(status)}</div>` +
+           (detail?`<div class="row-detail">${detail}</div>`:'');
+  }
+  function section(icon, title, headStatus, bodyHtml, startOpen){
+    return `<div class="dsec${startOpen?' open':''}">
+      <div class="dsec-head" onclick="this.parentElement.classList.toggle('open')">
+        <span class="dsec-title">${icon} ${title}</span>
+        <span style="display:flex;align-items:center;gap:8px">${headStatus?pill(headStatus):''}<span class="dsec-caret">▶</span></span>
+      </div>
+      <div class="dsec-body">${bodyHtml}</div>
+    </div>`;
+  }
+
+  async function permissionState(name){
+    try{ const p = await navigator.permissions.query({name}); return p.state; }catch(e){ return 'unknown'; }
+  }
+  // "prompt" = the browser hasn't asked yet (no dialog shown, nothing denied) --
+  // that's a permission state, not an auth/credential state, so it must not
+  // share a label with "needs a login/API key" (Telegram, Google, etc.).
+  const PERM_MAP = {granted:'connected', denied:'disabled', prompt:'permission_required', unknown:'unknown'};
+
+  async function renderDrawer(){
+    const body = $('drawerBody');
+    let st;
+    try{ const r = await fetch('/state'); st = await r.json(); }
+    catch(e){ body.innerHTML = '<div class="drawer-loading">Could not reach Layla\'s status endpoint.</div>'; return; }
+
+    const [micP, camP] = await Promise.all([permissionState('microphone'), permissionState('camera')]);
+
+    let html = '';
+
+    // Perception
+    html += section('🎙️','Perception', null, `
+      ${row('Microphone', PERM_MAP[micP]||'unknown', micP==='prompt'?'Not asked yet — tap the mic button once to grant it':'')}
+      ${row('Camera', PERM_MAP[camP]||'unknown', camP==='prompt'?"Not asked yet — that's normal, by design. The browser will prompt the first time you say \"what do you see?\"":'')}
+      ${row('Web Access', st.perception.web_access.status, st.perception.web_access.detail)}
+    `, true);
+
+    // PC / Phone
+    html += section('💻','PC Access', st.pc_access.status, row('This PC', st.pc_access.status, st.pc_access.detail));
+    html += section('📱','Phone Access', st.phone_access.status, row('This Phone', st.phone_access.status, st.phone_access.detail));
+
+    // Home
+    const relayRows = Object.entries(st.home_control.relays||{}).map(([n,v])=>row(`Relay ${n}`, v==='on'?'connected':'offline','')).join('');
+    html += section('🏠','Home Control', st.home_control.status,
+      row('Box · '+st.home_control.device_id, st.home_control.status, st.home_control.status==='offline'?'No device has connected yet — see the ESP32 firmware guide':'') + relayRows);
+
+    // Memory
+    html += section('🧠','Memory', null, `
+      <div class="mini-stat">Conversation: <b>${st.memory.conversation_messages}</b> messages remembered</div>
+      <div class="mini-stat">Facts about you: <b>${st.memory.facts_remembered}</b> (${st.memory.facts_semantically_indexed ?? '?'} searchable by meaning)</div>
+      <div class="mini-stat">Reminders pending: <b>${st.memory.reminders_pending}</b></div>
+    `);
+
+    // Connectors
+    const apiRows = st.connectors.apis.map(a=>row(a.name,a.status,a.detail)).join('');
+    const mcpRows = st.connectors.mcp.map(m=>row('MCP: '+m.name, m.status,
+      m.tools_discovered!=null?`${m.tools_discovered} tool(s) discovered — ${(m.tools||[]).join(', ')}`:(m.detail||''))).join('');
+    html += section('🔌','Connectors', null, `<div class="mini-stat" style="padding-left:18px;font-weight:600;color:#8ea0b8">APIs</div>${apiRows}<div class="mini-stat" style="padding-left:18px;font-weight:600;color:#8ea0b8;margin-top:6px">MCP Servers</div>${mcpRows}`, true);
+
+    // Plugins
+    html += section('🧩','Plugins', null,
+      st.plugins.installed.length ? st.plugins.installed.map(p=>row(p.name,p.status,'')).join('')
+        : '<div class="empty-note">No plugins installed yet.</div>');
+
+    // Tools
+    const domainRows = Object.entries(st.tools.genesis_by_domain||{}).sort((a,b)=>b[1]-a[1])
+      .map(([d,n])=>row(d, n>0?'connected':'disabled', `${n} tool(s) registered`)).join('');
+    html += section('🛠️','Tools', null, `
+      <div class="mini-stat">Layla can call <b>${st.tools.curated_conversational.length}</b> tools directly in conversation:</div>
+      <div style="padding:2px 18px 10px 32px">${st.tools.curated_conversational.map(t=>`<span class="tool-chip">${t}</span>`).join('')}</div>
+      <div class="mini-stat">Platform registry: <b>${st.tools.platform_registered_total}</b> tools total, by domain:</div>
+      ${domainRows}
+    `);
+
+    // Settings
+    html += section('⚙️','Settings', null, `
+      <div class="mini-stat">Brain: <b>${st.settings.model}</b></div>
+      <div class="mini-stat">Fallback brain: <b>${st.settings.fallback_model}</b></div>
+      <div class="mini-stat">Vision: <b>${st.settings.vision_model}</b></div>
+      <div class="mini-stat">OCR (text reading): <b>${st.settings.ocr_model}</b></div>
+      <div class="mini-stat">Embeddings (semantic memory): <b>${st.settings.embedding_model}</b></div>
+      <div class="mini-stat">Voice: <b>${st.settings.voice}</b></div>
+    `);
+
+    body.innerHTML = html;
+  }
+
+  function openDrawer(){ $('drawer').classList.add('open'); $('scrim').classList.add('open'); renderDrawer(); }
+  function closeDrawer(){ $('drawer').classList.remove('open'); $('scrim').classList.remove('open'); }
+  $('hamburger').addEventListener('click', openDrawer);
+  $('drawerClose').addEventListener('click', closeDrawer);
+  $('scrim').addEventListener('click', closeDrawer);
+  $('refreshState').addEventListener('click', async (e)=>{
+    e.target.classList.add('spinning'); e.target.textContent='↻ Checking…';
+    try{ const r=await fetch('/state?refresh=1'); const st=await r.json(); await renderDrawer(); }
+    finally{ e.target.classList.remove('spinning'); e.target.textContent='↻ Refresh status'; }
+  });
+  </script>
+</body>
+</html>

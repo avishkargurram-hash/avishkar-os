@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://avishkar-os/factories/knowledge-factory/schemas/search-result.schema.json",
+  "title": "Avishkar OS Knowledge SearchResult",
+  "type": "object",
+  "required": ["chunk", "score"],
+  "properties": {
+    "chunk": {
+      "type": "object",
+      "required": ["document_id", "chunk_id", "text", "position"],
+      "properties": {
+        "document_id": { "type": "string" },
+        "chunk_id": { "type": "string" },
+        "text": { "type": "string" },
+        "position": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "score": { "type": "number", "minimum": -1, "maximum": 1 }
+  },
+  "additionalProperties": false
+}

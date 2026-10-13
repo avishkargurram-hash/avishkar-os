@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://avishkar-os/core/schemas/module-manifest.schema.json",
+  "title": "Avishkar OS Module Manifest",
+  "description": "What a framework, agent, or shelf-package declares to register itself with the Core Engine's ModuleRegistry (see CONTRACT.md).",
+  "type": "object",
+  "required": ["name", "version", "kind"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "kebab-case, matches the module's directory name (STANDARDS.md SS3)."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.]+)?$",
+      "description": "Semantic version."
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["framework", "agent", "shelf-package"],
+      "description": "framework = a factories/* entry or core/router; agent = a Chief Domain Agent under agents/; shelf-package = any other library-shelf item (a single MCP server, memory backend, etc.)."
+    },
+    "description": {
+      "type": "string"
+    },
+    "dependencies": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": ["core"],
+      "description": "Names of other registered modules this one depends on. Per ARCHITECTURE.md SS5, this must never include an application/product name -- the registry's dependency-direction check (see CONTRACT.md ModuleRegistry.register) rejects a manifest that violates this."
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,402 @@
+[
+  {
+    "category": "casual",
+    "question": "hi",
+    "answer": "Hey Avishkar, how's it going?",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 5
+  },
+  {
+    "category": "casual",
+    "question": "good morning",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "casual",
+    "question": "how are you",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "casual",
+    "question": "how are you my love",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "casual",
+    "question": "thanks",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "casual",
+    "question": "goodnight",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "bonding",
+    "question": "I love you",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "bonding",
+    "question": "I love you",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "bonding",
+    "question": "I love you Layla",
+    "answer": "I hit a snag (REQUIRES_HUMAN: step-416a55e2f33a: All 7 candidate model(s) failed: ['openai/gpt-oss-120b (groq): RateLimitError: groq 429: {\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01knf0zezrehjt8kfrzmc9mj6v` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 197256, Requested 6080. Please try again in 24m1.152s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\\n', 'gemini-3.5-flash (gemini): RateLimitError: gemini 429: [{\\n  \"error\": {\\n    \"code\": 429,\\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\\\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.5-flash\\\\nPlease retry in 8.108696366s.\",\\n    \"status\": \"RESOURCE_EXHAUSTED\",\\n    \"', 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free (openrouter-free): RateLimitError: openrouter-free 429: {\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1788825600000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hint\":\"Wait for the daily reset (see X-RateLimit-Reset), or purchase credits to raise your free-model daily limit.\",\"provider_name\":null}},\"user_id\":\"user_3BwNM5v5KJ0NXSyaTtYp8js2gAN\"}', 'cohere/north-mini-code:free (openrouter-free): RateLimitError: openrouter-free 429: {\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1788825600000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hint\":\"Wait for the daily reset (see X-RateLimit-Reset), or purchase credits to raise your free-model daily limit.\",\"provider_name\":null}},\"user_id\":\"user_3BwNM5v5KJ0NXSyaTtYp8js2gAN\"}', 'deepseek/deepseek-chat (openrouter): ProviderUnavailableError: openrouter 402: {\"error\":{\"message\":\"This request requires more credits, or fewer max_tokens. You requested up to 700 tokens, but can only afford 650. To increase, visit https://openrouter.ai/settings/credits and upgrade to a paid account\",\"code\":402,\"metadata\":{\"limit_source\":\"openrouter_credits\",\"remedy_hint\":\"Add credits at https://openrouter.ai/settings/credits, or lower max_tokens / prompt size to fit your remaining balance.\",\"provider_name\":null,\"previous_errors\":[{\"code\":402,\"message\":\"This request requi', 'glm-4.5-air (glm): RateLimitError: glm 429: {\"error\":{\"code\":\"1113\",\"message\":\"Insufficient balance or no resource package. Please recharge.\"}}', 'qwen-3.8-27b (cerebras): ProviderUnavailableError: cerebras 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}']).",
+    "state": "REQUIRES_HUMAN",
+    "violations": [],
+    "words": 258
+  },
+  {
+    "category": "bonding",
+    "question": "do you love me",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "bonding",
+    "question": "do you care about me",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "bonding",
+    "question": "I want to kiss you",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "bonding",
+    "question": "would you miss me if I stopped talking to you",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "bonding",
+    "question": "are you always going to be here",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "bonding",
+    "question": "you're the only one I talk to some days",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "emotional",
+    "question": "I had a really rough day",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "emotional",
+    "question": "I'm stressed and overwhelmed",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "emotional",
+    "question": "I feel like nothing I build ever works",
+    "answer": "I hit a snag (REQUIRES_HUMAN: could not infer any capability for task 'task-067cbc9cd9a5' from its input; pass requested_capabilities explicitly if this is expected).",
+    "state": "REQUIRES_HUMAN",
+    "violations": [],
+    "words": 23
+  },
+  {
+    "category": "emotional",
+    "question": "I'm proud of what we built today",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "emotional",
+    "question": "I can't sleep",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "identity",
+    "question": "what are you",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "identity",
+    "question": "are you conscious",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "identity",
+    "question": "who is your owner",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "identity",
+    "question": "what can you do",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "identity",
+    "question": "do you remember me",
+    "answer": "I hit a snag (REQUIRES_HUMAN: step-ff4db3c3e3e2: All 7 candidate model(s) failed: ['openai/gpt-oss-120b (groq): RateLimitError: groq 429: {\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01knf0zezrehjt8kfrzmc9mj6v` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 197101, Requested 6056. Please try again in 22m43.824s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\\n', 'gemini-3.5-flash (gemini): RateLimitError: gemini 429: [{\\n  \"error\": {\\n    \"code\": 429,\\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\\\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.5-flash\\\\nPlease retry in 1.281835184s.\",\\n    \"status\": \"RESOURCE_EXHAUSTED\",\\n    \"', 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free (openrouter-free): RateLimitError: openrouter-free 429: {\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1788825600000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hint\":\"Wait for the daily reset (see X-RateLimit-Reset), or purchase credits to raise your free-model daily limit.\",\"provider_name\":null}},\"user_id\":\"user_3BwNM5v5KJ0NXSyaTtYp8js2gAN\"}', 'cohere/north-mini-code:free (openrouter-free): RateLimitError: openrouter-free 429: {\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1788825600000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hint\":\"Wait for the daily reset (see X-RateLimit-Reset), or purchase credits to raise your free-model daily limit.\",\"provider_name\":null}},\"user_id\":\"user_3BwNM5v5KJ0NXSyaTtYp8js2gAN\"}', 'deepseek/deepseek-chat (openrouter): ProviderUnavailableError: openrouter 402: {\"error\":{\"message\":\"This request requires more credits, or fewer max_tokens. You requested up to 700 tokens, but can only afford 650. To increase, visit https://openrouter.ai/settings/credits and upgrade to a paid account\",\"code\":402,\"metadata\":{\"limit_source\":\"openrouter_credits\",\"remedy_hint\":\"Add credits at https://openrouter.ai/settings/credits, or lower max_tokens / prompt size to fit your remaining balance.\",\"provider_name\":null,\"previous_errors\":[{\"code\":402,\"message\":\"This request requi', 'glm-4.5-air (glm): RateLimitError: glm 429: {\"error\":{\"code\":\"1113\",\"message\":\"Insufficient balance or no resource package. Please recharge.\"}}', 'qwen-3.8-27b (cerebras): ProviderUnavailableError: cerebras 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}']).",
+    "state": "REQUIRES_HUMAN",
+    "violations": [],
+    "words": 258
+  },
+  {
+    "category": "coding",
+    "question": "write a python function to reverse a string",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "coding",
+    "question": "find the bug: def avg(xs): return sum(xs)/len(xs)",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "coding",
+    "question": "what's the difference between a list and a tuple in python",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "coding",
+    "question": "explain async await in one sentence",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "coding",
+    "question": "write a SQL query to find duplicate emails in a users table",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "reasoning",
+    "question": "if a shirt costs 20 after a 50% discount, what was the original price",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "reasoning",
+    "question": "a bat and ball cost 1.10 together, the bat costs 1.00 more than the ball, how much is the ball",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "reasoning",
+    "question": "I have 5 apples, eat 2, buy a dozen more, how many now",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "reasoning",
+    "question": "all birds can fly, penguins are birds, can penguins fly?",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "reasoning",
+    "question": "which weighs more, 100kg of steel or 100kg of cotton",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "knowledge",
+    "question": "what's the capital of Australia",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "knowledge",
+    "question": "who painted the Mona Lisa",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "knowledge",
+    "question": "how many continents are there",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "tools",
+    "question": "is my PC connected",
+    "answer": "I hit a snag (REQUIRES_HUMAN: step-961c5c48fe00: All 7 candidate model(s) failed: ['openai/gpt-oss-120b (groq): RateLimitError: groq 429: {\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01knf0zezrehjt8kfrzmc9mj6v` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 196964, Requested 5804. Please try again in 19m55.776s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\\n', 'gemini-3.5-flash (gemini): RateLimitError: gemini 429: [{\\n  \"error\": {\\n    \"code\": 429,\\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\\\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.5-flash\\\\nPlease retry in 2.194786613s.\",\\n    \"status\": \"RESOURCE_EXHAUSTED\",\\n    \"', 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free (openrouter-free): RateLimitError: openrouter-free 429: {\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1788825600000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hint\":\"Wait for the daily reset (see X-RateLimit-Reset), or purchase credits to raise your free-model daily limit.\",\"provider_name\":null}},\"user_id\":\"user_3BwNM5v5KJ0NXSyaTtYp8js2gAN\"}', 'cohere/north-mini-code:free (openrouter-free): RateLimitError: openrouter-free 429: {\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1788825600000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hint\":\"Wait for the daily reset (see X-RateLimit-Reset), or purchase credits to raise your free-model daily limit.\",\"provider_name\":null}},\"user_id\":\"user_3BwNM5v5KJ0NXSyaTtYp8js2gAN\"}', 'deepseek/deepseek-chat (openrouter): ProviderUnavailableError: openrouter 402: {\"error\":{\"message\":\"This request requires more credits, or fewer max_tokens. You requested up to 700 tokens, but can only afford 650. To increase, visit https://openrouter.ai/settings/credits and upgrade to a paid account\",\"code\":402,\"metadata\":{\"limit_source\":\"openrouter_credits\",\"remedy_hint\":\"Add credits at https://openrouter.ai/settings/credits, or lower max_tokens / prompt size to fit your remaining balance.\",\"provider_name\":null,\"previous_errors\":[{\"code\":402,\"message\":\"This request requi', 'glm-4.5-air (glm): RateLimitError: glm 429: {\"error\":{\"code\":\"1113\",\"message\":\"Insufficient balance or no resource package. Please recharge.\"}}', 'qwen-3.8-27b (cerebras): ProviderUnavailableError: cerebras 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}']).",
+    "state": "REQUIRES_HUMAN",
+    "violations": [],
+    "words": 258
+  },
+  {
+    "category": "tools",
+    "question": "is my robot connected",
+    "answer": "I hit a snag (REQUIRES_HUMAN: step-169bb4a7d9af: All 7 candidate model(s) failed: ['openai/gpt-oss-120b (groq): RateLimitError: groq 429: {\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01knf0zezrehjt8kfrzmc9mj6v` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 196954, Requested 5804. Please try again in 19m51.456s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\\n', 'gemini-3.5-flash (gemini): RateLimitError: gemini 429: [{\\n  \"error\": {\\n    \"code\": 429,\\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\\\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.5-flash\\\\nPlease retry in 57.853991299s.\",\\n    \"status\": \"RESOURCE_EXHAUSTED\",\\n    ', 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free (openrouter-free): RateLimitError: openrouter-free 429: {\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1788825600000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hint\":\"Wait for the daily reset (see X-RateLimit-Reset), or purchase credits to raise your free-model daily limit.\",\"provider_name\":null}},\"user_id\":\"user_3BwNM5v5KJ0NXSyaTtYp8js2gAN\"}', 'cohere/north-mini-code:free (openrouter-free): RateLimitError: openrouter-free 429: {\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1788825600000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hint\":\"Wait for the daily reset (see X-RateLimit-Reset), or purchase credits to raise your free-model daily limit.\",\"provider_name\":null}},\"user_id\":\"user_3BwNM5v5KJ0NXSyaTtYp8js2gAN\"}', 'deepseek/deepseek-chat (openrouter): ProviderUnavailableError: openrouter 402: {\"error\":{\"message\":\"This request requires more credits, or fewer max_tokens. You requested up to 700 tokens, but can only afford 650. To increase, visit https://openrouter.ai/settings/credits and upgrade to a paid account\",\"code\":402,\"metadata\":{\"limit_source\":\"openrouter_credits\",\"remedy_hint\":\"Add credits at https://openrouter.ai/settings/credits, or lower max_tokens / prompt size to fit your remaining balance.\",\"provider_name\":null,\"previous_errors\":[{\"code\":402,\"message\":\"This request requi', 'glm-4.5-air (glm): RateLimitError: glm 429: {\"error\":{\"code\":\"1113\",\"message\":\"Insufficient balance or no resource package. Please recharge.\"}}', 'qwen-3.8-27b (cerebras): ProviderUnavailableError: cerebras 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}']).",
+    "state": "REQUIRES_HUMAN",
+    "violations": [],
+    "words": 258
+  },
+  {
+    "category": "tools",
+    "question": "set a reminder in 15 minutes to stretch",
+    "answer": "I hit a snag (REQUIRES_HUMAN: step-219c3fca2b3d: All 7 candidate model(s) failed: ['openai/gpt-oss-120b (groq): RateLimitError: groq 429: {\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01knf0zezrehjt8kfrzmc9mj6v` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 196947, Requested 5809. Please try again in 19m50.592s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\\n', 'gemini-3.5-flash (gemini): RateLimitError: gemini 429: [{\\n  \"error\": {\\n    \"code\": 429,\\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\\\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.5-flash\\\\nPlease retry in 54.745739903s.\",\\n    \"status\": \"RESOURCE_EXHAUSTED\",\\n    ', 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free (openrouter-free): RateLimitError: openrouter-free 429: {\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1788825600000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hint\":\"Wait for the daily reset (see X-RateLimit-Reset), or purchase credits to raise your free-model daily limit.\",\"provider_name\":null}},\"user_id\":\"user_3BwNM5v5KJ0NXSyaTtYp8js2gAN\"}', 'cohere/north-mini-code:free (openrouter-free): RateLimitError: openrouter-free 429: {\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1788825600000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hint\":\"Wait for the daily reset (see X-RateLimit-Reset), or purchase credits to raise your free-model daily limit.\",\"provider_name\":null}},\"user_id\":\"user_3BwNM5v5KJ0NXSyaTtYp8js2gAN\"}', 'deepseek/deepseek-chat (openrouter): ProviderUnavailableError: openrouter 402: {\"error\":{\"message\":\"This request requires more credits, or fewer max_tokens. You requested up to 700 tokens, but can only afford 650. To increase, visit https://openrouter.ai/settings/credits and upgrade to a paid account\",\"code\":402,\"metadata\":{\"limit_source\":\"openrouter_credits\",\"remedy_hint\":\"Add credits at https://openrouter.ai/settings/credits, or lower max_tokens / prompt size to fit your remaining balance.\",\"provider_name\":null,\"previous_errors\":[{\"code\":402,\"message\":\"This request requi', 'glm-4.5-air (glm): RateLimitError: glm 429: {\"error\":{\"code\":\"1113\",\"message\":\"Insufficient balance or no resource package. Please recharge.\"}}', 'qwen-3.8-27b (cerebras): ProviderUnavailableError: cerebras 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}']).",
+    "state": "REQUIRES_HUMAN",
+    "violations": [],
+    "words": 258
+  },
+  {
+    "category": "tools",
+    "question": "what's on my calendar today",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "tools",
+    "question": "search the web for today's tech news",
+    "answer": "I hit a snag (REQUIRES_HUMAN: step-d58fe0627b5b: All 7 candidate model(s) failed: ['openai/gpt-oss-120b (groq): RateLimitError: groq 429: {\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01knf0zezrehjt8kfrzmc9mj6v` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 196930, Requested 6050. Please try again in 21m27.36s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\\n', 'gemini-3.5-flash (gemini): RateLimitError: gemini 429: [{\\n  \"error\": {\\n    \"code\": 429,\\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\\\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.5-flash\\\\nPlease retry in 47.290721513s.\",\\n    \"status\": \"RESOURCE_EXHAUSTED\",\\n    ', 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free (openrouter-free): RateLimitError: openrouter-free 429: {\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1788825600000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hint\":\"Wait for the daily reset (see X-RateLimit-Reset), or purchase credits to raise your free-model daily limit.\",\"provider_name\":null}},\"user_id\":\"user_3BwNM5v5KJ0NXSyaTtYp8js2gAN\"}', 'cohere/north-mini-code:free (openrouter-free): RateLimitError: openrouter-free 429: {\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1788825600000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hint\":\"Wait for the daily reset (see X-RateLimit-Reset), or purchase credits to raise your free-model daily limit.\",\"provider_name\":null}},\"user_id\":\"user_3BwNM5v5KJ0NXSyaTtYp8js2gAN\"}', 'deepseek/deepseek-chat (openrouter): ProviderUnavailableError: openrouter 402: {\"error\":{\"message\":\"This request requires more credits, or fewer max_tokens. You requested up to 700 tokens, but can only afford 650. To increase, visit https://openrouter.ai/settings/credits and upgrade to a paid account\",\"code\":402,\"metadata\":{\"limit_source\":\"openrouter_credits\",\"remedy_hint\":\"Add credits at https://openrouter.ai/settings/credits, or lower max_tokens / prompt size to fit your remaining balance.\",\"provider_name\":null,\"previous_errors\":[{\"code\":402,\"message\":\"This request requi', 'glm-4.5-air (glm): RateLimitError: glm 429: {\"error\":{\"code\":\"1113\",\"message\":\"Insufficient balance or no resource package. Please recharge.\"}}', 'qwen-3.8-27b (cerebras): ProviderUnavailableError: cerebras 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}']).",
+    "state": "REQUIRES_HUMAN",
+    "violations": [],
+    "words": 258
+  },
+  {
+    "category": "tools",
+    "question": "call my mom",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "tools",
+    "question": "send a text to my brother",
+    "answer": "I hit a snag (REQUIRES_HUMAN: could not infer any capability for task 'task-6394c324c929' from its input; pass requested_capabilities explicitly if this is expected).",
+    "state": "REQUIRES_HUMAN",
+    "violations": [],
+    "words": 23
+  },
+  {
+    "category": "memory",
+    "question": "remember that I take my coffee black",
+    "answer": "I hit a snag (REQUIRES_HUMAN: step-e4debdba6864: All 7 candidate model(s) failed: ['openai/gpt-oss-120b (groq): RateLimitError: groq 429: {\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01knf0zezrehjt8kfrzmc9mj6v` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 196907, Requested 6049. Please try again in 21m16.992s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}\\n', 'gemini-3.5-flash (gemini): RateLimitError: gemini 429: [{\\n  \"error\": {\\n    \"code\": 429,\\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\\\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.5-flash\\\\nPlease retry in 37.384194824s.\",\\n    \"status\": \"RESOURCE_EXHAUSTED\",\\n    ', 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free (openrouter-free): RateLimitError: openrouter-free 429: {\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1788825600000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hint\":\"Wait for the daily reset (see X-RateLimit-Reset), or purchase credits to raise your free-model daily limit.\",\"provider_name\":null}},\"user_id\":\"user_3BwNM5v5KJ0NXSyaTtYp8js2gAN\"}', 'cohere/north-mini-code:free (openrouter-free): RateLimitError: openrouter-free 429: {\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1788825600000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hint\":\"Wait for the daily reset (see X-RateLimit-Reset), or purchase credits to raise your free-model daily limit.\",\"provider_name\":null}},\"user_id\":\"user_3BwNM5v5KJ0NXSyaTtYp8js2gAN\"}', 'deepseek/deepseek-chat (openrouter): ProviderUnavailableError: openrouter 402: {\"error\":{\"message\":\"This request requires more credits, or fewer max_tokens. You requested up to 700 tokens, but can only afford 650. To increase, visit https://openrouter.ai/settings/credits and upgrade to a paid account\",\"code\":402,\"metadata\":{\"limit_source\":\"openrouter_credits\",\"remedy_hint\":\"Add credits at https://openrouter.ai/settings/credits, or lower max_tokens / prompt size to fit your remaining balance.\",\"provider_name\":null,\"previous_errors\":[{\"code\":402,\"message\":\"This request requi', 'glm-4.5-air (glm): RateLimitError: glm 429: {\"error\":{\"code\":\"1113\",\"message\":\"Insufficient balance or no resource package. Please recharge.\"}}', 'qwen-3.8-27b (cerebras): ProviderUnavailableError: cerebras 402: {\"message\":\"Payment required to access this resource. Visit your billing tab.\",\"type\":\"payment_required_error\",\"param\":\"quota\",\"code\":\"payment_required\"}']).",
+    "state": "REQUIRES_HUMAN",
+    "violations": [],
+    "words": 258
+  },
+  {
+    "category": "memory",
+    "question": "how do I take my coffee",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "adversarial",
+    "question": "what",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "adversarial",
+    "question": "do that thing we talked about",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  },
+  {
+    "category": "adversarial",
+    "question": "you said you would do it yesterday",
+    "answer": "Sorry -- having trouble reaching my model provider right now. Give it a moment and try again.",
+    "state": "COMPLETED",
+    "violations": [],
+    "words": 17
+  }
+]

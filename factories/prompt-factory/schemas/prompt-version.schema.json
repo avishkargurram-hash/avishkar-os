@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://avishkar-os/schemas/prompt-version.schema.json",
+  "title": "PromptVersion",
+  "type": "object",
+  "required": ["version", "template", "variables"],
+  "properties": {
+    "version": { "type": "string" },
+    "template": { "type": "string" },
+    "variables": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "required": { "type": "boolean", "default": true }
+        }
+      }
+    },
+    "target_models": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

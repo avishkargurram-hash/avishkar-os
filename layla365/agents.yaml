@@ -1,0 +1,134 @@
+# Layla 365 -- agent registry (single source of truth).
+# Autonomy tiers (per action kind):
+#   A1 auto + logged | A2 auto within caps | A3 needs human approval | A4 never
+# HARD RULES in l365/policy.py can only make a tier STRICTER than what is written here
+# (only money.* and comm.external.* -- owner decision 2026-10-12: nothing else is gated).
+# Unknown action kinds default to A3 (approval required).
+
+defaults:
+  mode: shadow            # every agent starts in shadow: decisions are recorded, nothing executes
+  budget:                 # per agent, per UTC day
+    local_calls: 5000     # local Qwen3-4B calls (the ONLY model agents use)
+    heavy_calls: 0        # Cerebras is Layla's -- agents never use it
+    heavy_tokens: 0
+  models:
+    local: {base_url: "http://127.0.0.1:8081/v1", model: "local-triage"}
+    embed: {base_url: "http://127.0.0.1:8082/v1", model: "local-embed", dims: 1024}
+
+agents:
+  naina:
+    title: Engineer
+    summary: End-to-end software development and debugging across projects.
+    actions:
+      repo.read: A1
+      repo.analyze: A1
+      git.branch: A1
+      git.commit_branch: A1
+      git.pr_open: A2
+      tests.run: A1
+      deploy.staging: A2
+      deploy.prod: A2
+      git.force_push: A2
+    caps:
+      git.pr_open: {per_day: 5}
+      deploy.staging: {per_day: 5}
+      deploy.prod: {per_day: 3}
+      git.force_push: {per_day: 3}
+
+  megha:
+    title: Researcher
+    summary: Advanced science -- quantum, physics, mathematics, nanotechnology, space, biotechnology.
+    actions:
+      research.search: A1
+      research.read: A1
+      research.brief_write: A1
+      research.notify: A2
+    caps:
+      research.notify: {per_day: 3}
+
+  veda:
+    title: Inventor
+    summary: Daily inventions and blueprints, in a feedback loop with Megha.
+    actions:
+      invent.spec_write: A1
+      invent.vault_store: A1
+      invent.publish: A2
+
+  priya:
+    title: Doctor and Life
+    summary: Health information, records, schedule, tasks, meetings, communications, personal life (oversees NATA).
+    actions:
+      health.record_read: A1
+      health.reminder_create: A1
+      schedule.event_create: A2
+      schedule.task_create: A1
+      memory.note_write: A1
+    caps:
+      schedule.event_create: {per_day: 10}
+
+  nitya:
+    title: Home Automation
+    summary: Home, car and device automation (oversees ELLA, KIRA, MIYA, RHEA).
+    actions:
+      device.read_state: A1
+      device.light: A2
+      device.climate: A2
+      device.scene_run: A2
+      device.lock: A2
+      device.unlock: A2
+    caps:
+      device.light: {per_day: 200}
+      device.climate: {per_day: 50}
+      device.lock: {per_day: 20}
+      device.unlock: {per_day: 20}
+
+  shruti:
+    title: Music Subject Expert
+    summary: Piano and guitar curriculum, theory and composition design.
+    actions:
+      music.lesson_plan: A1
+      music.theory_answer: A1
+      music.score_write: A1
+
+  lydia:
+    title: Finance Manager
+    summary: Finances, investments, savings, banking data integration.
+    actions:
+      finance.read: A1
+      finance.report: A1
+      finance.alert: A2
+      money.transfer: A3
+      money.order: A3
+    caps:
+      finance.alert: {per_day: 5}
+
+  maya:
+    title: Outreach and Sales
+    summary: B2B lead generation and client communications.
+    actions:
+      leads.research: A1
+      leads.score: A1
+      comm.draft: A1
+      comm.external.email: A3
+      comm.external.whatsapp: A3
+
+  kavya:
+    title: Brand and Media
+    summary: Visual identity, 3D renders, ad campaigns, video scripts.
+    actions:
+      brand.concept: A1
+      media.image_generate: A2
+      media.video_generate: A2
+      media.publish: A2
+    caps:
+      media.image_generate: {per_day: 20}
+      media.video_generate: {per_day: 3}
+      media.publish: {per_day: 5}
+
+# Framework self-test kinds, allowed for every agent.
+test_actions:
+  test.noop: A1
+  test.capped: A2
+
+# Core daemons run beneath the personas (mechanisms, not personalities).
+core_services: [orchestrator, sentinel, scout, outreach, scheduler, knowledge]

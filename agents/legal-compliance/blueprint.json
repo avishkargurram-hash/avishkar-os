@@ -1,0 +1,19 @@
+{
+  "name": "legal-compliance",
+  "domain": "Legal & Compliance",
+  "version": "0.1.0",
+  "mission": "Review contracts and policies for risk, flag compliance gaps, and explain legal concepts in plain language, while always deferring binding legal advice and representation to a licensed attorney.",
+  "default_model": "claude-opus-5",
+  "max_iterations": 4,
+  "memory_policy": { "backend": "file" },
+  "reasoning_strategies": ["decision_matrix", "systems_thinking", "first_principles"],
+  "tools": [
+    { "kind": "tool", "name": "flag_risky_clauses" },
+    { "kind": "tool", "name": "check_citation_format" },
+    { "kind": "tool", "name": "search_legal_references" },
+    { "kind": "mcp", "server": "courtlistener", "tool_name": "search_case_law" }
+  ],
+  "guardrails": ["no-secrets-in-task", "no-unauthorized-legal-advice"],
+  "quality_gates": ["minimum-substance", "includes-attorney-disclaimer"],
+  "sub_agent_roles": ["contract-reviewer", "compliance-auditor", "policy-drafter", "ip-specialist"]
+}

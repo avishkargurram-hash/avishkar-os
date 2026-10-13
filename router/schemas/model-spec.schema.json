@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://avishkar-os/router/schemas/model-spec.schema.json",
+  "title": "AI Router ModelSpec",
+  "description": "Metadata a ModelProvider publishes about one model it can serve. See CONTRACT.md SS1.",
+  "type": "object",
+  "required": ["model_id", "provider", "capabilities", "input_cost_per_mtok", "output_cost_per_mtok", "max_context_tokens", "max_output_tokens"],
+  "properties": {
+    "model_id": { "type": "string", "description": "e.g. 'claude-opus-5'. Unique across every provider registered with one Router." },
+    "provider": { "type": "string", "description": "The serving ModelProvider's .name, e.g. 'anthropic'." },
+    "capabilities": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "e.g. ['chat','tools','vision','thinking']. Used by RoutingRule capability matching."
+    },
+    "input_cost_per_mtok": { "type": "number", "minimum": 0, "description": "USD per 1,000,000 input tokens." },
+    "output_cost_per_mtok": { "type": "number", "minimum": 0, "description": "USD per 1,000,000 output tokens." },
+    "max_context_tokens": { "type": "integer", "minimum": 1 },
+    "max_output_tokens": { "type": "integer", "minimum": 1 }
+  },
+  "additionalProperties": false
+}

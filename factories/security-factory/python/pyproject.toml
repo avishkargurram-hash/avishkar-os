@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "avishkar-security"
+version = "0.1.0"
+description = "Security Framework -- secret scanning, guardrail policies, and a threat-model checklist for Avishkar OS."
+readme = "../README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "Avishkar Labs" }]
+dependencies = ["avishkar-core", "avishkar-agent"]
+# Stdlib-only (re/pathlib/time); avishkar-agent depended on only by
+# agent_bridge.py, which produces real Guardrail instances.
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["avishkar_security*"]

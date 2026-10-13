@@ -1,0 +1,12 @@
+{
+  "appId": "in.tryvanta.layla",
+  "appName": "Layla",
+  "webDir": "www",
+  "server": {
+    "url": "https://layla.tryvanta.in/app",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

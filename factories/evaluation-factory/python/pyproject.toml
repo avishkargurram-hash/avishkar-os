@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "avishkar-evaluation"
+version = "0.1.0"
+description = "Evaluation Framework -- eval suites, scorers, and regression gates for agents, prompts, and workflows in Avishkar OS."
+readme = "../README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "Avishkar Labs" }]
+dependencies = ["avishkar-core", "avishkar-prompt", "avishkar-agent", "avishkar-workflow"]
+# Stdlib-only; avishkar-prompt depended on to reuse EvalCase/EvalReport/
+# RegressionResult/Scorer verbatim (one canonical scoring vocabulary,
+# not a parallel one). avishkar-agent/avishkar-workflow depended on
+# only by their respective bridge modules.
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["avishkar_evaluation*"]

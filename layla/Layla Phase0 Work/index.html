@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Layla</title>
+<style>
+  :root{--bg:#080b11;--ink:#e9edf4;--muted:#8790a1;--line:#1a2130;--teal:#35e0c8;--teal2:#8dffee;--blue:#4a9eff;--amber:#ffb23e}
+  *{box-sizing:border-box}html,body{height:100%;margin:0}
+  body{background:radial-gradient(120% 120% at 50% -10%,#0e1622,var(--bg) 55%,#05070b);color:var(--ink);
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased;user-select:none}
+  #scene{position:fixed;inset:0;z-index:1}
+  header{position:fixed;top:0;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:10px;padding:20px 0;z-index:4}
+  .brand{font-weight:700;letter-spacing:.4em;font-size:14px;text-transform:uppercase;
+    background:linear-gradient(90deg,var(--teal),var(--teal2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .status{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 12px;transition:color .3s,border-color .3s}
+  #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:3;color:var(--muted);font-size:14px;letter-spacing:.05em}
+  .caption{position:fixed;left:50%;bottom:150px;transform:translateX(-50%);width:min(720px,88vw);text-align:center;z-index:4;pointer-events:none}
+  .you{font-size:14px;color:var(--muted);min-height:20px;margin-bottom:10px}.you .live{color:var(--blue)}
+  .layla{font-size:19px;line-height:1.5;color:var(--ink);max-height:32vh;overflow-y:auto;scrollbar-width:none;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+  .layla::-webkit-scrollbar{display:none}
+  .dock{position:fixed;left:50%;bottom:44px;transform:translateX(-50%);display:flex;align-items:center;gap:14px;z-index:5}
+  .mic{width:72px;height:72px;border-radius:50%;border:none;cursor:pointer;position:relative;
+    background:radial-gradient(circle at 50% 35%,#16b8a4,#0c7d70);color:#02110e;box-shadow:0 8px 30px rgba(0,0,0,.5);transition:transform .15s}
+  .mic:hover{transform:scale(1.05)}
+  .mic.live{background:radial-gradient(circle at 50% 35%,#5aa8ff,#2d6fd0);animation:pulse 1.4s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(74,158,255,.45),0 8px 30px rgba(0,0,0,.5)}70%{box-shadow:0 0 0 20px rgba(74,158,255,0),0 8px 30px rgba(0,0,0,.5)}100%{box-shadow:0 0 0 0 rgba(74,158,255,0),0 8px 30px rgba(0,0,0,.5)}}
+  .mic svg{width:28px;height:28px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}
+  .composer{display:flex;align-items:center;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:999px;padding:6px 6px 6px 18px;width:min(420px,72vw);backdrop-filter:blur(8px)}
+  .composer input{flex:1;background:transparent;border:none;outline:none;color:var(--ink);font-size:15px;font-family:inherit}
+  .composer input::placeholder{color:var(--muted)}
+  .composer button{background:var(--teal);color:#04120f;border:none;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:16px}
+  .hint{position:fixed;bottom:14px;left:0;right:0;text-align:center;font-size:11px;color:#4a5364;z-index:4}
+  .hint a{color:var(--muted)}
+</style>
+</head>
+<body>
+  <header><span class="brand">Layla</span><span class="status" id="status">Waking…</span></header>
+  <div id="loading">Loading Layla…</div>
+  <div id="scene"></div>
+  <div class="caption"><div class="you" id="you"></div><div class="layla" id="layla">Tap the mic and talk to me — or type below.</div></div>
+  <div class="dock">
+    <button class="mic" id="mic" aria-label="Talk"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 15a3.5 3.5 0 0 0 3.5-3.5V6a3.5 3.5 0 1 0-7 0v5.5A3.5 3.5 0 0 0 12 15Z"/><path d="M18 11.5a6 6 0 0 1-12 0M12 17.5V21" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></button>
+    <form class="composer" id="composer"><input id="text" placeholder="Type a message…" autocomplete="off"><button type="submit">↑</button></form>
+  </div>
+  <div class="hint"><a href="/">← home</a> · Layla · powered by Avishkar OS</div>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const $ = id => document.getElementById(id);
+const statusEl=$('status'), youEl=$('you'), laylaEl=$('layla'), micBtn=$('mic');
+const STATES={idle:['Idle','#35e0c8'],listening:['Listening','#4a9eff'],thinking:['Thinking','#ffb23e'],speaking:['Speaking','#8dffee']};
+let state='idle';
+function setState(s){state=s;const[l,c]=STATES[s];statusEl.textContent=l;statusEl.style.color=c;statusEl.style.borderColor=c+'66';}
+
+/* ---------- three.js scene ---------- */
+let renderer,scene,camera,head,morph={},clock=new THREE.Clock();
+let jawIdx=-1, blinkL=-1, blinkR=-1, mouthI=-1, browI=-1;
+let speakLevel=0, blinkT=0, nextBlink=1.5;
+
+function initThree(){
+  const el=$('scene');
+  renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.05;
+  el.appendChild(renderer.domElement);
+  scene=new THREE.Scene();
+  const pmrem=new THREE.PMREMGenerator(renderer);
+  scene.environment=pmrem.fromScene(new RoomEnvironment(),0.5).texture;
+  camera=new THREE.PerspectiveCamera(28,innerWidth/innerHeight,0.1,100);
+  camera.position.set(0,0.06,0.65);
+  // cinematic key + rim
+  const key=new THREE.DirectionalLight(0xffffff,2.2); key.position.set(0.6,1,1.2); scene.add(key);
+  const rim=new THREE.DirectionalLight(0x66d9ff,1.4); rim.position.set(-1,0.4,-0.8); scene.add(rim);
+  scene.add(new THREE.AmbientLight(0x223044,0.6));
+
+  const ktx2=new KTX2Loader().setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/basis/').detectSupport(renderer);
+  const loader=new GLTFLoader().setKTX2Loader(ktx2).setMeshoptDecoder(MeshoptDecoder);
+  loader.load('/avatar.glb', gltf=>{
+    head=gltf.scene;
+    let best=null,bestN=0;
+    head.traverse(o=>{ if(o.morphTargetDictionary){ const n=Object.keys(o.morphTargetDictionary).length; if(n>bestN){bestN=n;best=o;} } });
+    if(best){ morph=best; const d=best.morphTargetDictionary;
+      jawIdx = d['jawOpen'] ?? d['mouthOpen'] ?? -1;
+      mouthI = d['mouthFunnel'] ?? d['mouthPucker'] ?? -1;
+      blinkL = d['eyeBlinkLeft'] ?? d['eyeBlink_L'] ?? -1;
+      blinkR = d['eyeBlinkRight'] ?? d['eyeBlink_R'] ?? -1;
+      browI  = d['browInnerUp'] ?? -1;
+    }
+    // frame the head
+    const box=new THREE.Box3().setFromObject(head); const c=box.getCenter(new THREE.Vector3()); const sz=box.getSize(new THREE.Vector3());
+    head.position.sub(c); head.position.y += sz.y*0.12;   // lift so face is centered
+    const dist=sz.y*2.1; camera.position.set(0, sz.y*0.06, dist); camera.lookAt(0,0,0);
+    scene.add(head);
+    $('loading').hidden=true; setState('idle');
+  }, undefined, err=>{ $('loading').textContent='Avatar failed to load — voice still works. ('+err+')'; setState('idle'); });
+
+  addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+  renderer.setAnimationLoop(render);
+}
+function setMorph(i,v){ if(i>=0&&morph.morphTargetInfluences) morph.morphTargetInfluences[i]=v; }
+function render(){
+  const dt=clock.getDelta(), t=clock.elapsedTime;
+  // amplitude from active analyser
+  let amp=0; if(activeAnalyser){activeAnalyser.getByteFrequencyData(freq); let s=0;for(let i=0;i<freq.length;i++)s+=freq[i]; amp=(s/freq.length)/255;}
+  speakLevel += (amp - speakLevel)*0.35;
+  if(head){
+    setMorph(jawIdx, Math.min(0.72, speakLevel*1.6));
+    setMorph(mouthI, Math.min(0.4, speakLevel*0.6));
+    // blink
+    blinkT+=dt; let bl=0;
+    if(blinkT>nextBlink){ const p=(blinkT-nextBlink)/0.12; bl=p<1?Math.sin(p*Math.PI):0; if(p>=1){blinkT=0;nextBlink=1.6+Math.random()*3;} }
+    setMorph(blinkL,bl); setMorph(blinkR,bl);
+    // subtle life: head sway + brow on speak
+    head.rotation.y=Math.sin(t*0.5)*0.05; head.rotation.x=Math.sin(t*0.37)*0.025 + (state==='thinking'?0.06:0);
+    setMorph(browI, state==='listening'?0.25:speakLevel*0.3);
+  }
+  renderer.render(scene,camera);
+}
+
+/* ---------- voice loop (same brain/tts, drives the face) ---------- */
+let audioCtx,activeAnalyser=null,micStream=null,freq=new Uint8Array(128);
+function ac(){audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
+async function speak(text){
+  setState('speaking');
+  try{
+    const r=await fetch('/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+    if(!r.ok)throw 0;
+    const buf=await r.arrayBuffer(); const ab=await ac().decodeAudioData(buf);
+    const s=ac().createBufferSource();s.buffer=ab;const an=ac().createAnalyser();an.fftSize=256;freq=new Uint8Array(an.frequencyBinCount);
+    s.connect(an);an.connect(ac().destination);activeAnalyser=an;
+    s.onended=()=>{activeAnalyser=null;setState('idle');};s.start();
+  }catch(e){ try{const u=new SpeechSynthesisUtterance(text);u.onend=()=>setState('idle');speechSynthesis.speak(u);}catch(_){setState('idle');} }
+}
+async function ask(text){ if(!text.trim())return; youEl.innerHTML='“'+text+'”'; laylaEl.textContent='…'; setState('thinking');
+  try{ const r=await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text})}); const d=await r.json();
+    const a=d.answer||d.error||'(no answer)'; laylaEl.textContent=a; speak(a);
+  }catch(e){ laylaEl.textContent='I could not reach my brain just now.'; setState('idle'); } }
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition; let rec=null,listening=false;
+function initRec(){ if(!SR)return null; const r=new SR();r.continuous=false;r.interimResults=true;r.lang='en-US';
+  // Real bug fixed here (2026-09-07): a single utterance ("I love you") can
+  // arrive across SEVERAL onresult events, with an early word ("I") marked
+  // isFinal=true while the rest is still being recognized -- the old code
+  // called ask() the moment ANY fragment finalized, cutting the sentence off
+  // and sending only "I", "can", "what", etc. as if they were complete
+  // messages. Fixed by accumulating every finalized segment across the
+  // WHOLE listening session (this closure variable persists for rec's
+  // lifetime, reset only once a session truly ends) and only calling ask()
+  // from onend -- the one point that fires once, after the browser's own
+  // silence detection decides the user is actually done talking.
+  let finalText='';
+  r.onresult=e=>{let interim='';
+    for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;e.results[i].isFinal?finalText+=t:interim+=t;}
+    youEl.innerHTML=finalText+'<span class="live">'+interim+'</span>'; };
+  r.onerror=()=>stopListen();
+  r.onend=()=>{ const said=finalText.trim(); finalText=''; if(listening)stopListen(); if(said)ask(said); };
+  return r; }
+async function startListen(){ if(listening)return; if(!rec)rec=initRec(); if(!rec){$('text').focus();return;}
+  listening=true;micBtn.classList.add('live');setState('listening');youEl.textContent=''; await ac().resume?.(); try{rec.start();}catch(e){} }
+function stopListen(){ listening=false;micBtn.classList.remove('live'); try{rec&&rec.stop();}catch(e){} if(state==='listening')setState('idle'); }
+micBtn.addEventListener('click',()=>listening?stopListen():startListen());
+$('composer').addEventListener('submit',e=>{e.preventDefault();const v=$('text').value;$('text').value='';if(v.trim())ask(v);});
+addEventListener('pointerdown',function once(){removeEventListener('pointerdown',once);ac().resume&&ac().resume();},{once:true});
+
+try{ initThree(); }catch(e){ $('loading').textContent='3D init failed — voice still works. ('+e+')'; setState('idle'); }
+</script>
+</body>
+</html>

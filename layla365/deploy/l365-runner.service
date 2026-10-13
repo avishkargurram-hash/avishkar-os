@@ -1,0 +1,20 @@
+[Unit]
+Description=Layla 365 agent runner
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+User=l365
+Group=l365
+WorkingDirectory=/opt/layla365/app
+EnvironmentFile=/opt/layla365/secrets/runner.env
+Environment=PYTHONPATH=/opt/layla365/app
+ExecStart=/opt/layla365/venv/bin/python -m l365 run
+Restart=always
+RestartSec=5
+MemoryMax=512M
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

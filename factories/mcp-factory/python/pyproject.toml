@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "avishkar-integration"
+version = "0.1.0"
+description = "Universal Integration Framework -- Python reference implementation for Avishkar OS (protocol-agnostic tool integration, MCP first-class)."
+readme = "../README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "Avishkar Labs" }]
+dependencies = [
+    "avishkar-core",
+    "avishkar-router",
+    "avishkar-agent",
+]
+
+# Zero-dependency core (types/protocol/registry/runtime/policies/planner/
+# agent_bridge/langgraph_nodes). MCPAdapter needs the official `mcp`
+# package; RESTAdapter is stdlib-only. Both optional-dependency imports
+# are lazy -- see adapters/mcp_adapter.py.
+
+[project.optional-dependencies]
+mcp = ["mcp>=2.0"]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["avishkar_integration*"]

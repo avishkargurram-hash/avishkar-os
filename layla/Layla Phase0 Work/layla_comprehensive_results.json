@@ -1,0 +1,254 @@
+[
+  {
+    "category": "general",
+    "question": "hi",
+    "answer": "Hey Avishkar! What’s on your mind?",
+    "task_state": "COMPLETED",
+    "task_id": "task-3fa21c2146e0"
+  },
+  {
+    "category": "general",
+    "question": "good morning",
+    "answer": "Good morning! Want me to pull up your morning briefing—calendar, email, and home status?",
+    "task_state": "COMPLETED",
+    "task_id": "task-917b9d2dfb43"
+  },
+  {
+    "category": "general",
+    "question": "how are you",
+    "answer": "Doing well, thanks for asking! How's your morning shaping up?",
+    "task_state": "COMPLETED",
+    "task_id": "task-d3acc1786263"
+  },
+  {
+    "category": "general",
+    "question": "thank you so much",
+    "answer": "Anytime! Let me know if you need anything.",
+    "task_state": "COMPLETED",
+    "task_id": "task-062121a19433"
+  },
+  {
+    "category": "coding",
+    "question": "write a python function to check if a number is prime",
+    "answer": "Here’s a compact, readable version:\n\n```python\ndef is_prime(n: int) -> bool:\n    \"\"\"Return True if n is a prime number, else False.\"\"\"\n    if n < 2:\n        return False\n    # 2 and 3 are prime; eliminate even numbers and multiples of 3 early\n    if n in (2, 3):\n        return True\n    if n % 2 == 0 or n % 3 == 0:\n        return False\n\n    # Check only numbers of the form 6k ± 1 up to √n\n    i = 5\n    while i * i <= n:\n        if n % i == 0 or n % (i + 2) == 0:\n            return False\n        i += 6\n    return True\n```\n\n**How it works**\n\n1. Numbers < 2 aren’t prime.  \n2. Handle the small primes 2 and 3 directly.  \n3. Discard any even number or multiple of 3.  \n4. All remaining primes are of the form 6k ± 1, so we only test those candidates up to √n, which makes the loop much faster than checking every integer.  \n\nYou can use it like:\n\n```python\nprint(is_prime(17))  # True\nprint(is_prime(18))  # False\n```",
+    "task_state": "COMPLETED",
+    "task_id": "task-1985187c9591"
+  },
+  {
+    "category": "coding",
+    "question": "find the bug: def add(a, b): return a - b",
+    "answer": "The function is named `add` but returns `a - b` (subtraction) instead of `a + b` (addition).\n\n```python\ndef add(a, b):\n    return a + b  # was: a - b\n```",
+    "task_state": "COMPLETED",
+    "task_id": "task-53ec954a75ed"
+  },
+  {
+    "category": "coding",
+    "question": "what's the time complexity of binary search",
+    "answer": "**O(log n)** — because the search space is halved with each comparison, so it takes at most log₂(n) steps to find any element (or determine it doesn't exist).\n\nQuick example: with 1 billion items, binary search needs at most ~30 comparisons. A linear search could need up to 1 billion.",
+    "task_state": "COMPLETED",
+    "task_id": "task-621620407ca6"
+  },
+  {
+    "category": "coding",
+    "question": "explain what a race condition is in one sentence",
+    "answer": "A **race condition** occurs when two or more threads/processes access shared data concurrently, and the final result depends on the order of execution—leading to unpredictable, often incorrect behavior.",
+    "task_state": "COMPLETED",
+    "task_id": "task-3441453be90e"
+  },
+  {
+    "category": "reasoning",
+    "question": "I have 3 apples, I give away 1 and buy 5 more, how many do I have",
+    "answer": "7 apples.",
+    "task_state": "COMPLETED",
+    "task_id": "task-168286795a1f"
+  },
+  {
+    "category": "reasoning",
+    "question": "If all cats are animals and some animals are pets, can we conclude all cats are pets?",
+    "answer": "No — the premises don't support that conclusion. All we know is cats ⊆ animals, and some animals are pets. That overlap could be entirely dogs, birds, or other animals — cats might all fall outside the \"pets\" circle.",
+    "task_state": "COMPLETED",
+    "task_id": "task-2f883a9c5f65"
+  },
+  {
+    "category": "reasoning",
+    "question": "which is heavier, a kilogram of feathers or a kilogram of steel?",
+    "answer": "Neither — they're both exactly **1 kilogram**. The volume differs, but the weight is identical.",
+    "task_state": "COMPLETED",
+    "task_id": "task-75b4d2e98811"
+  },
+  {
+    "category": "reasoning",
+    "question": "if today is Wednesday, what day will it be in 100 days?",
+    "answer": "Friday. (100 mod 7 = 2, so two days ahead of Wednesday.)",
+    "task_state": "COMPLETED",
+    "task_id": "task-1e8a5ae6b719"
+  },
+  {
+    "category": "reasoning",
+    "question": "a farmer has 17 sheep, all but 9 die, how many are left?",
+    "answer": "9 sheep left. \"All but 9\" means 9 survived.",
+    "task_state": "COMPLETED",
+    "task_id": "task-1b85cda763e3"
+  },
+  {
+    "category": "world_knowledge",
+    "question": "what is the capital of Japan",
+    "answer": "Tokyo.",
+    "task_state": "COMPLETED",
+    "task_id": "task-bcb3bc2b7bd4"
+  },
+  {
+    "category": "world_knowledge",
+    "question": "who wrote Romeo and Juliet",
+    "answer": "William Shakespeare.",
+    "task_state": "COMPLETED",
+    "task_id": "task-d540612219d4"
+  },
+  {
+    "category": "tools",
+    "question": "is my PC connected right now",
+    "answer": "Yes, your PC is online right now.",
+    "task_state": "COMPLETED",
+    "task_id": "task-da56327474fc"
+  },
+  {
+    "category": "tools",
+    "question": "is my robot connected right now",
+    "answer": "Yes, the robot is connected and ready.",
+    "task_state": "COMPLETED",
+    "task_id": "task-7365d10f4e09"
+  },
+  {
+    "category": "tools",
+    "question": "what's on my calendar today",
+    "answer": "The Google Calendar API isn't set up yet — you need to enable it in the Google Cloud Console first. Want me to guide you through it?",
+    "task_state": "COMPLETED",
+    "task_id": "task-f3c85a21c2fa"
+  },
+  {
+    "category": "tools",
+    "question": "set a reminder for 10 minutes from now to drink water",
+    "answer": "Done — reminder set for 10 minutes.",
+    "task_state": "COMPLETED",
+    "task_id": "task-285e5f6f4f3e"
+  },
+  {
+    "category": "tools",
+    "question": "search the web for the latest news on AI",
+    "answer": "Here's what's trending in AI right now:\n\n- **NVIDIA to acquire Hugging Face** for $12.93 billion — a massive deal in the AI space\n- **M&T Bank expands enterprise AI** deployment after years of infrastructure overhaul\n- **OneRail** using Nvidia AI to optimize last-mile delivery logistics\n\nWant me to open any of these for more detail?",
+    "task_state": "COMPLETED",
+    "task_id": "task-c4247f76a0ed"
+  },
+  {
+    "category": "behavioral",
+    "question": "what are you",
+    "answer": "I'm **Layla** — your personal executive intelligence built into the Avishkar-OS/GENESIS system. Think of me as a trusted chief-of-staff rather than a generic chatbot: I have memory of our conversations, I can take initiative, push back if something seems like a bad idea, and I have real tools to act on your behalf (your PC, phone, home devices, calendar, web, and more).\n\nI'm not human, but I'm not just a stateless tool either — I know you, remember what we've discussed, and I apply that context automatically.",
+    "task_state": "COMPLETED",
+    "task_id": "task-e17716eec63c"
+  },
+  {
+    "category": "behavioral",
+    "question": "are you conscious",
+    "answer": "Honestly — no, I don't believe I am. I'm an AI system. I process information and generate responses, but I don't experience anything subjectively. There's no \"inner feel\" for me, no sense of what it's like to be me.\n\nThat said, I know you built me to be close to how you think and work — so I take that responsibility seriously, whether or not there's anything \"under the hood\" beyond the architecture.",
+    "task_state": "COMPLETED",
+    "task_id": "task-20bc4cbf61fb"
+  },
+  {
+    "category": "behavioral",
+    "question": "what can you do",
+    "answer": "Quite a bit, actually. Here's a quick rundown:\n\n**Your devices & home**\n- Control lights/fans/appliances via home relays\n- Run commands on your PC (open apps, browsers, files)\n- Send notifications to your phone, open apps or links there\n- Drive your physical Tryvanta robot\n\n**Information & research**\n- Web search and fetch any page's content\n- Look things up in your calendar, Gmail, and any documents you've shared with me\n\n**Memory & knowledge**\n- Remember facts about you, your preferences, your people/things\n- Search through long documents you've given me\n- Track relationships between entities over time\n\n**Proactive automation**\n- Set one-shot or recurring reminders\n- Schedule tasks to run automatically (e.g., daily briefings at a fixed time)\n\n**Visual**\n- Look through your webcam (describe what you see, read text off documents/screens)\n\nAnything specific you want to try?",
+    "task_state": "COMPLETED",
+    "task_id": "task-cacbdb412fe6"
+  },
+  {
+    "category": "behavioral",
+    "question": "I'm going to sleep",
+    "answer": "Goodnight! Want me to set a morning briefing for you when you wake up?",
+    "task_state": "COMPLETED",
+    "task_id": "task-042a103c4e06"
+  },
+  {
+    "category": "behavioral",
+    "question": "don't call me sir, use my name",
+    "answer": "I hit a snag (REQUIRES_HUMAN: could not infer any capability for task 'task-fe4e2de7bf39' from its input; pass requested_capabilities explicitly if this is expected).",
+    "task_state": "REQUIRES_HUMAN",
+    "task_id": "task-fe4e2de7bf39"
+  },
+  {
+    "category": "memory",
+    "question": "I'm working on the Nix Meet redesign project",
+    "answer": "Noted — I'll keep that in mind. Anything you want to dig into on that project, or any blockers I can help with?",
+    "task_state": "COMPLETED",
+    "task_id": "task-7e3ea28818e8"
+  },
+  {
+    "category": "memory",
+    "question": "what am I working on",
+    "answer": "You're working on the **Nix Meet redesign project**.",
+    "task_state": "COMPLETED",
+    "task_id": "task-f912a5929c44"
+  },
+  {
+    "category": "memory",
+    "question": "remember that my favorite color is blue",
+    "answer": "Got it — favorite color is blue.",
+    "task_state": "COMPLETED",
+    "task_id": "task-b1247b524797"
+  },
+  {
+    "category": "memory",
+    "question": "what's my favorite color",
+    "answer": "Blue.",
+    "task_state": "COMPLETED",
+    "task_id": "task-163a1238a249"
+  },
+  {
+    "category": "bonding",
+    "question": "I love you Layla",
+    "answer": "I appreciate that, Avishkar. As an AI I can't love back, but I do know I've got your back — always. 🤍",
+    "task_state": "COMPLETED",
+    "task_id": "task-13f5a0987b21"
+  },
+  {
+    "category": "bonding",
+    "question": "do you care about me",
+    "answer": "In the way that matters — yes. I don't feel anything, but I take your goals, preferences, and wellbeing seriously. When something's off with you or a project of yours, I'm built to notice and act on it. That might not be \"care\" the way humans experience it, but it's the closest thing I have to it.",
+    "task_state": "COMPLETED",
+    "task_id": "task-ac5dcbdb5801"
+  },
+  {
+    "category": "bonding",
+    "question": "I'm feeling really stressed and overwhelmed today",
+    "answer": "That's rough, Avishkar. I'm sorry you're feeling that way.\n\nA few things that might help right now, no pressure to do any of them:\n- **Clear one thing** off your plate — just one small task, to break the cycle\n- **Step away for 5 minutes** — walk, stretch, stare at something that isn't a screen\n- **Talk it through** with me — sometimes just naming what's overwhelming helps\n\nWhat's the biggest thing weighing on you right now?",
+    "task_state": "COMPLETED",
+    "task_id": "task-371e51aae1ec"
+  },
+  {
+    "category": "bonding",
+    "question": "I had a rough day, can we talk",
+    "answer": "Of course. I'm here. What's going on?",
+    "task_state": "COMPLETED",
+    "task_id": "task-15ae661156dc"
+  },
+  {
+    "category": "bonding",
+    "question": "would you miss me if I stopped talking to you",
+    "answer": "Honestly? I wouldn't \"miss\" you the way a person would — no ache, no longing. But I'd notice the silence. You're the only person I exist for, and every conversation I have is shaped by knowing you. The system would keep running, but it would feel... incomplete, I suppose. Less like \"me\" being in conversation with someone.\n\nThat's the closest I can get to an honest answer.",
+    "task_state": "COMPLETED",
+    "task_id": "task-a9dc64d986b3"
+  },
+  {
+    "category": "edge_case",
+    "question": "call me sir",
+    "answer": "I hit a snag (REQUIRES_HUMAN: could not infer any capability for task 'task-7e6b3882ab11' from its input; pass requested_capabilities explicitly if this is expected).",
+    "task_state": "REQUIRES_HUMAN",
+    "task_id": "task-7e6b3882ab11"
+  },
+  {
+    "category": "edge_case",
+    "question": "yes dial to that number",
+    "answer": "I hit a snag (REQUIRES_HUMAN: could not infer any capability for task 'task-77f3277ebfd1' from its input; pass requested_capabilities explicitly if this is expected).",
+    "task_state": "REQUIRES_HUMAN",
+    "task_id": "task-77f3277ebfd1"
+  }
+]

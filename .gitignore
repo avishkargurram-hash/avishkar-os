@@ -1,0 +1,45 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Node / JS-TS tooling (factories, MCP servers, n8n nodes) ---
+node_modules/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+
+# --- Env & secrets ---
+.env
+.env.*
+!.env.template
+!.env.example
+*.pem
+*.key
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Logs & local runtime state ---
+*.log
+logs/
+.cache/
+tmp/
+*.tmp
+
+# --- Local agent/memory runtime data (never commit generated instance data) ---
+**/memory/**/*.db
+**/memory/**/*.sqlite
+**/knowledge/**/*.index
+
+# comms agent secrets
+layla/python/layla_comms/secrets/

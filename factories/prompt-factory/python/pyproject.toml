@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "avishkar-prompt"
+version = "0.1.0"
+description = "Prompt Framework -- versioned, evaluable prompt templates for Avishkar OS."
+readme = "../README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "Avishkar Labs" }]
+dependencies = ["avishkar-core"]
+# Stdlib-only: str.format-style rendering, no template-engine dependency.
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["avishkar_prompt*"]

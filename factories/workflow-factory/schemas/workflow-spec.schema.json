@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://avishkar-os/schemas/workflow-spec.schema.json",
+  "title": "WorkflowSpec",
+  "description": "Structural (not executable) description of a workflow. See CONTRACT.md SS8 -- handler/branch callables are language-native and intentionally not represented here.",
+  "type": "object",
+  "required": ["id", "start", "steps"],
+  "properties": {
+    "id": { "type": "string" },
+    "start": { "type": "string" },
+    "steps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/step" },
+      "minItems": 1
+    }
+  },
+  "$defs": {
+    "step": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string" },
+        "next": { "type": ["string", "null"] },
+        "has_branch": {
+          "type": "boolean",
+          "description": "True if this step's next hop is decided at runtime by a branch function rather than the static 'next' field."
+        },
+        "retry_policy": {
+          "type": "object",
+          "properties": {
+            "max_attempts": { "type": "integer", "minimum": 1 },
+            "backoff_seconds": { "type": "number", "minimum": 0 }
+          }
+        }
+      }
+    }
+  }
+}

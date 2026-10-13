@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://avishkar-os/core/schemas/config.schema.json",
+  "title": "Avishkar OS Config Document",
+  "description": "The shape of a single config source (defaults, a config file's contents, or the explicit-overrides dict) before layering. Any implementation of the Config contract in CONTRACT.md merges zero or more documents matching this schema, in a fixed precedence order, into one resolved Config.",
+  "type": "object",
+  "propertyNames": {
+    "pattern": "^(?!__)[a-zA-Z0-9_]+$",
+    "description": "Keys must not start with '__' -- that prefix is reserved for future internal metadata keys."
+  },
+  "additionalProperties": {
+    "$ref": "#/definitions/configValue"
+  },
+  "definitions": {
+    "configValue": {
+      "description": "A config value: a primitive, or a nested config document, or a list of such values. Nesting has no fixed depth limit.",
+      "anyOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "null" },
+        {
+          "type": "array",
+          "items": { "$ref": "#/definitions/configValue" }
+        },
+        {
+          "type": "object",
+          "propertyNames": { "pattern": "^(?!__)[a-zA-Z0-9_]+$" },
+          "additionalProperties": { "$ref": "#/definitions/configValue" }
+        }
+      ]
+    }
+  }
+}

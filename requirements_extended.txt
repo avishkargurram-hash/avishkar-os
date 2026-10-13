@@ -1,0 +1,71 @@
+# Phase 0 Expansion Stack Dependencies
+
+# Core Web & API
+fastapi>=0.100.0
+uvicorn>=0.22.0
+
+# Security
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# Database / Graph
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0
+neo4j>=5.10.0
+redis>=5.0.0
+
+# Search / Automation
+playwright>=1.35.0
+beautifulsoup4>=4.12.0
+requests>=2.31.0
+httpx>=0.24.0
+
+# System Tools
+kivy>=2.2.0
+buildozer>=1.5.0
+cython>=0.29.36
+pyjnius>=1.6.0
+
+# Extended Audio / TTS
+edge-tts>=6.1.0
+webrtcvad>=2.0.10
+
+# AI / NLP
+langchain>=0.1.0
+langgraph>=0.0.1
+sentence-transformers>=2.2.0
+chromadb>=0.4.0
+accelerate>=0.21.0
+
+# ================================
+# PHASE 1+2 & TASK 0 EXTENSION
+# ================================
+
+# --- API Integrations ---
+notion-client>=2.0.0
+slack-sdk>=3.20.0
+praw>=7.7.0
+
+# --- Communication SDKs ---
+discord.py>=2.3.0
+python-telegram-bot>=20.0
+
+# --- Voice / Audio ---
+elevenlabs>=0.2.0
+deepgram-sdk>=3.0.0
+assemblyai>=0.17.0
+
+# --- Vector / Embedding ---
+pinecone-client>=3.0.0
+
+# --- Analytics / Monitoring ---
+posthog>=3.0.0
+
+# --- Data Analysis ---
+matplotlib>=3.8.0
+seaborn>=0.13.0
+pandas>=2.1.0
+
+# --- Scraping ---
+scrapy>=2.11.0
+selenium>=4.15.0

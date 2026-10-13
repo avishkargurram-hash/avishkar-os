@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://avishkar-os/factories/agent-factory/schemas/agent-blueprint.schema.json",
+  "title": "Avishkar OS AgentBlueprint",
+  "description": "The declarative definition of a Chief Domain Agent. See CONTRACT.md SS2.",
+  "type": "object",
+  "required": ["name", "domain", "version", "mission", "default_model", "memory_policy"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "kebab-case, matches agents/<name>/ (STANDARDS.md SS3)."
+    },
+    "domain": { "type": "string", "description": "Human-readable domain, e.g. 'Software & AI Engineering'." },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.]+)?$" },
+    "mission": { "type": "string" },
+    "reasoning_strategies": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "ThinkingModel names this agent may invoke."
+    },
+    "default_model": { "type": "string", "description": "AI Router model_id used when a task doesn't override it." },
+    "max_iterations": { "type": "integer", "minimum": 1, "default": 5 },
+    "memory_policy": {
+      "type": "object",
+      "properties": {
+        "backend": { "type": "string", "default": "in_memory", "description": "Currently only 'in_memory' ships; see memory-factory (Phase 5) for persistent backends." }
+      },
+      "additionalProperties": true
+    },
+    "tools": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["kind", "name"],
+            "properties": {
+              "kind": { "const": "tool" },
+              "name": { "type": "string" }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": ["kind", "server", "tool_name"],
+            "properties": {
+              "kind": { "const": "mcp" },
+              "server": { "type": "string" },
+              "tool_name": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "guardrails": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "quality_gates": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "sub_agent_roles": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "Internal expert roles this Chief Agent absorbs (ARCHITECTURE.md SS4) -- never a new top-level agent."
+    }
+  },
+  "additionalProperties": false
+}

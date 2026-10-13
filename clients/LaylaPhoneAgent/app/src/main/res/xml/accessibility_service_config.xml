@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Accessibility config for Layla's app-control layer. This is the ONLY way
+  Android lets one app drive another (tap/type/scroll inside WhatsApp and
+  friends); there is no alternative API for it, which is exactly why the
+  original Tier-1 agent could open WhatsApp but never send anything.
+
+  flagRetrieveInteractiveWindows is needed so rootInActiveWindow resolves
+  correctly when a dialog or IME overlays the target app; flagReportViewIds
+  lets us match WhatsApp's send button by its stable resource id
+  (com.whatsapp:id/send) instead of a localized content description alone.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagRetrieveInteractiveWindows|flagReportViewIds|flagIncludeNotImportantViews"
+    android:canPerformGestures="true"
+    android:canRetrieveWindowContent="true"
+    android:description="@string/accessibility_description"
+    android:notificationTimeout="100" />

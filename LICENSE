@@ -1,0 +1,19 @@
+Copyright (c) 2026 Avishkar Labs. All Rights Reserved.
+
+This repository and its contents (source code, architecture, documentation,
+prompts, templates, and workflows) are proprietary and confidential to
+Avishkar Labs.
+
+No part of this repository may be copied, modified, distributed, sublicensed,
+or used to build derivative products outside of Avishkar Labs without prior
+written permission from Avishkar Labs.
+
+This is a default proprietary license chosen because Avishkar OS is the
+core, reusable engineering platform underpinning every Avishkar Labs product
+(Tryvanta, Humanify OS, GENESIS, Muziclly, AI Atlas, Coupler, and future
+products). Open-sourcing individual factories or modules is a deliberate,
+case-by-case decision to be made later (see DECISIONS.md) — not a default.
+
+To change this license (e.g., open-source a specific factory or the whole
+platform), record the decision and rationale in DECISIONS.md before editing
+this file.

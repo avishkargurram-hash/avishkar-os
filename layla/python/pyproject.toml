@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "avishkar-layla"
+version = "0.1.0"
+description = "Layla -- Avishkar OS's Personal Executive Intelligence layer. Composes existing frameworks; introduces no parallel systems."
+readme = "../README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "Avishkar Labs" }]
+dependencies = [
+    "avishkar-core", "avishkar-router", "avishkar-agent", "avishkar-integration",
+    "avishkar-memory", "avishkar-knowledge", "avishkar-workflow",
+    "avishkar-evaluation", "avishkar-security",
+]
+# Stdlib-only beyond the platform's own packages -- see CONTRACT.md SS0
+# for why every capability domain is a client of an existing contract.
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+# Mission Layla Directive D, Part I (Voice) -- real local capability
+# packages. Optional: the cognitive core (ExecutiveRuntime and every
+# component above) has zero dependency on any of these; only
+# avishkar_layla.voice imports them, and only when a caller actually
+# constructs a provider that needs them. See CONTRACT.md SS32.
+voice = [
+    "numpy", "scipy", "sounddevice", "soundfile", "faster-whisper", "pyttsx3", "requests",
+]
+# Mission Layla Directive D, Part II (Vision/OCR/Spatial Intelligence).
+# `pytesseract` wraps the real Tesseract OCR binary -- installed
+# separately (not a pip package); see README.md Vision section.
+vision = ["pillow", "pytesseract", "opencv-python", "numpy"]
+# Mission Layla Directive D, Part III (Computer Control): browser
+# automation (playwright) and GUI/clipboard control (pyautogui,
+# pyperclip). Shell execution and file operations need no extra
+# package beyond the stdlib. `playwright install chromium` is a
+# separate one-time step after `pip install`.
+computer_control = ["playwright", "pyautogui", "pyperclip"]
+# Mission Layla Directive D, Part V (Real Communication Channels).
+# SMTPEmailTransport needs no extra package (stdlib smtplib/email).
+channels = ["requests", "twilio"]
+# Mission Layla Directive D, Part VI (Environmental Awareness).
+# IdleTimeSensor needs no extra package (stdlib ctypes, Windows-only).
+environment = ["psutil"]
+# Mission Layla Directive D, Part VII (Home Assistant).
+home_assistant = ["requests"]
+# Mission Layla Directive D, Part VIII (MQTT).
+mqtt = ["paho-mqtt"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["avishkar_layla*"]
