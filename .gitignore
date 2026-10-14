@@ -43,3 +43,7 @@ tmp/
 
 # comms agent secrets
 layla/python/layla_comms/secrets/
+
+# PyInstaller build outputs (large binaries)
+clients/LaylaPCAgentInstaller/build_new/
+clients/LaylaPCAgentInstaller/dist_new/

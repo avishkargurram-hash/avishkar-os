@@ -1,0 +1,34 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android' version '1.9.24'
+}
+
+android {
+    namespace 'in.tryvanta.laylavoice'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "in.tryvanta.laylavoice"
+        minSdk 24
+        targetSdk 36
+        versionCode 1
+        versionName "0.1"
+        // Personal build: pre-fill the owner device token from the gitignored .secrets/ file (empty if absent).
+        def tokFile = new File(rootDir, '.secrets/device_token.txt')
+        def tok = tokFile.exists() ? tokFile.text.trim() : ''
+        buildConfigField 'String', 'DEFAULT_TOKEN', '"' + tok + '"'
+    }
+    buildFeatures { buildConfig true }
+    buildTypes { release { minifyEnabled false } }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.activity:activity-ktx:1.9.3'
+}
