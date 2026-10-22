@@ -43,7 +43,7 @@ One person's personal AI "operating system", named **Layla**, plus a product bui
 | Evolviot lights | Online |
 | WhatsApp auto-reply | OFF (owner decides) |
 | Presence auto-off | OFF (owner decides) |
-| Layla portal coupons | `LAUNCH50` (50%, 100 uses), `TRYVANTAVIP` (100%, 50 uses), expire 2026-11-19 |
+| Layla portal coupons | Two launch coupons (a 50% one and a 100% waiver) exist until 2026-11-19; the codes are in the `tenancy.coupons` table, **never write them in docs or git** |
 | Passwords pasted in chat earlier | **Not rotated** (owner chose to skip). See `06_OPEN_ITEMS.md` |
 
 ## Files in this folder

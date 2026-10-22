@@ -77,7 +77,9 @@ app role `layla_app` cannot create/alter.
 ### Coupons (added 2026-10-21)
 Tables `tenancy.coupons`, `tenancy.coupon_redemptions` (+ nullable `payments.coupon`). Code in `billing.py` (`apply_coupon_paise`),
 `db.py` (`coupon_check`, `coupon_commit`, `coupon_redeem_full`), `server.py` (`POST /portal/api/billing/coupon` = preview, `_billing_order` accepts
-`coupon`). Live codes: **`LAUNCH50`** (50% off, 100 uses) and **`TRYVANTAVIP`** (100% waiver, 50 uses), both valid to 2026-11-19, all tiers.
+`coupon`). Two launch coupons are live in the `coupons` table until 2026-11-19: a **50% off** code (100 uses) and a **100% waiver** code (50 uses), valid on all tiers.
+**The codes themselves are intentionally NOT written in this repo** (the repo is public and the 100% code would be free money for anyone): read them with
+`SELECT code,discount_percent,max_uses,used_count,expires_at FROM tenancy.coupons;` (as `layla_app`) or ask the owner.
 - 50%: the discounted amount goes through Cashfree; the coupon use is committed only after the payment really settles.
 - 100%: bypasses Cashfree; in ONE transaction it reserves a capped use, records the redemption (unique per code+tenant) and upgrades the tier.
   No ₹0 payment row is written because `payments.amount_paise` has a `> 0` CHECK (a never-paid tenant is exempt from expiry, i.e. free access).
