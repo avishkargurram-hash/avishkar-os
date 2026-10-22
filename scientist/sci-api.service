@@ -1,0 +1,17 @@
+[Unit]
+Description=Scientist OS FastAPI Service
+After=network.target docker.service
+
+[Service]
+Type=simple
+User=sci
+Group=sci
+WorkingDirectory=/opt/scientist/src
+EnvironmentFile=/opt/scientist/secrets/scientist.env
+ExecStart=/opt/scientist/venv/bin/uvicorn avishkar_scientist.api.app:app --host 0.0.0.0 --port 8095 --workers 2
+Restart=always
+RestartSec=3
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

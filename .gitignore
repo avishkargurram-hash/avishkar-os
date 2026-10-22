@@ -40,3 +40,48 @@ tmp/
 **/memory/**/*.db
 **/memory/**/*.sqlite
 **/knowledge/**/*.index
+
+# comms agent secrets
+layla/python/layla_comms/secrets/
+
+# Scientist OS secrets
+.secrets/
+**/.secrets/
+
+# --- Added 2026-10-22: never commit credentials, binaries or generated builds ---
+credentials/
+ssh-keys/
+*.keystore
+*.jks
+*.apk
+*.aab
+*.idsig
+*.tar.gz
+*.tgz
+*.zip
+*.exe
+*.pkg
+*.pyz
+**/secrets.h
+**/wa.properties
+**/local.properties
+**/build_new/
+**/dist_new/
+clients/Almanac/www/
+clients/Almanac/android/app/src/main/assets/public/
+clients/Almanac/android/app/src/main/assets/capacitor.config.json
+clients/Almanac/android/capacitor-cordova-android-plugins/
+clients/Almanac/*.log
+clients/**/build.log
+clients/**/.gradle/
+*.bak
+*.bak.*
+**/phone.properties
+# old scratch / backup / one-off scripts that embedded tokens or database passwords
+layla/Layla Phase0 Work/
+layla/layla_service_live.py
+layla/test_phases_d_e_backend.py
+layla/verify_phases_c_d_e_e2e.py
+test_phase_b_backend.py
+verify_backend_endpoints.py
+test_phase_b_backend.py

@@ -3484,3 +3484,25 @@ dead imports (zero behavior change, all 583 tests still pass). New
 `docs/directive-d-forensic-report.md`. No new tests needed (a
 consolidation/verification pass, not new capability) -- 583 total for
 Layla, unchanged.
+
+
+---
+
+## ADR-0046: Scientist OS Architecture, P7–P10 Deployment on tv-mum-01, and Layla Brain Integration
+
+**Status:** Accepted · **Date:** 2026-10-17
+
+**Context:** The Scientist OS subsystem (P0–P6 foundation) required deployment and operational integration across the distributed infrastructure. Compute-heavy operations (PostgreSQL 16 with pgvector, queue workers, task supervisor, experiment code sandboxing, local LLMs) belong on `tv-mum-01`, while Layla's conversational brain operates on Oracle Cloud. Layla needed executive tools to trigger investigations, check status, and retrieve formal verdicts without taking on orchestration complexity.
+
+**Decision:**
+1. **API & Interface (P7 & P8)**: Implemented FastAPI REST/SSE service (`api/app.py`, `api/auth.py`), observability layer (`observability.py`), CLI (`cli.py`), and a single-file static web dashboard (`web/index.html`).
+2. **Infrastructure Deployment (P10)**: Provisioned isolated virtualenv (`/opt/scientist/venv`) and service configuration (`/opt/scientist/secrets/scientist.env`) on `tv-mum-01` owned by `sci:sci`. Created and enabled four systemd units (`sci-api.service`, `sci-worker@1.service`, `sci-worker@2.service`, `sci-supervisor.service`).
+3. **Execution Sandboxing**: Built `sci-sandbox:latest` Docker image with strict isolation (`--network none`, `--read-only`, `--memory 512m`, `--cpus 1`, `--user 65534:65534`, `--cap-drop ALL`, no new privileges). Implemented `/usr/local/bin/sci-sandbox-run` with sudoers authorization for the `sci` user.
+4. **Layla Brain Executive Integration (P9)**: Developed `layla/brain-plugins/layla_scientist.py` exposing four executive tools (`start_scientific_research`, `get_research_status`, `get_research_verdict`, `get_research_report`), prompt router keyword bindings, and `SCIENTIST=0` kill switch. Patched `layla_service.py` idempotently with timestamped backup and `py_compile` safety gates.
+5. **Backup & DR**: Integrated `sci-postgres` database dumps into `/opt/layla365/backup.sh` with Age encryption and offsite replication to Oracle Cloud.
+
+**Alternatives considered:**
+- *Orchestrate research inside Layla's process*: Rejected. Scientific investigations are long-running and stateful; coupling them to conversational turn loops causes timeout hazards and memory bloat.
+- *Run Python sandbox directly on host with virtualenv*: Rejected. Model-generated code must never execute on the host filesystem or with network access; strict containerization is non-negotiable.
+
+**Consequences:** Complete autonomous scientific research pipeline deployed and verified. Layla conversational brain successfully dispatches and tracks empirical research missions. System verified with end-to-end integration tests (`verify_scientist_e2e.py`).

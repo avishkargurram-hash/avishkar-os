@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Layla</string>
+    <string name="title_activity_main">Layla</string>
+    <string name="package_name">in.tryvanta.layla</string>
+    <string name="custom_url_scheme">in.tryvanta.layla</string>
+</resources>

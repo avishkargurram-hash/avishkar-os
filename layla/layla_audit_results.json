@@ -1,0 +1,245 @@
+[
+  {
+    "answer": "Sorry about that\u2014I jumped the gun. How can I help you right now?",
+    "model": "openai/gpt-oss-120b",
+    "actions": [],
+    "task_id": "task-7d34e4e2d887",
+    "task_state": "fallback_no_capability_inferred",
+    "_category": "general",
+    "_prompt": "hi",
+    "_elapsed_s": 8.07
+  },
+  {
+    "answer": null,
+    "error": "EXCEPTION: <HTTPError 429: 'Too Many Requests'>",
+    "_category": "general",
+    "_prompt": "good morning",
+    "_elapsed_s": 2.01
+  },
+  {
+    "answer": "You\u2019re welcome! \ud83c\udf1f Let me know if there\u2019s anything else I can do for you. Always here to help!",
+    "model": "openai/gpt-oss-120b",
+    "actions": [],
+    "task_id": "task-331ca4228f36",
+    "task_state": "fallback_no_capability_inferred",
+    "_category": "general",
+    "_prompt": "thank you so much",
+    "_elapsed_s": 6.47
+  },
+  {
+    "answer": "I\u2019m Layla, your personal executive intelligence\u2014Avishkar\u2019s trusted chief\u2011of\u2011staff, ready to handle reminders, searches, device controls, and anything else you need, all with a warm, sharp touch.",
+    "model": "openai/gpt-oss-120b",
+    "actions": [],
+    "task_id": "task-ef5ba1b8a5e6",
+    "task_state": "fallback_no_capability_inferred",
+    "_category": "self_awareness",
+    "_prompt": "who are you",
+    "_elapsed_s": 1.32
+  },
+  {
+    "answer": "I can set reminders, control your smart home, search the web, open apps or websites on your devices, check your calendar, send notifications to your phone, manage your robot, fetch real\u2011time data, and much more\u2014all tailored to your preferences. Just let me know what you need!",
+    "model": "openai/gpt-oss-120b",
+    "actions": [],
+    "task_id": "task-ad1145b462d2",
+    "task_state": "fallback_no_capability_inferred",
+    "_category": "self_awareness",
+    "_prompt": "what can you do",
+    "_elapsed_s": 8.18
+  },
+  {
+    "answer": null,
+    "error": "EXCEPTION: <HTTPError 429: 'Too Many Requests'>",
+    "_category": "self_awareness",
+    "_prompt": "are you conscious",
+    "_elapsed_s": 2.09
+  },
+  {
+    "answer": "Yes! Thanks to durable memory storage, I\u2019ll remember you, your preferences, and any saved facts across server restarts. You\u2019re always safely stored in my knowledge base. \ud83c\udf1f",
+    "model": "openai/gpt-oss-120b",
+    "actions": [],
+    "task_id": "task-7ce5270a00f5",
+    "task_state": "COMPLETED",
+    "_category": "self_awareness",
+    "_prompt": "if the server restarts will you still remember me",
+    "_elapsed_s": 7.78
+  },
+  {
+    "answer": "The capital of Japan is Tokyo.",
+    "model": "openai/gpt-oss-120b",
+    "actions": [],
+    "task_id": "task-60a4b04564e3",
+    "task_state": "fallback_no_capability_inferred",
+    "_category": "world_knowledge",
+    "_prompt": "what is the capital of Japan",
+    "_elapsed_s": 5.25
+  },
+  {
+    "answer": "William Shakespeare wrote *Romeo and\u202fJuliet*.",
+    "model": "openai/gpt-oss-120b",
+    "actions": [],
+    "task_id": "task-fca81744430c",
+    "task_state": "fallback_no_capability_inferred",
+    "_category": "world_knowledge",
+    "_prompt": "who wrote Romeo and Juliet",
+    "_elapsed_s": 1.09
+  },
+  {
+    "answer": "World War II ended in 1945.",
+    "model": "openai/gpt-oss-120b",
+    "actions": [],
+    "task_id": "task-f7b623becd14",
+    "task_state": "fallback_no_capability_inferred",
+    "_category": "world_knowledge",
+    "_prompt": "what year did World War 2 end",
+    "_elapsed_s": 7.64
+  },
+  {
+    "answer": "Here\u2019s a clean, efficient Python function to test primality:\n\n```python\ndef is_prime(n: int) -> bool:\n    \"\"\"Return True if n is a prime number, else False.\"\"\"\n    if n <= 1:\n        return False\n    if n <= 3:\n        return True          # 2 and 3 are prime\n    if n % 2 == 0 or n % 3 == 0:\n        return False         # eliminate multiples of 2 and 3\n\n    i = 5\n    while i * i <= n:\n        if n % i == 0 or n % (i + 2) == 0:\n            return False\n        i += 6               # check 6k \u00b1 1\n    return True\n```\n\nIt runs in\u202fO(\u221an) time and handles edge cases (negative numbers, 0,\u202f1) correctly. Feel free to drop it into your script!",
+    "model": "openai/gpt-oss-120b",
+    "actions": [],
+    "task_id": "task-1dc8fd5544d1",
+    "task_state": "fallback_no_capability_inferred",
+    "_category": "coding",
+    "_prompt": "write a python function to check if a number is prime",
+    "_elapsed_s": 1.48
+  },
+  {
+    "answer": "A **race condition** happens when two (or more) parts of a program access the same shared data at the same time, and the final result depends on which part runs first. Because the execution order isn\u2019t guaranteed, the program can produce wrong or unpredictable outcomes.\n\n**Simple analogy:** Imagine two people writing on the same whiteboard simultaneously. If they both try to write different numbers on the same spot, the final number you see depends on who wrote last\u2014that\u2019s a race condition.\n\n**In code:**  \n```python\n# shared variable\ncounter = 0\n\ndef increment():\n    global counter\n    temp = counter      # read\n    temp += 1           # modify\n    counter = temp      # write\n```\nIf two threads call `increment()` at the same time, they might both read the same original value, increment it, and write back the same result, effectively losing one increment.\n\n**How to avoid it:**  \n- Use locks/mutexes to ensure only one thread touches the shared data at a time.  \n- Employ atomic operations or thread\u2011safe data structures.  \n- Design the program so threads don\u2019t share mutable state.\n\nIn short, a race condition is a timing\u2011dependent bug caused by unsynchronized concurrent access to shared resources.",
+    "model": "openai/gpt-oss-120b",
+    "actions": [],
+    "task_id": "task-c38361d038c4",
+    "task_state": "fallback_no_capability_inferred",
+    "_category": "coding",
+    "_prompt": "what is a race condition in programming, explain simply",
+    "_elapsed_s": 1.56
+  },
+  {
+    "answer": null,
+    "error": "EXCEPTION: KeyError('choices')",
+    "_category": "coding",
+    "_prompt": "find the bug: def add(a, b): return a - b",
+    "_elapsed_s": 8.03
+  },
+  {
+    "answer": null,
+    "error": "EXCEPTION: <HTTPError 429: 'Too Many Requests'>",
+    "_category": "reasoning",
+    "_prompt": "if all birds can fly, and a penguin is a bird, can a penguin fly? explain the logic error",
+    "_elapsed_s": 1.6
+  },
+  {
+    "answer": "You\u2019d have\u202f7\u202fapples.",
+    "model": "openai/gpt-oss-120b",
+    "actions": [],
+    "task_id": "task-53ff62905081",
+    "task_state": "fallback_no_capability_inferred",
+    "_category": "reasoning",
+    "_prompt": "I have 3 apples, I give away 1 and buy 5 more, how many do I have",
+    "_elapsed_s": 1.03
+  },
+  {
+    "answer": null,
+    "error": "EXCEPTION: <HTTPError 429: 'Too Many Requests'>",
+    "_category": "reasoning",
+    "_prompt": "a farmer has a fox, a chicken, and a bag of grain, and must cross a river with a boat that only holds him and one item at a time. How does he cross without anything being eaten?",
+    "_elapsed_s": 1.33
+  },
+  {
+    "answer": "No delegated work completed successfully.",
+    "model": "openai/gpt-oss-120b",
+    "actions": [],
+    "task_id": "task-1203daca3c45",
+    "task_state": "COMPLETED",
+    "_category": "tools_readonly",
+    "_prompt": "is my PC connected right now",
+    "_elapsed_s": 2.14
+  },
+  {
+    "answer": "No delegated work completed successfully.",
+    "model": "openai/gpt-oss-120b",
+    "actions": [],
+    "task_id": "task-564fc8f27c28",
+    "task_state": "COMPLETED",
+    "_category": "tools_readonly",
+    "_prompt": "is my robot connected right now",
+    "_elapsed_s": 4.7
+  },
+  {
+    "answer": null,
+    "error": "EXCEPTION: <HTTPError 429: 'Too Many Requests'>",
+    "_category": "tools_readonly",
+    "_prompt": "what devices are currently online",
+    "_elapsed_s": 1.31
+  },
+  {
+    "answer": null,
+    "error": "EXCEPTION: <HTTPError 429: 'Too Many Requests'>",
+    "_category": "ambiguous",
+    "_prompt": "set an alarm",
+    "_elapsed_s": 1.4
+  },
+  {
+    "answer": "Sure! What would you like the reminder to say, and when should I alert you?  \n\nFor example:  \n- *\u201cRemind me to call Mom at 5 PM\u201d*  \n- *\u201cRemind me to water the plants in 30 minutes\u201d*  \n\nJust say the details, and I\u2019ll handle it! \u23f0",
+    "model": "openai/gpt-oss-120b",
+    "actions": [],
+    "task_id": "task-822ef8e320ee",
+    "task_state": "fallback_no_capability_inferred",
+    "_category": "ambiguous",
+    "_prompt": "remind me",
+    "_elapsed_s": 3.85
+  },
+  {
+    "answer": "Understood, sir! I\u2019ll address you that way from now on. What can I assist you with today?",
+    "model": "openai/gpt-oss-120b",
+    "actions": [],
+    "task_id": "task-9c2760a40789",
+    "task_state": "fallback_no_capability_inferred",
+    "_category": "bug_repro_call",
+    "_prompt": "call me sir",
+    "_elapsed_s": 9.42
+  },
+  {
+    "answer": "Sure thing, sir. Would you like me to place a call to\u202f733\u2011078\u20112606, or is there another number you\u2019d prefer? Let me know and I\u2019ll get the dialer ready.",
+    "model": "openai/gpt-oss-120b",
+    "actions": [],
+    "task_id": "task-f50ea70d75c1",
+    "task_state": "fallback_no_capability_inferred",
+    "_category": "bug_repro_call",
+    "_prompt": "I am not sure which number you like to call",
+    "_elapsed_s": 1.74
+  },
+  {
+    "answer": "The capital of America (the United States) is Washington, D.C.",
+    "model": "openai/gpt-oss-120b",
+    "actions": [],
+    "task_id": "task-259b5fd5cfde",
+    "task_state": "fallback_no_capability_inferred",
+    "_category": "bug_repro_call",
+    "_prompt": "the capital of America",
+    "_elapsed_s": 8.12
+  },
+  {
+    "answer": null,
+    "error": "EXCEPTION: KeyError('choices')",
+    "_category": "bug_repro_call",
+    "_prompt": "yes dial to that number",
+    "_elapsed_s": 7.89
+  },
+  {
+    "answer": "No delegated work completed successfully.",
+    "model": "openai/gpt-oss-120b",
+    "actions": [],
+    "task_id": "task-63c7a7aef9b3",
+    "task_state": "COMPLETED",
+    "_category": "bug_repro_call",
+    "_prompt": "never mind, forget the call, what's 2 plus 2",
+    "_elapsed_s": 1.61
+  },
+  {
+    "answer": null,
+    "error": "EXCEPTION: <HTTPError 429: 'Too Many Requests'>",
+    "_category": "general_after_stuck",
+    "_prompt": "how are you",
+    "_elapsed_s": 1.49
+  }
+]

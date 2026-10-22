@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scientist OS — Autonomous Scientific Research</title>
+  <style>
+    :root {
+      --bg: #07090e;
+      --card: #0d121c;
+      --card-border: rgba(53, 224, 200, 0.22);
+      --card-hover: rgba(53, 224, 200, 0.4);
+      --accent: #35e0c8;
+      --accent-glow: rgba(53, 224, 200, 0.35);
+      --text: #e6ebf5;
+      --muted: #8c97aa;
+      --danger: #ff5c77;
+      --warning: #f5a623;
+      --success: #3ddc97;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: rgba(13, 18, 28, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 17px;
+      letter-spacing: .04em;
+      color: var(--accent);
+    }
+    .brand-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 12px var(--accent);
+    }
+    .auth-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    input, select, textarea, button {
+      background: #090c13;
+      color: var(--text);
+      border: 1px solid #1f293d;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13.5px;
+      outline: none;
+      font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 8px var(--accent-glow);
+    }
+    button {
+      background: rgba(53, 224, 200, 0.12);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    button:hover {
+      background: var(--accent);
+      color: #04100e;
+    }
+    button.btn-danger {
+      background: rgba(255, 92, 119, 0.12);
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+    button.btn-danger:hover {
+      background: var(--danger);
+      color: #fff;
+    }
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      height: calc(100vh - 65px);
+      overflow: hidden;
+    }
+    .sidebar {
+      border-right: 1px solid var(--card-border);
+      background: #090d15;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    .sidebar-head {
+      padding: 16px;
+      border-bottom: 1px solid #161e2e;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .mission-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .mission-card {
+      background: var(--card);
+      border: 1px solid #161f30;
+      border-radius: 10px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .mission-card:hover {
+      border-color: var(--card-hover);
+      transform: translateY(-1px);
+    }
+    .mission-card.active {
+      border-color: var(--accent);
+      background: rgba(53, 224, 200, 0.04);
+    }
+    .mission-q {
+      font-size: 13.5px;
+      font-weight: 600;
+      line-height: 1.35;
+      margin-bottom: 8px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .mission-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11.5px;
+      color: var(--muted);
+    }
+    .status-badge {
+      padding: 2px 7px;
+      border-radius: 5px;
+      font-weight: 700;
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .status-badge.RUNNING { background: rgba(53, 224, 200, .15); color: var(--accent); }
+    .status-badge.COMPLETED { background: rgba(61, 220, 151, .15); color: var(--success); }
+    .status-badge.PAUSED { background: rgba(245, 166, 35, .15); color: var(--warning); }
+    .status-badge.CANCELLED, .status-badge.FAILED { background: rgba(255, 92, 119, .15); color: var(--danger); }
+    .status-badge.CREATED { background: rgba(255, 255, 255, .1); color: var(--muted); }
+
+    .content-pane {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow-y: auto;
+      background: var(--bg);
+    }
+    .mission-view {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      max-width: 1100px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .header-panel {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .metrics-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .metric-box {
+      background: #090c13;
+      border: 1px solid #1a2336;
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+    .metric-lbl { font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+    .metric-val { font-size: 18px; font-weight: 700; color: var(--accent); margin-top: 4px; font-family: monospace; }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid #161e2e;
+      padding-bottom: 8px;
+    }
+    .tab-btn {
+      background: none;
+      border: 1px solid transparent;
+      color: var(--muted);
+      padding: 7px 16px;
+      border-radius: 6px;
+    }
+    .tab-btn.active {
+      background: #111724;
+      color: var(--accent);
+      border-color: var(--card-border);
+    }
+
+    .events-stream {
+      background: #090c13;
+      border: 1px solid #161f30;
+      border-radius: 10px;
+      height: 480px;
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12.5px;
+    }
+    .event-line {
+      display: flex;
+      gap: 12px;
+      line-height: 1.4;
+      padding: 6px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.02);
+      border-left: 2px solid var(--accent);
+    }
+    .event-time { color: var(--muted); min-width: 75px; }
+    .event-type { color: var(--accent); font-weight: 700; min-width: 170px; }
+    .event-body { color: #d0d7e5; flex: 1; word-break: break-word; }
+
+    .report-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 24px;
+      line-height: 1.6;
+    }
+    .report-card h1, .report-card h2, .report-card h3 {
+      color: var(--accent);
+      margin: 18px 0 10px 0;
+    }
+    .report-card p { margin-bottom: 12px; color: #cdd5e2; }
+    .report-card ul { margin-left: 20px; margin-bottom: 12px; color: #cdd5e2; }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(8px);
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+    }
+    .modal-content {
+      background: #0d121c;
+      border: 1px solid var(--accent);
+      border-radius: 14px;
+      width: min(580px, 92vw);
+      padding: 24px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.8);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="brand-dot"></div>
+      <span>SCIENTIST OS</span>
+      <span style="font-size: 11px; font-weight: 400; color: var(--muted);">Avishkar Autonomous Research</span>
+    </div>
+    <div class="auth-bar">
+      <input type="password" id="tokenInput" placeholder="Bearer API Token" style="width: 220px;" />
+      <button onclick="saveToken()">Save Key</button>
+      <button onclick="openNewModal()">+ New Mission</button>
+      <button onclick="loadMissions()">⟳ Refresh</button>
+    </div>
+  </header>
+
+  <main>
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <span style="font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase;">Research Missions</span>
+        <span id="missionCount" style="font-size: 12px; color: var(--accent); font-weight: 700;">0</span>
+      </div>
+      <div class="mission-list" id="missionList">
+        <div style="padding: 20px; text-align: center; color: var(--muted); font-size: 13px;">Loading missions...</div>
+      </div>
+    </aside>
+
+    <section class="content-pane" id="contentPane">
+      <div style="padding: 60px; text-align: center; color: var(--muted);" id="placeholderView">
+        <h2>Select a mission or create a new one</h2>
+        <p style="margin-top: 8px; font-size: 14px;">Real-time hypotheses, experiments, SSE progress, and verdicts will appear here.</p>
+      </div>
+
+      <div class="mission-view" id="missionView" style="display: none;">
+        <div class="header-panel">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                <span id="vMissionId" style="font-weight: 700; color: var(--accent); font-family: monospace;"></span>
+                <span id="vStatusBadge" class="status-badge"></span>
+                <span id="vDepthBadge" style="font-size: 11px; color: var(--muted); font-weight: 600;"></span>
+              </div>
+              <h1 id="vQuestion" style="font-size: 18px; line-height: 1.4; color: #fff;"></h1>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button onclick="controlMission('pause')">Pause</button>
+              <button onclick="controlMission('resume')">Resume</button>
+              <button class="btn-danger" onclick="controlMission('cancel')">Cancel</button>
+            </div>
+          </div>
+
+          <div class="metrics-row">
+            <div class="metric-box">
+              <div class="metric-lbl">Confidence</div>
+              <div class="metric-val" id="mConfidence">0.00</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-lbl">Phase / Iteration</div>
+              <div class="metric-val" id="mPhase">-</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-lbl">Research Quality</div>
+              <div class="metric-val" id="mRqs">0.00</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-lbl">Stop Reason</div>
+              <div class="metric-val" id="mStop" style="font-size: 14px;">-</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab('feed')">Live Feed (SSE)</button>
+          <button class="tab-btn" onclick="switchTab('report')">Verdict & Report</button>
+          <button class="tab-btn" onclick="switchTab('evidence')">Evidence & Claims</button>
+        </div>
+
+        <div id="tabFeed">
+          <div class="events-stream" id="eventsStream"></div>
+        </div>
+
+        <div id="tabReport" style="display: none;">
+          <div class="report-card" id="reportContent">
+            <em>Report will be displayed when available...</em>
+          </div>
+        </div>
+
+        <div id="tabEvidence" style="display: none;">
+          <div class="report-card" id="evidenceContent">
+            <em>Loading evidence...</em>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal" id="newModal">
+    <div class="modal-content">
+      <h2 style="color: var(--accent); font-size: 18px;">Start Scientific Research Mission</h2>
+      <div>
+        <label style="font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px;">Research Question / Hypothesis</label>
+        <textarea id="mqQuestion" rows="4" style="width: 100%; resize: vertical;" placeholder="e.g. Is ambient-pressure superconductivity above 200K feasible in layered hydrides?"></textarea>
+      </div>
+      <div style="display: flex; gap: 14px;">
+        <div style="flex: 1;">
+          <label style="font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px;">Depth Profile</label>
+          <select id="mqDepth" style="width: 100%;">
+            <option value="QUICK">QUICK (~3-15 min, triage)</option>
+            <option value="STANDARD" selected>STANDARD (~15-60 min)</option>
+            <option value="DEEP">DEEP (~1-4 hours, comprehensive)</option>
+            <option value="EXHAUSTIVE">EXHAUSTIVE (multi-day deep)</option>
+          </select>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-top: 22px;">
+          <input type="checkbox" id="mqDemo" style="cursor: pointer;" />
+          <label for="mqDemo" style="font-size: 13px; cursor: pointer;">Simulated Demo (Zero LLM)</label>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+        <button style="background: none; border-color: #313f59; color: var(--muted);" onclick="closeNewModal()">Cancel</button>
+        <button onclick="submitNewMission()">Launch Mission</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentMid = null;
+    let eventSource = null;
+    let apiToken = localStorage.getItem('sci_token') || '';
+
+    if (apiToken) document.getElementById('tokenInput').value = apiToken;
+
+    function saveToken() {
+      apiToken = document.getElementById('tokenInput').value.trim();
+      localStorage.setItem('sci_token', apiToken);
+      alert('Token saved to local storage.');
+      loadMissions();
+    }
+
+    function authHeaders() {
+      const h = { 'Content-Type': 'application/json' };
+      if (apiToken) h['Authorization'] = 'Bearer ' + apiToken;
+      return h;
+    }
+
+    async function loadMissions() {
+      try {
+        const res = await fetch('/api/missions', { headers: authHeaders() });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const list = await res.json();
+        document.getElementById('missionCount').textContent = list.length;
+        const container = document.getElementById('missionList');
+        if (!list.length) {
+          container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--muted); font-size: 13px;">No missions found.</div>';
+          return;
+        }
+        container.innerHTML = list.map(m => `
+          <div class="mission-card ${m.id === currentMid ? 'active' : ''}" onclick="selectMission('${m.id}')">
+            <div class="mission-q">${escapeHtml(m.question)}</div>
+            <div class="mission-meta">
+              <span class="status-badge ${m.status}">${m.status}</span>
+              <span>${m.research_depth}</span>
+              <span>#${m.iteration || 0}</span>
+              <span style="font-family: monospace;">${m.id}</span>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        document.getElementById('missionList').innerHTML = `<div style="padding: 20px; color: var(--danger); font-size: 12px;">Failed to load missions: ${err.message}</div>`;
+      }
+    }
+
+    async function selectMission(id) {
+      currentMid = id;
+      document.getElementById('placeholderView').style.display = 'none';
+      document.getElementById('missionView').style.display = 'flex';
+      loadMissions();
+
+      try {
+        const res = await fetch(`/api/missions/${id}`, { headers: authHeaders() });
+        const m = await res.json();
+        document.getElementById('vMissionId').textContent = m.id;
+        document.getElementById('vQuestion').textContent = m.question;
+        document.getElementById('vStatusBadge').textContent = m.status;
+        document.getElementById('vStatusBadge').className = 'status-badge ' + m.status;
+        document.getElementById('vDepthBadge').textContent = m.research_depth + (m.demo ? ' (DEMO)' : '');
+        document.getElementById('mConfidence').textContent = (m.confidence || 0).toFixed(2);
+        document.getElementById('mPhase').textContent = (m.current_phase || '-') + ' / #' + (m.iteration || 0);
+        document.getElementById('mRqs').textContent = (m.rqs || 0).toFixed(2);
+        document.getElementById('mStop').textContent = m.stop_reason || '-';
+      } catch (e) {}
+
+      startSSE(id);
+      loadReport(id);
+      loadEvidence(id);
+    }
+
+    function startSSE(id) {
+      if (eventSource) eventSource.close();
+      const streamDiv = document.getElementById('eventsStream');
+      streamDiv.innerHTML = '<div style="color: var(--muted);">Connecting to live event stream...</div>';
+
+      const sseUrl = `/api/missions/${id}/events?token=${encodeURIComponent(apiToken)}`;
+      eventSource = new EventSource(sseUrl);
+
+      eventSource.onmessage = (e) => {
+        let ev;
+        try { ev = JSON.parse(e.data); } catch(_) { return; }
+        const div = document.createElement('div');
+        div.className = 'event-line';
+        const at = ev.at ? ev.at.split('T')[1].split('.')[0] : '';
+        div.innerHTML = `
+          <span class="event-time">${at}</span>
+          <span class="event-type">${ev.type}</span>
+          <span class="event-body">${escapeHtml(JSON.stringify(ev.payload || {}))}</span>
+        `;
+        streamDiv.appendChild(div);
+        streamDiv.scrollTop = streamDiv.scrollHeight;
+
+        if (['VERDICT_READY', 'REPORT_READY', 'MISSION_COMPLETED'].includes(ev.type)) {
+          loadReport(id);
+          selectMission(id);
+        }
+      };
+
+      eventSource.onerror = () => {
+        // Auto-reconnect handled by browser
+      };
+    }
+
+    async function loadReport(id) {
+      const container = document.getElementById('reportContent');
+      try {
+        const [vRes, rRes] = await Promise.all([
+          fetch(`/api/missions/${id}/verdict`, { headers: authHeaders() }),
+          fetch(`/api/missions/${id}/report`, { headers: authHeaders() })
+        ]);
+
+        let html = '';
+        if (vRes.ok) {
+          const v = await vRes.json();
+          html += `<div style="background: rgba(53, 224, 200, 0.08); border-left: 3px solid var(--accent); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+            <div style="font-size: 11px; text-transform: uppercase; color: var(--accent); font-weight: 700;">Synthesized Scientific Verdict</div>
+            <h2 style="margin: 6px 0; color: #fff;">${v.label}</h2>
+            <p style="font-size: 14.5px; line-height: 1.5; color: #dce4f0;">${escapeHtml(v.statement)}</p>
+          </div>`;
+        }
+
+        if (rRes.ok) {
+          const md = await rRes.text();
+          html += renderMarkdown(md);
+        } else if (!html) {
+          html = '<em>Verdict and final report have not been synthesized yet.</em>';
+        }
+
+        container.innerHTML = html;
+      } catch (err) {
+        container.innerHTML = `<em>Report pending or unavailable.</em>`;
+      }
+    }
+
+    async function loadEvidence(id) {
+      const container = document.getElementById('evidenceContent');
+      try {
+        const [cRes, eRes] = await Promise.all([
+          fetch(`/api/missions/${id}/claims`, { headers: authHeaders() }),
+          fetch(`/api/missions/${id}/evidence`, { headers: authHeaders() })
+        ]);
+        const claims = cRes.ok ? await cRes.json() : [];
+        const evidence = eRes.ok ? await eRes.json() : [];
+
+        let out = `<h3 style="color: var(--accent); margin-bottom: 12px;">Extracted Claims (${claims.length})</h3>`;
+        if (!claims.length) out += '<p>No claims extracted yet.</p>';
+        else {
+          out += claims.map(c => `<div style="padding: 10px; margin-bottom: 8px; background: #090c13; border-radius: 6px; border-left: 2px solid ${c.stance === 'SUPPORTS' ? 'var(--success)' : c.stance === 'REFUTES' ? 'var(--danger)' : 'var(--warning)'};">
+            <span style="font-size: 10px; font-weight: 700; color: var(--muted);">${c.stance} (${c.epistemic})</span>
+            <div style="margin-top: 4px; font-size: 13.5px;">${escapeHtml(c.text)}</div>
+          </div>`).join('');
+        }
+
+        out += `<h3 style="color: var(--accent); margin: 24px 0 12px 0;">Evidence Items (${evidence.length})</h3>`;
+        if (!evidence.length) out += '<p>No primary evidence attached yet.</p>';
+        else {
+          out += evidence.map(e => `<div style="padding: 8px 12px; margin-bottom: 6px; background: #090c13; border-radius: 6px; font-size: 13px;">
+            <div style="font-weight: 600;">${escapeHtml(e.kind)} — strength: ${e.strength}</div>
+            <div style="color: var(--muted); font-size: 12px; margin-top: 2px;">${escapeHtml(JSON.stringify(e.data || {}))}</div>
+          </div>`).join('');
+        }
+
+        container.innerHTML = out;
+      } catch (e) {
+        container.innerHTML = '<em>Failed to load evidence.</em>';
+      }
+    }
+
+    async function controlMission(act) {
+      if (!currentMid) return;
+      if (!confirm(`Are you sure you want to ${act} mission ${currentMid}?`)) return;
+      try {
+        const res = await fetch(`/api/missions/${currentMid}/${act}`, {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({})
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          alert('Action failed: ' + (err.detail || res.statusText));
+          return;
+        }
+        selectMission(currentMid);
+      } catch (e) {
+        alert('Request failed: ' + e.message);
+      }
+    }
+
+    function switchTab(t) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById('tabFeed').style.display = t === 'feed' ? 'block' : 'none';
+      document.getElementById('tabReport').style.display = t === 'report' ? 'block' : 'none';
+      document.getElementById('tabEvidence').style.display = t === 'evidence' ? 'block' : 'none';
+    }
+
+    function openNewModal() { document.getElementById('newModal').style.display = 'flex'; }
+    function closeNewModal() { document.getElementById('newModal').style.display = 'none'; }
+
+    async function submitNewMission() {
+      const q = document.getElementById('mqQuestion').value.trim();
+      const depth = document.getElementById('mqDepth').value;
+      const demo = document.getElementById('mqDemo').checked;
+      if (!q || q.length < 10) { alert('Question must be at least 10 characters.'); return; }
+
+      try {
+        const res = await fetch('/api/missions', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({ question: q, depth: depth, demo: demo })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          alert('Failed to launch mission: ' + (err.detail || res.statusText));
+          return;
+        }
+        const data = await res.json();
+        closeNewModal();
+        document.getElementById('mqQuestion').value = '';
+        await loadMissions();
+        selectMission(data.id);
+      } catch (e) {
+        alert('Network error: ' + e.message);
+      }
+    }
+
+    function escapeHtml(t) {
+      if (!t) return '';
+      const d = document.createElement('div');
+      d.textContent = t;
+      return d.innerHTML;
+    }
+
+    function renderMarkdown(md) {
+      return md
+        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+        .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
+        .replace(/\*(.*)\*/gim, '<em>$1</em>')
+        .replace(/`([^`]+)`/gim, '<code>$1</code>')
+        .replace(/^\s*-\s+(.*$)/gim, '<li>$1</li>')
+        .replace(/\n\n/gim, '<p></p>')
+        .replace(/\n/gim, '<br>');
+    }
+
+    loadMissions();
+    setInterval(loadMissions, 10000);
+  </script>
+</body>
+</html>

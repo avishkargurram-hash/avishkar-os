@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Layla TV Agent</string>
+    <string name="a11y_desc">Lets Layla read which app is on screen and perform Back/Home/Recents and select the focused item on this TV. Part of the owner\'s own Layla home-assistant system.</string>
+</resources>

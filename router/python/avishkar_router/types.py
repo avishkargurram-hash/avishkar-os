@@ -15,10 +15,15 @@ from typing import Any, Mapping, Optional, Tuple
 class Message:
     """One turn in a CompletionRequest. Text-only in v1 -- see
     CONTRACT.md SS1 and README.md Limitations for multi-modal content.
+
+    Phase 1 (Layla redesign): tool_calls/tool_call_id added, additive with
+    empty/None defaults -- every existing text-only caller is unaffected.
     """
 
-    role: str  # "user" | "assistant" | "system"
+    role: str  # "user" | "assistant" | "system" | "tool"
     content: str
+    tool_calls: Tuple[Mapping[str, Any], ...] = ()  # assistant-issued tool calls (OpenAI tool_calls shape)
+    tool_call_id: Optional[str] = None              # for role="tool": which call this message answers
 
 
 @dataclasses.dataclass(frozen=True)
@@ -46,6 +51,11 @@ class CompletionRequest:
     task_type: Optional[str] = None
     max_tokens: int = 1024
     metadata: Mapping[str, Any] = dataclasses.field(default_factory=dict)
+    # Phase 1 (Layla redesign): OpenAI tool-schema dicts + tool_choice.
+    # Additive -- empty/None defaults mean every existing text-only caller
+    # is byte-identical in the request it sends.
+    tools: Tuple[Mapping[str, Any], ...] = ()
+    tool_choice: Optional[Any] = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -67,6 +77,7 @@ class ProviderResponse:
     # additive -- every existing ModelProvider/test that never sets it
     # is unaffected.
     request_id: Optional[str] = None
+    tool_calls: Tuple[Mapping[str, Any], ...] = ()  # Phase 1 -- see Message.tool_calls
 
 
 @dataclasses.dataclass(frozen=True)
@@ -82,3 +93,4 @@ class CompletionResponse:
     latency_ms: float
     stop_reason: Optional[str] = None
     request_id: Optional[str] = None  # Priority 17.5 -- see ProviderResponse.request_id
+    tool_calls: Tuple[Mapping[str, Any], ...] = ()  # Phase 1 -- see Message.tool_calls

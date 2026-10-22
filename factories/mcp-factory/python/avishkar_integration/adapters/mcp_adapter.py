@@ -73,12 +73,16 @@ class MCPAdapter(ProtocolAdapter):
         return tuple(self._to_contract(tool) for tool in result.tools)
 
     def _to_contract(self, tool: Any) -> ToolContract:
+        # The MCP SDK's Tool model uses the wire spec's camelCase field names
+        # (inputSchema/outputSchema, not input_schema/output_schema) -- this
+        # adapter previously read the wrong attribute names and raised
+        # AttributeError on every real server's list_tools() response.
         return ToolContract(
             identity=tool.name,
             description=tool.description or "",
             protocol=self.protocol_name,
-            input_schema=tool.input_schema or {},
-            output_schema=getattr(tool, "output_schema", None),
+            input_schema=getattr(tool, "inputSchema", None) or {},
+            output_schema=getattr(tool, "outputSchema", None),
             timeout_seconds=self._default_timeout,
             retry_policy=RetryPolicy(max_attempts=1),
             auth_requirement="mcp_session",

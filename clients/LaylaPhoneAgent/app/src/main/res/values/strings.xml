@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Layla Phone Agent</string>
+    <string name="accessibility_description">Lets Layla read what is on screen and tap, type and scroll on your behalf — required for sending WhatsApp messages and controlling other apps. Every action that leaves the device still asks for your tap first.</string>
+</resources>

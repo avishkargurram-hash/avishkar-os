@@ -148,6 +148,7 @@ class Router:
                 latency_ms=elapsed_ms,
                 stop_reason=result.stop_reason,
                 request_id=result.request_id,
+                tool_calls=result.tool_calls,  # Phase 1
             )
 
         if not any_registered:

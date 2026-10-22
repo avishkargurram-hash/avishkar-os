@@ -21,6 +21,7 @@ untestable "trust me").
 
 from __future__ import annotations
 
+import datetime
 import threading
 import time
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple
@@ -65,9 +66,19 @@ from .types import (
     UNDERSTANDING,
     VERIFYING,
     WAITING,
+    DelegationRecord,
     LaylaTask,
     Plan,
 )
+
+
+def _now() -> str:
+    # Same tiny per-module helper delegation.py/state_machine.py each
+    # already define locally, reused here for Phase 5.1's synthetic
+    # dependency-skip DelegationRecords (see EXECUTING below) --
+    # deliberately not imported from either, to avoid coupling runtime.py
+    # to another module's private helper.
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()
 
 
 class ExecutiveRuntime:
@@ -85,6 +96,7 @@ class ExecutiveRuntime:
         memory_lookups: Sequence[Tuple[str, str]] = (),
         scheduler: Optional[Scheduler] = None,
         personal_model: Optional[PersonalModel] = None,
+        respond_fn: Optional[Callable[[LaylaTask], str]] = None,
         enable_proactive: bool = False,
         proactive_evaluators: Sequence[TriggerEvaluator] = (),
         proactive_session_id: Optional[str] = None,
@@ -102,6 +114,14 @@ class ExecutiveRuntime:
         # behavior is unchanged. Supplied, ContextBuilder folds a redacted
         # summary into every task's context (see context.py).
         self._personal_model = personal_model
+        # Phase 2 (Mission Layla, intent-first orchestration): optional,
+        # additive -- omitted (default), behavior is byte-identical to
+        # before this existed (every turn still goes through
+        # Planner/CapabilityResolver, UnknownCapabilityError -> REQUIRES_HUMAN
+        # exactly as today). Supplied, a task whose intent doesn't require
+        # action AND doesn't hit a known capability answers conversationally
+        # instead of ever reaching Planner. See CONTEXT_LOADING below.
+        self._respond_fn = respond_fn
 
         self._capability_resolver = CapabilityResolver(agent_domains)
         self._planner = Planner(self._capability_resolver)
@@ -365,8 +385,56 @@ class ExecutiveRuntime:
                 task, self._memory, memory_lookups=self._memory_lookups, knowledge_bases=self._knowledge_bases,
                 personal_model=self._personal_model,
             )
+            # Recomputed here (not reused from the RECEIVED block's local
+            # `intent`) so this survives resume(): a task resumed straight
+            # into CONTEXT_LOADING never runs the RECEIVED block in *this*
+            # call, so that local variable wouldn't exist. IntentInterpreter
+            # is a pure regex classifier (see intent.py), not a model call --
+            # recomputing it is free and deterministic, not wasted work.
+            intent = self._intent.interpret(task.input)
+            task.context["intent"] = {
+                "category": intent.category, "urgency": intent.urgency, "requires_action": intent.requires_action,
+            }
 
         if task.state == CONTEXT_LOADING:
+            # Phase 2 (Mission Layla, intent-first orchestration): only when
+            # a `respond_fn` was supplied (additive -- see __init__). Two
+            # independent signals must BOTH say "no capability needed"
+            # before skipping Planner: IntentInterpreter's requires_action,
+            # and CapabilityResolver's own domain-word overlap (the same
+            # cheap check Planner itself would run) -- so this never
+            # silently answers conversationally for a real domain-relevant
+            # request just because IntentInterpreter's regex missed it.
+            if self._respond_fn is not None:
+                intent_requires_action = task.context.get("intent", {}).get("requires_action", True)
+                domain_hit = bool(self._capability_resolver.infer_relevant(task.input))
+                if not intent_requires_action and not domain_hit:
+                    self._state_machine.transition(task, SYNTHESIZING)
+                    try:
+                        task.result = self._respond_fn(task)
+                    except Exception as exc:  # noqa: BLE001 -- respond_fn is caller-supplied (a live model
+                        # call, in practice) and must never let a raw provider/network failure escape the
+                        # state machine uncaught the way Planner/DelegationEngine failures already don't.
+                        # Mirrors the exact pattern immediately below (Planner.plan()'s except block) --
+                        # REQUIRES_HUMAN with a real reason, not a bare exception reaching handle_event()'s
+                        # caller and bypassing session/audit persistence entirely.
+                        task.blocked_reason = str(exc)
+                        self._state_machine.transition(task, REQUIRES_HUMAN)
+                        self._audit.record(
+                            "layla.conversation.failed", {"reason": str(exc)},
+                            task_id=task.id, principal_id=principal_id,
+                        )
+                        self._session.save(task)
+                        return task
+                    self._state_machine.transition(task, COMPLETED)
+                    self._audit.record(
+                        "layla.conversation.responded",
+                        {"category": task.context["intent"]["category"]},
+                        task_id=task.id, principal_id=principal_id,
+                    )
+                    self._session.save(task)
+                    return task
+
             self._state_machine.transition(task, PLANNING)
             try:
                 plan = self._planner.plan(task)
@@ -477,16 +545,44 @@ class ExecutiveRuntime:
 
             self._state_machine.transition(task, DELEGATING)
             records = []
+            # Phase 5.1 (Mission Layla, verification loops): PlanStep.depends_on
+            # existed in the dataclass but was never enforced -- every step ran
+            # in list order regardless of whether an earlier dependency failed.
+            # Tracked here as real step ids, not just a count, so a step can
+            # depend on any earlier step by name, not only "the previous one."
+            completed_step_ids: set = set()
             for step in plan.steps:
-                # Idempotency (Priority 17.2): if execution_tracker is
-                # wired, a step already COMPLETED from a prior attempt
-                # (e.g. a crash after step 17 of 50, resumed here) is
-                # returned from cache without invoking the orchestrator
-                # again -- see execution.py and CONTRACT.md SS15. Without
-                # it, a resumed DELEGATING phase re-runs every step, the
-                # same as any other optional-capability-omitted default.
-                record = self._delegation.delegate(step, task_id=task.id, principal_id=principal_id)
+                missing_deps = tuple(dep for dep in step.depends_on if dep not in completed_step_ids)
+                if missing_deps:
+                    # Skipped, not run: this is exactly the mechanism a
+                    # plan->execute->observe->verify->retry/escalate flow
+                    # needs -- e.g. a "run tests" step must never execute
+                    # once the "edit" step it depends on has already failed.
+                    # Marked "failed" (not a new status) so it flows through
+                    # every existing consumer unchanged: ResultValidator,
+                    # ExecutiveSynthesizer, HealthMonitor.observe_delegation,
+                    # and the Phase 0.2 zero-success check below all already
+                    # know how to handle a "failed" DelegationRecord.
+                    record = DelegationRecord(
+                        step_id=step.id, agent_name="", status="failed",
+                        error=(
+                            f"dependency not satisfied: step {step.id!r} depends on {missing_deps}, "
+                            f"which did not complete successfully -- skipped without executing"
+                        ),
+                        started_at=_now(), completed_at=_now(),
+                    )
+                else:
+                    # Idempotency (Priority 17.2): if execution_tracker is
+                    # wired, a step already COMPLETED from a prior attempt
+                    # (e.g. a crash after step 17 of 50, resumed here) is
+                    # returned from cache without invoking the orchestrator
+                    # again -- see execution.py and CONTRACT.md SS15. Without
+                    # it, a resumed DELEGATING phase re-runs every step, the
+                    # same as any other optional-capability-omitted default.
+                    record = self._delegation.delegate(step, task_id=task.id, principal_id=principal_id)
                 records.append(record)
+                if record.status == "completed":
+                    completed_step_ids.add(step.id)
                 self._audit.record(
                     f"layla.delegation.{record.status}",
                     {"step_id": record.step_id, "agent_name": record.agent_name, "attempts": record.attempts,
@@ -510,6 +606,28 @@ class ExecutiveRuntime:
                 task.blocked_reason = f"{len(conflicts)} unresolved conflict(s) among delegated results"
                 self._audit.record(
                     "layla.conflict.detected", {"conflicts": [c.reason for c in conflicts]},
+                    task_id=task.id, principal_id=principal_id,
+                )
+                self._state_machine.transition(task, REQUIRES_HUMAN)
+                self._session.save(task)
+                return task
+
+            # Phase 0.2: a delegation set where NOTHING succeeded must never
+            # reach COMPLETED. Before this check, ExecutiveSynthesizer.synthesize()
+            # silently returned "No delegated work completed successfully." for a
+            # zero-success record set, task.result was set to that generic string,
+            # and the state machine transitioned straight to COMPLETED anyway --
+            # masking a real upstream failure (e.g. a model-provider error) as a
+            # bland, "successful" non-answer, with no error surfaced to the user,
+            # the logs, or the audit trail at this layer. Mirrors the conflict
+            # short-circuit immediately above, same shape.
+            if records and not any(r.status == "completed" for r in records):
+                task.blocked_reason = "; ".join(
+                    f"{r.agent_name or r.step_id}: {r.error}" for r in records if r.error
+                ) or "delegation produced no successful results"
+                self._audit.record(
+                    "layla.delegation.total_failure",
+                    {"step_errors": [r.error for r in records]},
                     task_id=task.id, principal_id=principal_id,
                 )
                 self._state_machine.transition(task, REQUIRES_HUMAN)

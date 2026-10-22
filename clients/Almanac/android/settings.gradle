@@ -1,0 +1,9 @@
+include ':app'
+// Layla Phone Agent + Layla WhatsApp agent are built from their own client folders (single source of
+// truth) as library modules; only their manifests/build files live here.
+include ':phoneagent'
+include ':waagent'
+include ':capacitor-cordova-android-plugins'
+project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
+
+apply from: 'capacitor.settings.gradle'

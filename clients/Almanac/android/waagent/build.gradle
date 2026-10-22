@@ -1,0 +1,39 @@
+apply plugin: 'com.android.library'
+apply plugin: 'org.jetbrains.kotlin.android'
+
+def waProps = new Properties()
+def waFile = file('../../../LaylaWaAgent/wa.properties')   // gitignored: holds the server URL and device token
+if (waFile.exists()) {
+    waFile.withInputStream { waProps.load(it) }
+}
+
+android {
+    namespace 'in.tryvanta.laylawa'
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        buildConfigField "String", "WA_BASE", "\"${waProps.getProperty('base', '')}\""
+        buildConfigField "String", "WA_TOKEN", "\"${waProps.getProperty('token', '')}\""
+    }
+    buildFeatures { buildConfig true }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    sourceSets {
+        main {
+            manifest.srcFile 'AndroidManifest.xml'
+            java.srcDirs = ['../../../LaylaWaAgent/app/src/main/java']
+            res.srcDirs = ['../../../LaylaWaAgent/app/src/main/res']
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.13.1'
+}
+
+kotlin {
+    compilerOptions { jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17 }
+}

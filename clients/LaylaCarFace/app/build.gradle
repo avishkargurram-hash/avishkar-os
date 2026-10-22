@@ -1,0 +1,59 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android' version '1.9.24'
+}
+
+android {
+    namespace 'in.tryvanta.laylacarface'
+    compileSdk 33
+
+    signingConfigs {
+        release {
+            storeFile file("layla_release.keystore")
+            storePassword "layla123"
+            keyAlias "layla"
+            keyPassword "layla123"
+            v1SigningEnabled true
+            v2SigningEnabled true
+        }
+    }
+
+    defaultConfig {
+        applicationId "in.tryvanta.laylacarface"
+        minSdk 24
+        targetSdk 33
+        versionCode 1
+        versionName "0.1"
+
+        // The face page + the owner session cookie value, both pre-filled from
+        // the gitignored .secrets/ files so no credential lives in source.
+        def urlFile = new File(rootDir, '.secrets/face_url.txt')
+        def faceUrl = urlFile.exists() ? urlFile.text.trim() : 'https://layla.tryvanta.in/app'
+        buildConfigField 'String', 'FACE_URL', '"' + faceUrl + '"'
+
+        def tokFile = new File(rootDir, '.secrets/device_token.txt')
+        def tok = tokFile.exists() ? tokFile.text.trim() : ''
+        buildConfigField 'String', 'DEFAULT_TOKEN', '"' + tok + '"'
+    }
+    buildFeatures { buildConfig true }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+        debug {
+            signingConfig signingConfigs.release
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.10.1'
+}

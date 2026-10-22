@@ -1,0 +1,17 @@
+[Unit]
+Description=Scientist OS Queue Worker %i
+After=network.target docker.service
+
+[Service]
+Type=simple
+User=sci
+Group=sci
+WorkingDirectory=/opt/scientist/src
+EnvironmentFile=/opt/scientist/secrets/scientist.env
+ExecStart=/opt/scientist/venv/bin/sci worker --name worker-%i
+Restart=always
+RestartSec=3
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

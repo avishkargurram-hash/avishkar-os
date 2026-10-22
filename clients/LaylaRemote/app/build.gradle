@@ -1,0 +1,54 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android' version '1.9.24'
+}
+
+android {
+    namespace 'app.tryvanta.laylaremote'
+    compileSdk 33
+
+    signingConfigs {
+        release {
+            storeFile file("layla_release.keystore")
+            storePassword "layla123"
+            keyAlias "layla"
+            keyPassword "layla123"
+            v1SigningEnabled true
+            v2SigningEnabled true
+        }
+    }
+
+    defaultConfig {
+        applicationId "app.tryvanta.laylaremote"
+        minSdk 24
+        targetSdk 33
+        versionCode 1
+        versionName "0.1"
+
+        // Broker coordinates are public; the password is read from the gitignored
+        // .secrets/mqtt_pass.txt so no credential lives in source control.
+        buildConfigField 'String', 'MQTT_HOST', '"layla.tryvanta.in"'
+        buildConfigField 'int', 'MQTT_PORT', '8883'
+        buildConfigField 'String', 'MQTT_USER', '"tvrobot"'
+        def pw = new File(rootDir, '.secrets/mqtt_pass.txt')
+        buildConfigField 'String', 'MQTT_PASS', '"' + (pw.exists() ? pw.text.trim() : '') + '"'
+    }
+    buildFeatures { buildConfig true }
+    buildTypes {
+        release { minifyEnabled false; signingConfig signingConfigs.release }
+        debug { signingConfig signingConfigs.release }
+    }
+    packagingOptions {
+        resources { excludes += ['META-INF/INDEX.LIST', 'META-INF/DEPENDENCIES', 'META-INF/io.netty.versions.properties'] }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.10.1'
+    implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5'
+}

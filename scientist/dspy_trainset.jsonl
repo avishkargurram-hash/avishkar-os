@@ -1,0 +1,24 @@
+{"domain": "all", "text": "run df -h on the server and show disk usage", "tool": "run_terminal_command"}
+{"domain": "all", "text": "check the uptime and memory on tv-mum-01", "tool": "run_terminal_command"}
+{"domain": "all", "text": "execute a quick shell command to list running docker containers", "tool": "run_terminal_command"}
+{"domain": "all", "text": "open example.com and tell me what the page says", "tool": "browse_web"}
+{"domain": "all", "text": "browse to the openai blog and summarise the latest post", "tool": "browse_web"}
+{"domain": "all", "text": "load this url and extract the main article text", "tool": "browse_web"}
+{"domain": "all", "text": "search the web for recent mars rover discoveries", "tool": "search_web"}
+{"domain": "all", "text": "find me news about the latest nvidia gpu", "tool": "search_web"}
+{"domain": "all", "text": "look up who won the cricket match yesterday", "tool": "search_web"}
+{"domain": "all", "text": "fix the failing unit test in the payments module", "tool": "dispatch_coding_task"}
+{"domain": "all", "text": "refactor this function and make the tests pass", "tool": "dispatch_coding_task"}
+{"domain": "all", "text": "write code to add a retry wrapper and verify it", "tool": "dispatch_coding_task"}
+{"domain": "all", "text": "what servers are online right now", "tool": "get_world_state"}
+{"domain": "all", "text": "check the bedroom switchboard and fan status", "tool": "get_world_state"}
+{"domain": "all", "text": "give me the current state of all my devices", "tool": "get_world_state"}
+{"domain": "all", "text": "what lessons have we learned about fan control", "tool": "get_hindsight_lessons"}
+{"domain": "all", "text": "why did the camera keep dropping last week", "tool": "get_hindsight_lessons"}
+{"domain": "all", "text": "what mistakes have we made before with deployments", "tool": "get_hindsight_lessons"}
+{"domain": "all", "text": "show me recent earthquakes near japan", "tool": "get_earthquakes"}
+{"domain": "all", "text": "any big quakes in the last 24 hours", "tool": "get_earthquakes"}
+{"domain": "all", "text": "list seismic activity above magnitude 5", "tool": "get_earthquakes"}
+{"domain": "all", "text": "research whether room temperature superconductivity is feasible", "tool": "start_scientific_research"}
+{"domain": "all", "text": "do a deep scientific investigation into this physics question", "tool": "start_scientific_research"}
+{"domain": "all", "text": "run a full research mission on quantum error correction", "tool": "start_scientific_research"}

@@ -1,0 +1,17 @@
+{
+  "name": "almanac",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "www": "node scripts/copy-www.mjs",
+    "sync": "node scripts/copy-www.mjs && npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.1",
+    "@capacitor/cli": "^8.5.1",
+    "@capacitor/core": "^8.5.1",
+    "@capacitor/filesystem": "^8.0.0",
+    "@capacitor/local-notifications": "^8.0.0",
+    "@capacitor/share": "^8.0.0"
+  }
+}

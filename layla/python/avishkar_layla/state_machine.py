@@ -39,7 +39,12 @@ _EXCEPTION_STATES = (FAILED, CANCELLED, TIMEOUT, BLOCKED, REQUIRES_HUMAN)
 ALLOWED_TRANSITIONS = {
     RECEIVED: (UNDERSTANDING,) + _EXCEPTION_STATES,
     UNDERSTANDING: (CONTEXT_LOADING,) + _EXCEPTION_STATES,
-    CONTEXT_LOADING: (PLANNING,) + _EXCEPTION_STATES,
+    # SYNTHESIZING added here for Phase 2 (Mission Layla, intent-first
+    # orchestration): a task whose intent doesn't require action is
+    # answered conversationally and skips Planner entirely -- see
+    # runtime.py's CONTEXT_LOADING block. PLANNING stays the default
+    # path for every existing caller; this only adds a second option.
+    CONTEXT_LOADING: (PLANNING, SYNTHESIZING) + _EXCEPTION_STATES,
     PLANNING: (APPROVAL_PENDING, EXECUTING) + _EXCEPTION_STATES,
     APPROVAL_PENDING: (EXECUTING,) + _EXCEPTION_STATES,
     EXECUTING: (DELEGATING, VERIFYING) + _EXCEPTION_STATES,

@@ -1,0 +1,41 @@
+apply plugin: 'com.android.library'
+apply plugin: 'org.jetbrains.kotlin.android'
+
+def phoneProps = new Properties()
+def phoneFile = file('../../../LaylaPhoneAgent/phone.properties')    // gitignored: holds the Phone Agent MQTT password
+if (phoneFile.exists()) {
+    phoneFile.withInputStream { phoneProps.load(it) }
+}
+
+android {
+    namespace 'in.tryvanta.laylaphone'
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        buildConfigField "String", "PHONE_MQTT_PASS", "\"${phoneProps.getProperty('mqtt_pass', '')}\""
+    }
+    buildFeatures { buildConfig true }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    sourceSets {
+        main {
+            manifest.srcFile 'AndroidManifest.xml'
+            java.srcDirs = ['../../../LaylaPhoneAgent/app/src/main/java']
+            res.srcDirs = ['../../../LaylaPhoneAgent/app/src/main/res']
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation 'androidx.activity:activity-ktx:1.9.3'
+    implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5'
+}
+
+kotlin {
+    compilerOptions { jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17 }
+}

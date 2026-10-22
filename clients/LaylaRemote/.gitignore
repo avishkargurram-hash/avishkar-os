@@ -1,0 +1,6 @@
+.secrets/
+*.keystore
+app/build/
+build/
+.gradle/
+*.apk

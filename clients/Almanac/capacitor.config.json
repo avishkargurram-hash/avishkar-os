@@ -1,0 +1,9 @@
+{
+  "appId": "in.tryvanta.almanac",
+  "appName": "Almanac",
+  "webDir": "www",
+  "android": { "allowMixedContent": false },
+  "plugins": {
+    "LocalNotifications": { "smallIcon": "ic_stat_icon_config_sample" }
+  }
+}
